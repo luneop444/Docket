@@ -23,6 +23,28 @@ export const TODAY_STOP = {
   visits: 41,
 };
 
+/** Minutes before each stop's appointment that Docket starts watching location. */
+export const WATCH_LEAD_MIN = 180;
+
+export interface LoadStop {
+  name: string;
+  kind: 'Pickup' | 'Drop';
+  /** Appointment, minutes after midnight. */
+  at: number;
+}
+
+/** What the faked "AI read" pulls off today's rate con (Figma B2). */
+export const SAMPLE_LOAD = {
+  number: '48262',
+  stops: [
+    { name: 'Keystone Cold Storage', kind: 'Pickup', at: 6 * 60 },
+    { name: 'Harbor Foods DC', kind: 'Drop', at: 14 * 60 },
+  ] as LoadStop[],
+};
+
+/** "Been here before?" shortcuts on Add a load (Figma B1). */
+export const RECENT_STOPS = ['Harbor Foods DC', 'Lehigh Grocery DC'];
+
 export interface Company {
   name: string;
   drivers: number;

@@ -11,6 +11,12 @@ export type LocationMode = 'always' | 'manual';
 export type LoadStyle = 'same' | 'different' | 'mix';
 /** A2: how the driver answered "do these rules match your paperwork?" */
 export type RulesCheck = 'matches' | 'different' | 'unsure';
+/** Today's load once the driver has checked its stops. */
+export interface ActiveLoad {
+  number: string;
+  /** How it came in (Figma B1). */
+  source: 'share' | 'email';
+}
 export type CompanySort = 'wait' | 'paid';
 export type AnonAnswer = 'Paid' | 'Partly' | 'Not paid';
 
@@ -23,6 +29,8 @@ export interface AppState {
   rulesCheck: RulesCheck | null;
   loadStyle: LoadStyle | null;
   location: LocationMode | null;
+  /** Null until the driver adds today's load. Location is only watched while there is one. */
+  load: ActiveLoad | null;
   /** Simulated clock, minutes after midnight. */
   now: number;
   stop: Stop;
@@ -44,6 +52,7 @@ export const freshState = (): AppState => ({
   rulesCheck: null,
   loadStyle: null,
   location: null,
+  load: null,
   now: START_NOW,
   stop: freshStop(),
   marks: {},

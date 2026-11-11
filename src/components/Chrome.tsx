@@ -100,8 +100,8 @@ export function BackBar({ onPress, label = 'Back' }: { onPress: () => void; labe
 
 export const ONBOARDING_STEPS = 4;
 
-/** v2 onboarding header: chevron back on the left, step dashes on the right. */
-export function OnboardingBar({ step, onBack }: { step: number; onBack: () => void }) {
+/** v2 header: chevron back on the left, onboarding step dashes on the right (if a step is given). */
+export function OnboardingBar({ step, onBack }: { step?: number; onBack: () => void }) {
   return (
     <>
       <TopSafe />
@@ -114,15 +114,17 @@ export function OnboardingBar({ step, onBack }: { step: number; onBack: () => vo
         >
           <ChevronLeft />
         </Pressable>
-        <View
-          style={styles.progress}
-          accessibilityRole="progressbar"
-          accessibilityLabel={`Step ${step} of ${ONBOARDING_STEPS}`}
-        >
-          {Array.from({ length: ONBOARDING_STEPS }, (_, i) => (
-            <View key={i} style={[styles.dash, { backgroundColor: i < step ? color.ink : color.line }]} />
-          ))}
-        </View>
+        {step ? (
+          <View
+            style={styles.progress}
+            accessibilityRole="progressbar"
+            accessibilityLabel={`Step ${step} of ${ONBOARDING_STEPS}`}
+          >
+            {Array.from({ length: ONBOARDING_STEPS }, (_, i) => (
+              <View key={i} style={[styles.dash, { backgroundColor: i < step ? color.ink : color.line }]} />
+            ))}
+          </View>
+        ) : null}
       </View>
     </>
   );

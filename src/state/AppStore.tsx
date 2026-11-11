@@ -75,6 +75,9 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
       setRule: <K extends keyof Rules>(k: K, v: Rules[K]) => setS((s) => ({ ...s, rules: { ...s.rules, [k]: v } })),
       finishOnboarding: (location: LocationMode) => setS((s) => ({ ...s, location, onboarded: true })),
 
+      /* loads */
+      startWatching: (load: AppState['load']) => setS((s) => ({ ...s, load })),
+
       /* today's stop */
       pullIn: () => {
         setS((s) => ({

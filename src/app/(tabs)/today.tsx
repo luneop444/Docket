@@ -6,7 +6,7 @@ import { CheckIcon, ClockIcon, DollarIcon, HourglassIcon, PinIcon } from '../../
 import { Timeline, type TimelineEvent } from '../../components/Timeline';
 import { Button, Card, Fake, Gap, Hr, Pill, ProtoControls, Row, T, TimeBar } from '../../components/ui';
 import { clock, dur, hm, money } from '../../logic/format';
-import { APPT, TODAY_STOP, WEEK } from '../../logic/sampleData';
+import { APPT, TODAY_STOP, WATCH_LEAD_MIN, WEEK } from '../../logic/sampleData';
 import { weekTotals } from '../../logic/settlement';
 import { stopCalc } from '../../logic/stop';
 import { useStore } from '../../state/AppStore';
@@ -38,15 +38,27 @@ function NotAtDock() {
 
   return (
     <>
-      {st.phase === 'idle' ? (
+      {!s.load ? (
         <>
-          <T v="bodySmall" style={styles.kicker}>Next stop</T>
+          <T v="bodySmall" style={styles.kicker}>Today</T>
+          <Card>
+            <T v="h2">No load yet</T>
+            <Gap h={8} />
+            <T v="bodySmall">
+              Add today’s load and Docket watches for its stops. Location stays off until then.
+            </T>
+            <Gap h={16} />
+            <Button label="Add today’s load" small onPress={() => router.push('/add-load')} />
+          </Card>
+        </>
+      ) : st.phase === 'idle' ? (
+        <>
+          <T v="bodySmall" style={styles.kicker}>Watching for your next stop</T>
           <Card>
             <T v="h2">{TODAY_STOP.name}</T>
             <Gap h={8} />
             <T v="bodySmall">
-              {TODAY_STOP.city}
-              {'\n'}Load {TODAY_STOP.load}, appointment {clock(APPT)}
+              Load {s.load.number} · appointment {clock(APPT)} · on from {clock(APPT - WATCH_LEAD_MIN)}
             </T>
             <Hr />
             <Row>
@@ -57,7 +69,7 @@ function NotAtDock() {
             <TimeBar free={s.rules.free} detention={Math.max(0, TODAY_STOP.typicalWaitMin - s.rules.free)} height={8} />
             <Gap h={8} />
             <T v="bodyTiny">
-              From {TODAY_STOP.visits} driver visits. Docket starts the clock when you pull in. <Fake label="Sample data" />
+              Location is on only near this stop. It turns off after your last stop. <Fake label="Sample data" />
             </T>
           </Card>
         </>
@@ -78,7 +90,9 @@ function NotAtDock() {
             <T v="bodyTiny">Docket will check this load against your next settlement.</T>
           </Card>
           <Gap h={12} />
-          <T v="bodySmall" style={{ paddingLeft: 4 }}>No more stops on today’s loads.</T>
+          <T v="bodySmall" style={{ paddingLeft: 4 }}>
+            {st.phase === 'left' ? 'Snap your BOL to finish this stop.' : 'No more stops today. Location is off.'}
+          </T>
         </>
       )}
       <Gap h={12} />
@@ -94,13 +108,15 @@ function NotAtDock() {
           detention expected from {dur(week.wait)} waiting at {WEEK.length} stops
         </T>
       </Card>
-      <ProtoControls note="Prototype controls. These stand in for GPS.">
-        {st.phase === 'idle' ? (
-          <Button label={`Pull into ${TODAY_STOP.short}`} variant="quiet" small onPress={a.pullIn} />
-        ) : (
-          <Button label="Start the stop again" variant="quiet" small onPress={a.restartStop} />
-        )}
-      </ProtoControls>
+      {!s.load ? null : (
+        <ProtoControls note="Prototype controls. These stand in for GPS.">
+          {st.phase === 'idle' ? (
+            <Button label={`Pull into ${TODAY_STOP.short}`} variant="quiet" small onPress={a.pullIn} />
+          ) : (
+            <Button label="Start the stop again" variant="quiet" small onPress={a.restartStop} />
+          )}
+        </ProtoControls>
+      )}
     </>
   );
 }
