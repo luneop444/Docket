@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build:web"
+  publish = "dist"
+
+# Single-page app: let expo-router handle every path.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
