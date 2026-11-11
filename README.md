@@ -13,6 +13,7 @@ npx expo start --web     # opens the web build; on desktop it shows inside a pho
 Other commands:
 
 ```sh
+npm test                 # unit tests for src/logic (detention + paycheck math)
 npm run typecheck        # TypeScript
 npm run build:web        # static web export to dist/ (what Netlify deploys)
 ```
