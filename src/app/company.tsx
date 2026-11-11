@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { OnboardingBar, Screen } from '../components/Chrome';
 import { SearchIcon } from '../components/Icons';
-import { Fake, Gap, Option, T } from '../components/ui';
+import { Fake, Gap, noFocusRing, Option, T } from '../components/ui';
 import { COMPANIES } from '../logic/sampleData';
 import { useStore } from '../state/AppStore';
 import { color, radius, type } from '../theme/tokens';
@@ -72,5 +72,5 @@ const styles = StyleSheet.create({
     backgroundColor: color.raise,
   },
   fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
-  input: { ...type.body, fontSize: 17, flex: 1, minWidth: 0, color: color.ink, outlineStyle: 'none' } as object,
+  input: { ...type.body, fontSize: 17, flex: 1, minWidth: 0, color: color.ink, ...noFocusRing },
 });

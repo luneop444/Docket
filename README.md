@@ -28,5 +28,20 @@ npm run build:web        # static web export to dist/ (what Netlify deploys)
 - `assets/fonts/` – Google Sans Flex (SIL Open Font License, see `OFL.txt`)
 
 All data stays on the device (AsyncStorage). GPS, time passing, document
-reading and the Dynamic Island are simulated in the prototype and marked
-"Faked" in the UI.
+reading, Siri and the Dynamic Island are simulated in the prototype and
+marked "Faked" in the UI.
+
+## iOS
+
+The same code runs on iPhone. `npx expo-doctor` passes and
+`npx expo export --platform ios` bundles cleanly. Camera and photo-library
+permission text is set in `app.json`. To try it on a phone today:
+
+```sh
+npx expo start           # then scan the QR code with the Expo Go app
+```
+
+Still to do for the App Store build: an Apple Developer account, EAS Build
+(`npx eas-cli@latest build -p ios`), real background location (expo-location
+with geofencing) and a native Live Activity / Dynamic Island widget, which
+needs a development build rather than Expo Go.

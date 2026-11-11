@@ -5,6 +5,7 @@
  */
 import type { ReactNode } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -34,6 +35,13 @@ export function T({
     </Text>
   );
 }
+
+/**
+ * Hides the browser's focus outline on text inputs that draw their own focus
+ * state. Web only: iOS has no outline and warns about the style.
+ */
+export const noFocusRing: TextStyle =
+  Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : {};
 
 /* ---------- layout ---------- */
 

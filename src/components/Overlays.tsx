@@ -9,6 +9,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import {
   Animated,
   Easing,
+  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
@@ -53,19 +54,22 @@ export function SheetShell({ onClose, children }: { onClose: () => void; childre
   return (
     <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, { opacity: fade }]}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
-      <Animated.View
-        style={[
-          styles.sheet,
-          { paddingBottom: footerBottom },
-          {
-            opacity: up.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }),
-            transform: [{ translateY: up.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
-          },
-        ]}
-      >
-        <View style={styles.grab} />
-        {children}
-      </Animated.View>
+      {/* Keeps text fields (the fleet-manager message) above the iOS keyboard. */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
+        <Animated.View
+          style={[
+            styles.sheet,
+            { paddingBottom: footerBottom },
+            {
+              opacity: up.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }),
+              transform: [{ translateY: up.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
+            },
+          ]}
+        >
+          <View style={styles.grab} />
+          {children}
+        </Animated.View>
+      </KeyboardAvoidingView>
     </Animated.View>
   );
 }
@@ -204,13 +208,15 @@ function UndoToast({ text }: { text: string }) {
   );
 }
 
-function Toast({ text }: { text: string }) {
+/** Bottom of the screen, or the top while a sheet is open so it never covers the sheet's buttons. */
+function Toast({ text, atTop }: { text: string; atTop?: boolean }) {
   const up = useEnter(200);
   return (
     <Animated.View
       pointerEvents="none"
       style={[
         styles.toast,
+        atTop && styles.toastTop,
         {
           opacity: up.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }),
           transform: [{ translateY: up.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
@@ -475,7 +481,7 @@ export function Overlays() {
       {ui.sheet?.kind === 'message' ? <MessageSheet text={ui.sheet.text} /> : null}
       {ui.sheet?.kind === 'fix' ? <FixSheet draft={ui.sheet.draft} /> : null}
       {ui.undo && !ui.sheet && !ui.lock ? <UndoToast key={ui.undo} text={ui.undo} /> : null}
-      {ui.toast ? <Toast key={ui.toast} text={ui.toast} /> : null}
+      {ui.toast ? <Toast key={ui.toast} text={ui.toast} atTop={!!ui.sheet} /> : null}
       <Island />
       {/* The lock screen covers the whole app, island included (like v1). */}
       {ui.lock ? <LockScreen /> : null}
@@ -486,10 +492,11 @@ export function Overlays() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  keyboard: { width: '100%', maxHeight: '92%' },
   scrim: { backgroundColor: protoColor.scrim, zIndex: 40, justifyContent: 'flex-end' },
   sheet: {
     width: '100%',
-    maxHeight: '92%',
+    maxHeight: '100%',
     backgroundColor: color.bg,
     borderTopLeftRadius: radius.sheet,
     borderTopRightRadius: radius.sheet,
@@ -545,6 +552,7 @@ const styles = StyleSheet.create({
   lockActivityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   lockButtons: { flexDirection: 'row', gap: 8 },
   lockButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 14, borderCurve: 'continuous' },
+  toastTop: { bottom: 'auto', top: 60 },
   toast: {
     position: 'absolute',
     left: 20,

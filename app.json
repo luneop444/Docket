@@ -27,7 +27,15 @@
     "plugins": [
       "expo-router",
       "expo-status-bar",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Docket uses the camera to photograph your signed bill of lading. The photo stays on your phone.",
+          "photosPermission": "Docket lets you pick a photo of your bill of lading. The photo stays on your phone.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "scheme": "docket",
     "experiments": {

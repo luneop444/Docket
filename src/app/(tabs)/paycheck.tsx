@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { PageHead, Screen } from '../../components/Chrome';
 import { DocIcon } from '../../components/Icons';
-import { Button, Card, Fake, Gap, Row, Seg, T, TimeBar } from '../../components/ui';
+import { Button, Card, Fake, Gap, noFocusRing, Row, Seg, T, TimeBar } from '../../components/ui';
 import { calc, rulesLine } from '../../logic/detention';
 import { clock, dur, money } from '../../logic/format';
 import { WEEK, WEEK_LABEL, type WeekLoad } from '../../logic/sampleData';
@@ -187,6 +187,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.regular,
     fontSize: 17,
     color: color.ink,
-    outlineStyle: 'none',
-  } as object,
+    ...noFocusRing,
+  },
 });
