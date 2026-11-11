@@ -131,7 +131,18 @@ function NotAtDock() {
       {!s.load ? null : (
         <ProtoControls note="Prototype controls. These stand in for GPS.">
           {st.phase === 'idle' || st.phase === 'arriving' ? (
-            <Button label={`Pull into ${TODAY_STOP.short}`} variant="quiet" small onPress={a.pullIn} />
+            <>
+              <Button label={`Pull into ${TODAY_STOP.short}`} variant="quiet" small onPress={a.pullIn} />
+              <Button
+                label="Pull in with phone locked"
+                variant="quiet"
+                small
+                onPress={() => {
+                  a.pullIn();
+                  a.setLock(true);
+                }}
+              />
+            </>
           ) : (
             <Button label="Start the stop again" variant="quiet" small onPress={a.restartStop} />
           )}

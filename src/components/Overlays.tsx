@@ -326,15 +326,91 @@ function Island() {
   );
 }
 
+/** Figma E2 / E3: interactive Live Activity, answered without unlocking (iOS 17+). */
+function LockActivity({
+  title,
+  line,
+  value,
+  buttons,
+}: {
+  title: string;
+  line: string;
+  value?: string;
+  buttons: { label: string; onPress: () => void; primary?: boolean }[];
+}) {
+  return (
+    <View style={[styles.lockCard, styles.lockActivity]}>
+      <Text style={[type.labelSmall, { color: color.sub }]}>Docket · {TODAY_STOP.name}</Text>
+      <View style={styles.lockActivityRow}>
+        <View style={{ gap: 2 }}>
+          <T v="bodyStrong">{title}</T>
+          <T v="bodyTiny">{line}</T>
+        </View>
+        {value ? <T v="numberM" style={{ fontVariant: ['tabular-nums'] }}>{value}</T> : null}
+      </View>
+      <View style={styles.lockButtons}>
+        {buttons.map((b) => (
+          <Pressable
+            key={b.label}
+            accessibilityRole="button"
+            onPress={b.onPress}
+            style={[styles.lockButton, { backgroundColor: b.primary ? color.signal : color.raise2 }]}
+          >
+            <Text style={[type.labelSmall, { color: b.primary ? color.signalInk : color.ink }]}>{b.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function LockScreen() {
   const { s, a } = useStore();
   const content = useIslandContent();
+  const st = s.stop;
+  const arrive = st.arrive ?? s.now;
+  const appt = apptOf(st);
+
+  // E2: first visit, pulled in with the phone locked.
+  const arrival =
+    st.phase === 'arriving' ? (
+      <LockActivity
+        title="Loading here?"
+        line={`Pulled in ${clock(arrive)}${s.rules.start === 'appt' ? ` · appointment ${clock(appt)}` : ''}`}
+        buttons={[
+          { label: 'Yes, start', primary: true, onPress: a.confirmArrival },
+          {
+            label: 'Not a stop',
+            onPress: () => {
+              a.cancelArrival();
+              a.setLock(false);
+            },
+          },
+        ]}
+      />
+    ) : null;
+
+  // E3: free time running and not checked in yet.
+  const checkIn =
+    st.phase === 'dock' && content?.stg === 1 && st.checkin == null ? (
+      <LockActivity
+        title="Free time left"
+        line={content.line}
+        value={content.compact}
+        buttons={[{ label: 'I checked in', primary: true, onPress: a.checkIn }]}
+      />
+    ) : null;
+
   return (
-    <Pressable style={StyleSheet.absoluteFill} onPress={() => a.setLock(false)} accessibilityLabel="Unlock">
+    <Pressable
+      style={[StyleSheet.absoluteFill, styles.lockRoot]}
+      onPress={() => a.setLock(false)}
+      accessibilityLabel="Unlock"
+    >
       <LinearGradient colors={[protoColor.lockTop, protoColor.lockBottom]} style={styles.lock}>
         <Text style={styles.lockDate}>{TODAY_LABEL}</Text>
         <Text style={styles.lockClock}>{clockBare(s.now)}</Text>
-        {content ? (
+        {arrival ?? checkIn ?? (content ? (
           <View style={styles.lockCard}>
             <Row style={{ justifyContent: 'flex-start', gap: 8 }}>
               <View style={[styles.lead, { width: 24, height: 24 }]}>
@@ -356,7 +432,7 @@ function LockScreen() {
             <Gap h={8} />
             <T v="bodyTiny">{content.lockLine}</T>
           </View>
-        ) : null}
+        ) : null)}
         <Text style={styles.lockHint}>Simulated lock screen · tap to unlock</Text>
       </LinearGradient>
     </Pressable>
@@ -369,13 +445,15 @@ export function Overlays() {
   const path = usePathname();
   return (
     <>
-      {ui.lock ? <LockScreen /> : null}
-      {s.stop.phase === 'arriving' && path === '/today' ? <ArrivalSheet /> : null}
+      {/* Answered on the lock screen first; unlocking without answering leaves it here, unconfirmed. */}
+      {s.stop.phase === 'arriving' && path === '/today' && !ui.lock ? <ArrivalSheet /> : null}
       {ui.sheet?.kind === 'message' ? <MessageSheet text={ui.sheet.text} /> : null}
       {ui.sheet?.kind === 'fix' ? <FixSheet draft={ui.sheet.draft} /> : null}
-      {ui.undo && !ui.sheet ? <UndoToast key={ui.undo} text={ui.undo} /> : null}
+      {ui.undo && !ui.sheet && !ui.lock ? <UndoToast key={ui.undo} text={ui.undo} /> : null}
       {ui.toast ? <Toast key={ui.toast} text={ui.toast} /> : null}
       <Island />
+      {/* The lock screen covers the whole app, island included (like v1). */}
+      {ui.lock ? <LockScreen /> : null}
     </>
   );
 }
@@ -434,6 +512,11 @@ const styles = StyleSheet.create({
     zIndex: 60,
   },
   undoText: { flex: 1, minWidth: 0, color: color.bg },
+  lockRoot: { zIndex: 55 },
+  lockActivity: { gap: 12 },
+  lockActivityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  lockButtons: { flexDirection: 'row', gap: 8 },
+  lockButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 14, borderCurve: 'continuous' },
   toast: {
     position: 'absolute',
     left: 20,
