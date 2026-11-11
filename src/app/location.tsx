@@ -1,44 +1,63 @@
 import { router } from 'expo-router';
-import { View } from 'react-native';
-import { BackBar, Screen } from '../components/Chrome';
-import { ShieldIcon } from '../components/Icons';
-import { Button, Fake, Gap, StepItem, T } from '../components/ui';
+import { StyleSheet, View } from 'react-native';
+import { OnboardingBar, Screen } from '../components/Chrome';
+import { CheckIcon } from '../components/Icons';
+import { Button, Card, Fake, Gap, T } from '../components/ui';
 import type { LocationMode } from '../logic/state';
 import { useStore } from '../state/AppStore';
+import { color } from '../theme/tokens';
 
-/** v1 06 Location permission */
+const PROMISES = [
+  'Only on while you have a load, and only near its stops.',
+  'You’ll see it in the Dynamic Island whenever it’s on.',
+  'Turns off after your last stop. Never shared with your company.',
+];
+
+/** Figma A4 Location permission: states the guardrails before asking. */
 export default function LocationPermission() {
-  const { s, a } = useStore();
+  const { a } = useStore();
   function finish(mode: LocationMode) {
     a.finishOnboarding(mode);
     router.replace('/today');
   }
   return (
     <Screen
-      header={<BackBar onPress={() => router.navigate(s.customCompany ? '/edit-rules' : '/company-rules')} />}
+      header={<OnboardingBar step={4} onBack={() => router.navigate('/loads')} />}
       footer={
         <>
-          <Button label="Allow “Always”" onPress={() => finish('always')} />
-          <Button label="I’ll tap in and out myself" variant="text" onPress={() => finish('manual')} />
+          <Button label="Allow location" onPress={() => finish('always')} />
+          <Button label="I’ll log stops by hand" variant="text" onPress={() => finish('manual')} />
         </>
       }
     >
-      <T v="h2">Let Docket log your stops</T>
+      <T v="h2">Let Docket notice your stops</T>
       <Gap h={8} />
-      <T v="bodySmall">
-        Set location to “Always” so Docket can note when you reach and leave a facility, without you touching your phone.
+      <T v="body" c={color.sub}>
+        Choose “Always” so Docket can notice when you pull in, even with the app closed.
       </T>
-      <Gap h={24} />
-      <View style={{ gap: 14 }}>
-        <StepItem badge={<ShieldIcon />}>Only records near the shippers and receivers on your loads.</StepItem>
-        <StepItem badge={<ShieldIcon />}>Never shares where you are with {s.company || 'your company'}.</StepItem>
-        <StepItem badge={<ShieldIcon />}>You can fix any time it gets wrong.</StepItem>
-      </View>
-      <Gap h={24} />
+      <Gap h={20} />
+      <Card style={styles.promises}>
+        {PROMISES.map((p) => (
+          <View key={p} style={styles.row}>
+            <View style={styles.check}>
+              <CheckIcon c={color.ink} size={18} />
+            </View>
+            <T v="body" style={styles.flex}>{p}</T>
+          </View>
+        ))}
+      </Card>
+      <Gap h={20} />
       <T v="bodyTiny">
-        <Fake label="Simulated" /> A web prototype can’t track location in the background. In this version, buttons on
-        the Today screen stand in for arriving and leaving.
+        <Fake label="Simulated" /> A web prototype can’t track location in the background. Buttons on the Today screen
+        stand in for arriving and leaving.
       </T>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  promises: { gap: 12 },
+  row: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  check: { paddingTop: 2 },
+});

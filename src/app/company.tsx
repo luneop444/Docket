@@ -1,14 +1,14 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
-import { BackBar, Screen } from '../components/Chrome';
+import { OnboardingBar, Screen } from '../components/Chrome';
 import { SearchIcon } from '../components/Icons';
 import { Fake, Gap, Option, T } from '../components/ui';
 import { COMPANIES } from '../logic/sampleData';
 import { useStore } from '../state/AppStore';
 import { color, radius, type } from '../theme/tokens';
 
-/** v1 02 Pick company */
+/** v1 02 Pick company (onboarding step 1; v2 starts from the company's reported rules) */
 export default function PickCompany() {
   const { a } = useStore();
   const [query, setQuery] = useState('');
@@ -19,14 +19,14 @@ export default function PickCompany() {
 
   function pick(name: string, custom: boolean) {
     a.pickCompany(name, custom);
-    router.push('/paytype');
+    router.push(custom ? '/edit-rules' : '/company-rules');
   }
 
   return (
-    <Screen header={<BackBar onPress={() => router.navigate('/welcome')} />}>
+    <Screen header={<OnboardingBar step={1} onBack={() => router.navigate('/welcome')} />}>
       <T v="h2">Who do you drive for?</T>
       <Gap h={8} />
-      <T v="bodySmall">Each company sets its own detention rules, so Docket starts from yours.</T>
+      <T v="body" c={color.sub}>Each company sets its own detention rules, so Docket starts from yours.</T>
       <Gap h={20} />
       <View style={[styles.field, focused && styles.fieldFocus]}>
         <SearchIcon />

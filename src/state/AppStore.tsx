@@ -70,6 +70,8 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
           return { ...s, company: name, customCompany: custom, rules: c ? { ...c.rules } : s.rules };
         }),
       setPay: (pay: AppState['pay']) => setS((s) => ({ ...s, pay })),
+      setRulesCheck: (rulesCheck: AppState['rulesCheck']) => setS((s) => ({ ...s, rulesCheck })),
+      setLoadStyle: (loadStyle: AppState['loadStyle']) => setS((s) => ({ ...s, loadStyle })),
       setRule: <K extends keyof Rules>(k: K, v: Rules[K]) => setS((s) => ({ ...s, rules: { ...s.rules, [k]: v } })),
       finishOnboarding: (location: LocationMode) => setS((s) => ({ ...s, location, onboarded: true })),
 

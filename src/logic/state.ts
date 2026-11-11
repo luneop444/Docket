@@ -7,6 +7,10 @@ import { freshStop, type Stop } from './stop';
 
 export type PayType = 'mile' | 'hour' | 'load';
 export type LocationMode = 'always' | 'manual';
+/** A3: how loads come in. Dedicated routes set their stops once. */
+export type LoadStyle = 'same' | 'different' | 'mix';
+/** A2: how the driver answered "do these rules match your paperwork?" */
+export type RulesCheck = 'matches' | 'different' | 'unsure';
 export type CompanySort = 'wait' | 'paid';
 export type AnonAnswer = 'Paid' | 'Partly' | 'Not paid';
 
@@ -16,6 +20,8 @@ export interface AppState {
   customCompany: boolean;
   pay: PayType | null;
   rules: Rules;
+  rulesCheck: RulesCheck | null;
+  loadStyle: LoadStyle | null;
   location: LocationMode | null;
   /** Simulated clock, minutes after midnight. */
   now: number;
@@ -35,6 +41,8 @@ export const freshState = (): AppState => ({
   customCompany: false,
   pay: null,
   rules: { ...defaultRules },
+  rulesCheck: null,
+  loadStyle: null,
   location: null,
   now: START_NOW,
   stop: freshStop(),

@@ -26,7 +26,7 @@ export default function Welcome() {
       </Row>
       <Gap h={32} />
       <View style={{ gap: 14 }}>
-        <StepItem badge="1">Logs when you get to a shipper or receiver and when you leave, on its own.</StepItem>
+        <StepItem badge="1">Notices when you arrive at and leave a stop on your load. You just confirm.</StepItem>
         <StepItem badge="2">Applies your company’s detention rules to every wait.</StepItem>
         <StepItem badge="3">Shows you which loads to look for on your settlement, and how much.</StepItem>
       </View>

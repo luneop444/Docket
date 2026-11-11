@@ -98,6 +98,36 @@ export function BackBar({ onPress, label = 'Back' }: { onPress: () => void; labe
   );
 }
 
+export const ONBOARDING_STEPS = 4;
+
+/** v2 onboarding header: chevron back on the left, step dashes on the right. */
+export function OnboardingBar({ step, onBack }: { step: number; onBack: () => void }) {
+  return (
+    <>
+      <TopSafe />
+      <View style={[styles.topbar, styles.backbar]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          onPress={onBack}
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressedBg]}
+        >
+          <ChevronLeft />
+        </Pressable>
+        <View
+          style={styles.progress}
+          accessibilityRole="progressbar"
+          accessibilityLabel={`Step ${step} of ${ONBOARDING_STEPS}`}
+        >
+          {Array.from({ length: ONBOARDING_STEPS }, (_, i) => (
+            <View key={i} style={[styles.dash, { backgroundColor: i < step ? color.ink : color.line }]} />
+          ))}
+        </View>
+      </View>
+    </>
+  );
+}
+
 /** Title row for Paycheck and Companies. */
 export function PageHead({ title, right }: { title: string; right?: string }) {
   return (
@@ -144,7 +174,9 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   screen: { flex: 1, backgroundColor: color.bg },
   scroll: { paddingHorizontal: 20, paddingBottom: 28 },
-  footer: { paddingTop: 12, paddingHorizontal: 20, gap: 6, backgroundColor: color.bg },
+  footer: { paddingTop: 24, paddingHorizontal: 20, gap: 8, backgroundColor: color.bg },
+  progress: { flexDirection: 'row', gap: 4, paddingRight: 12 },
+  dash: { width: 27, height: 3, borderRadius: 2 },
   topbar: {
     flexDirection: 'row',
     alignItems: 'center',

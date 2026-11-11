@@ -123,13 +123,7 @@ export function Button({
       ]}
     >
       {icon}
-      <Text
-        style={[
-          small || variant === 'text' ? type.labelSmall : type.labelButton,
-          variant === 'text' && { fontFamily: fontFamily.medium },
-          { color: fg },
-        ]}
-      >
+      <Text style={[small || variant === 'text' ? type.labelSmall : type.labelButton, { color: fg }]}>
         {label}
       </Text>
     </Pressable>
@@ -173,18 +167,30 @@ export function Option({
   radio?: boolean;
   onPress: () => void;
 }) {
+  const text = (
+    <View style={styles.flex}>
+      <T v="bodyStrong">{label}</T>
+      {sub ? <T v="bodyTiny">{sub}</T> : null}
+    </View>
+  );
+  if (radio) {
+    // v2 (Figma A3, B1): radio on the left, row stays grey when selected.
+    return (
+      <Pressable
+        accessibilityRole="radio"
+        accessibilityState={{ checked: !!selected }}
+        onPress={onPress}
+        style={[styles.option, styles.optionRadio]}
+      >
+        <View style={[styles.radio, selected && styles.radioOn]} />
+        {text}
+      </Pressable>
+    );
+  }
   return (
-    <Pressable
-      accessibilityRole={radio ? 'radio' : 'button'}
-      accessibilityState={radio ? { checked: !!selected } : undefined}
-      onPress={onPress}
-      style={[styles.option, selected && styles.optionOn]}
-    >
-      <View style={styles.flex}>
-        <T v="bodyStrong">{label}</T>
-        {sub ? <T v="bodyTiny">{sub}</T> : null}
-      </View>
-      {radio ? <View style={[styles.radio, selected && styles.radioOn]} /> : <ChevronRight />}
+    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.option, selected && styles.optionOn]}>
+      {text}
+      <ChevronRight />
     </Pressable>
   );
 }
@@ -312,6 +318,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.raise,
   },
   optionOn: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
+  optionRadio: { justifyContent: 'flex-start', gap: 14, padding: 16 },
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: color.line },
   radioOn: { borderWidth: 7, borderColor: color.ink },
   seg: { flexDirection: 'row', gap: 6 },

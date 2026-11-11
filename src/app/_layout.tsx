@@ -8,7 +8,7 @@ import { PhoneFrame } from '../components/PhoneFrame';
 import { AppStoreProvider, useStore } from '../state/AppStore';
 import { color, fontAssets } from '../theme/tokens';
 
-const ONBOARDING = ['/welcome', '/company', '/paytype', '/company-rules', '/edit-rules', '/location'];
+const ONBOARDING = ['/welcome', '/company', '/company-rules', '/edit-rules', '/loads', '/location'];
 
 /** Like v1: until onboarding is finished, every other screen goes to Welcome. */
 function OnboardingGuard() {
