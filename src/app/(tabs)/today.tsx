@@ -202,6 +202,9 @@ function AtTheDock() {
           />
         </Row>
         <Button label="Show lock screen" variant="quiet" small onPress={() => a.setLock(true)} />
+        {st.checkin == null ? (
+          <Button label="Say “Hey Siri, I checked in”" variant="quiet" small onPress={a.siriCheckIn} />
+        ) : null}
       </ProtoControls>
     </>
   );

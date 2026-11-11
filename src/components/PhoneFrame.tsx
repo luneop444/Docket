@@ -103,6 +103,7 @@ function Aside() {
           'Reading the rate con, BOL and settlement (sample results)',
           'Company list and wait data (made-up)',
           'The Dynamic Island / lock screen Live Activity is drawn by the page, not iOS',
+          'Siri check-in (a button stands in for the voice command)',
         ]}
       />
       <Text style={styles.asideH3}>Real</Text>

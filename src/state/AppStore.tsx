@@ -45,12 +45,14 @@ interface Ui {
   toast: string | null;
   /** "Started at Harbor Foods 1:48 · Fix · Undo" after an automatic start (Figma E1). */
   undo: string | null;
+  /** Figma E4: "Hey Siri, I checked in" shown over the lock screen. */
+  siri: boolean;
   photoUri: string | null;
 }
 
 const UNDO_SECONDS = 10;
 
-const freshUi = (): Ui => ({ expanded: false, lock: false, sheet: null, toast: null, undo: null, photoUri: null });
+const freshUi = (): Ui => ({ expanded: false, lock: false, sheet: null, toast: null, undo: null, siri: false, photoUri: null });
 
 function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (u: Ui) => Ui) => void, sRef: { current: AppState }) {
   const timers = useRef<{
@@ -142,6 +144,16 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         clearTimeout(timers.current.undo);
       },
       checkIn: () => setS((s) => ({ ...s, stop: { ...s.stop, checkin: s.now } })),
+      /** E4: App Intent stand-in. Same safety net as everywhere else: Undo. */
+      siriCheckIn: () => {
+        setS((s) => ({ ...s, stop: { ...s.stop, checkin: s.now } }));
+        setUi((u) => ({ ...u, siri: true }));
+      },
+      undoCheckIn: () => {
+        setS((s) => ({ ...s, stop: { ...s.stop, checkin: null } }));
+        setUi((u) => ({ ...u, siri: false }));
+      },
+      closeSiri: () => setUi((u) => ({ ...u, siri: false })),
       skip: (m: number) => setS((s) => ({ ...s, now: s.now + m })),
       leave: () => {
         setS((s) => ({ ...s, stop: { ...s.stop, leave: Math.round(s.now), phase: 'left' } }));

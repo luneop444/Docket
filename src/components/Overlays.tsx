@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { clock, clockBare, dur, durShort, rateShort } from '../logic/format';
 import { TODAY_LABEL, TODAY_STOP } from '../logic/sampleData';
 import { islandCopy } from '../logic/island';
-import { apptOf, type FixDraft } from '../logic/stop';
+import { apptOf, stopCalc, type FixDraft } from '../logic/stop';
 import { useStore } from '../state/AppStore';
 import { color, fontFamily, protoColor, radius, type } from '../theme/tokens';
 import { useFramed, useInsets, useIslandStage } from './Chrome';
@@ -332,14 +332,17 @@ function LockActivity({
   line,
   value,
   buttons,
+  top,
 }: {
   title: string;
   line: string;
   value?: string;
   buttons: { label: string; onPress: () => void; primary?: boolean }[];
+  /** Pinned to the top (E4 banner) instead of above the bottom of the lock screen. */
+  top?: boolean;
 }) {
   return (
-    <View style={[styles.lockCard, styles.lockActivity]}>
+    <View style={[styles.lockCard, styles.lockActivity, top && styles.lockActivityTop]}>
       <Text style={[type.labelSmall, { color: color.sub }]}>Docket · {TODAY_STOP.name}</Text>
       <View style={styles.lockActivityRow}>
         <View style={{ gap: 2 }}>
@@ -439,6 +442,28 @@ function LockScreen() {
   );
 }
 
+/** Figma E4: "Hey Siri, I checked in" with the phone on a dash mount. */
+function SiriScreen() {
+  const { s, a } = useStore();
+  const c = stopCalc(s.stop, s.now, s.rules);
+  return (
+    <Pressable style={[StyleSheet.absoluteFill, styles.lockRoot]} onPress={a.closeSiri} accessibilityLabel="Close">
+      <LinearGradient colors={[protoColor.lockTop, protoColor.lockBottom]} style={styles.lock}>
+        <Text style={styles.lockDate}>{TODAY_LABEL}</Text>
+        <Text style={styles.lockClock}>{clockBare(s.now)}</Text>
+        <LockActivity
+          top
+          title={`Checked in · ${clock(s.stop.checkin ?? s.now)}`}
+          line={`${TODAY_STOP.name} · free time ends ${clock(c.freeEnd)}`}
+          buttons={[{ label: 'Undo', onPress: a.undoCheckIn }]}
+        />
+        <Text style={[type.h2, styles.siriQuote]}>“Hey Siri, I checked in”</Text>
+        <Text style={styles.lockHint}>Simulated Siri · tap to close</Text>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
 /** Everything that floats over the screens. Render once, inside the phone. */
 export function Overlays() {
   const { s, ui } = useStore();
@@ -454,6 +479,7 @@ export function Overlays() {
       <Island />
       {/* The lock screen covers the whole app, island included (like v1). */}
       {ui.lock ? <LockScreen /> : null}
+      {ui.siri ? <SiriScreen /> : null}
     </>
   );
 }
@@ -514,6 +540,8 @@ const styles = StyleSheet.create({
   undoText: { flex: 1, minWidth: 0, color: color.bg },
   lockRoot: { zIndex: 55 },
   lockActivity: { gap: 12 },
+  lockActivityTop: { position: 'absolute', top: 60, left: 16, right: 16, width: 'auto', marginTop: 0, marginBottom: 0 },
+  siriQuote: { color: color.bg, marginTop: 'auto', marginBottom: 'auto', textAlign: 'center' },
   lockActivityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   lockButtons: { flexDirection: 'row', gap: 8 },
   lockButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 14, borderCurve: 'continuous' },
