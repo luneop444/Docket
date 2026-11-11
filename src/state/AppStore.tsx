@@ -15,16 +15,18 @@ import {
   SAMPLE_SETTLEMENT,
   SIM_MINUTES_PER_SECOND,
   START_NOW,
+  TODAY_STOP,
   WEEK,
   WEEK_LABEL,
 } from '../logic/sampleData';
 import { claimText, cleanAmount, weekTotals } from '../logic/settlement';
 import { parseState, freshState, STORAGE_KEY, type AppState, type LocationMode } from '../logic/state';
-import { freshStop, stopCalc } from '../logic/stop';
+import { applyFix, freshStop, stepFix, stopCalc, type FixDraft } from '../logic/stop';
+import { clockBare } from '../logic/format';
 
 export type Sheet =
   | { kind: 'message'; text: string }
-  | { kind: 'fix'; draft: { arrive: number; leave: number; brk: number } }
+  | { kind: 'fix'; draft: FixDraft }
   | null;
 
 /** UI-only state. Not persisted (the BOL photo stays in memory only, like v1). */
@@ -33,13 +35,21 @@ interface Ui {
   lock: boolean;
   sheet: Sheet;
   toast: string | null;
+  /** "Started at Harbor Foods 1:48 · Fix · Undo" after an automatic start (Figma E1). */
+  undo: string | null;
   photoUri: string | null;
 }
 
-const freshUi = (): Ui => ({ expanded: false, lock: false, sheet: null, toast: null, photoUri: null });
+const UNDO_SECONDS = 10;
+
+const freshUi = (): Ui => ({ expanded: false, lock: false, sheet: null, toast: null, undo: null, photoUri: null });
 
 function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (u: Ui) => Ui) => void, sRef: { current: AppState }) {
-  const timers = useRef<{ toast?: ReturnType<typeof setTimeout>; island?: ReturnType<typeof setTimeout> }>({});
+  const timers = useRef<{
+    toast?: ReturnType<typeof setTimeout>;
+    island?: ReturnType<typeof setTimeout>;
+    undo?: ReturnType<typeof setTimeout>;
+  }>({});
 
   return useMemo(() => {
     const toast = (t: string) => {
@@ -79,19 +89,49 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
       startWatching: (load: AppState['load']) => setS((s) => ({ ...s, load })),
 
       /* today's stop */
+      /** Prototype control standing in for the geofence seeing you pull in. */
       pullIn: () => {
-        setS((s) => ({
-          ...s,
-          stop: { ...freshStop(), phase: 'dock', arrive: START_NOW + 1 },
-          now: START_NOW + 1,
+        const s = sRef.current;
+        const arrive = START_NOW + 1;
+        const known = s.knownPlaces.includes(TODAY_STOP.name);
+        setS((x) => ({
+          ...x,
+          stop: { ...freshStop(), phase: known ? 'dock' : 'arriving', arrive },
+          now: arrive,
           islandAlerted: false,
         }));
+        if (known) {
+          // E1: confirmed here before, so the clock starts with no question. Undo stays up for 10 s.
+          setUi((u) => ({ ...u, undo: `Started at ${TODAY_STOP.short} ${clockBare(arrive)}` }));
+          clearTimeout(timers.current.undo);
+          timers.current.undo = setTimeout(() => setUi((u) => ({ ...u, undo: null })), UNDO_SECONDS * 1000);
+          flashIsland();
+        }
+      },
+      /** C2 "Yes, start the clock": remembers the place for next time. */
+      confirmArrival: () => {
+        setS((s) => ({
+          ...s,
+          stop: { ...s.stop, phase: 'dock' },
+          knownPlaces: s.knownPlaces.includes(TODAY_STOP.name) ? s.knownPlaces : [...s.knownPlaces, TODAY_STOP.name],
+        }));
         flashIsland();
+      },
+      /** C2 "Not a stop" or E1 "Undo": back to watching, nothing logged. */
+      cancelArrival: () => {
+        setS((s) => ({ ...s, stop: freshStop(), now: START_NOW }));
+        setUi((u) => ({ ...u, undo: null, expanded: false }));
+        clearTimeout(timers.current.undo);
+      },
+      dismissUndo: () => {
+        setUi((u) => ({ ...u, undo: null }));
+        clearTimeout(timers.current.undo);
       },
       checkIn: () => setS((s) => ({ ...s, stop: { ...s.stop, checkin: s.now } })),
       skip: (m: number) => setS((s) => ({ ...s, now: s.now + m })),
       leave: () => {
         setS((s) => ({ ...s, stop: { ...s.stop, leave: Math.round(s.now), phase: 'left' } }));
+        setUi((u) => ({ ...u, undo: null }));
         flashIsland();
       },
       logStop: (bol: boolean) => {
@@ -106,29 +146,16 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         const st = sRef.current.stop;
         setUi((u) => ({
           ...u,
-          sheet: { kind: 'fix', draft: { arrive: st.arrive ?? 0, leave: st.leave ?? 0, brk: st.brk || 0 } },
+          undo: null,
+          sheet: { kind: 'fix', draft: { arrive: st.arrive ?? 0, leave: st.leave, brk: st.brk || 0 } },
         }));
       },
       fixStep: (k: 'arrive' | 'leave' | 'brk', dir: 1 | -1) =>
-        setUi((u) => {
-          if (u.sheet?.kind !== 'fix') return u;
-          const d = { ...u.sheet.draft };
-          d[k] = Math.max(0, d[k] + dir * (k === 'brk' ? 15 : 1));
-          if (d.leave <= d.arrive) d.leave = d.arrive + 1;
-          return { ...u, sheet: { kind: 'fix', draft: d } };
-        }),
-      saveFix: (d: { arrive: number; leave: number; brk: number }) => {
-        setS((s) => {
-          const st = s.stop;
-          const changed = d.arrive !== st.arrive || d.leave !== st.leave;
-          const edited =
-            !st.edited && changed && st.arrive != null && st.leave != null
-              ? { arrive: st.arrive, leave: st.leave }
-              : st.edited;
-          return { ...s, stop: { ...st, arrive: d.arrive, leave: d.leave, brk: d.brk, edited } };
-        });
+        setUi((u) => (u.sheet?.kind === 'fix' ? { ...u, sheet: { kind: 'fix', draft: stepFix(u.sheet.draft, k, dir) } } : u)),
+      saveFix: (d: FixDraft) => {
+        setS((s) => ({ ...s, stop: applyFix(s.stop, d) }));
         setUi((u) => ({ ...u, sheet: null }));
-        toast('Time fixed. Original location record kept.');
+        toast('Time fixed. The GPS time stays on record.');
       },
 
       /* paycheck */

@@ -4,7 +4,7 @@
  */
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { useEffect, useRef, type ReactNode } from 'react';
 import {
   Animated,
@@ -19,14 +19,13 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { clock, clockBare, dur, hm, money } from '../logic/format';
-import { TODAY_LABEL, TODAY_STOP } from '../logic/sampleData';
-import { stopCalc } from '../logic/stop';
+import { clock, clockBare, dur, durShort, hm, money, rateShort } from '../logic/format';
+import { APPT, TODAY_LABEL, TODAY_STOP } from '../logic/sampleData';
+import { stopCalc, type FixDraft } from '../logic/stop';
 import { useStore } from '../state/AppStore';
 import { color, fontFamily, protoColor, radius, type } from '../theme/tokens';
 import { useFramed, useInsets, useIslandStage } from './Chrome';
-import { TruckIcon } from './Icons';
-import { RuleSection, Stepper } from './RuleEditor';
+import { MinusIcon, PlusIcon, TruckIcon } from './Icons';
 import { Button, Gap, Row, T } from './ui';
 
 /* =========================================================
@@ -118,28 +117,89 @@ function MessageSheet({ text }: { text: string }) {
   );
 }
 
-function FixSheet({ draft }: { draft: { arrive: number; leave: number; brk: number } }) {
+/** Figma C6 Fix a time: reachable from every auto-logged time and every Undo toast. */
+function FixSheet({ draft }: { draft: FixDraft }) {
   const { a } = useStore();
-  const rows: { k: 'arrive' | 'leave' | 'brk'; label: string; fmt: (v: number) => string }[] = [
-    { k: 'arrive', label: 'Arrived', fmt: clock },
-    { k: 'leave', label: 'Left', fmt: clock },
-    { k: 'brk', label: 'Off-duty break', fmt: dur },
+  const rows: { k: 'arrive' | 'leave' | 'brk'; label: string; value: string }[] = [
+    { k: 'arrive', label: 'Arrived', value: clock(draft.arrive) },
+    ...(draft.leave != null ? [{ k: 'leave' as const, label: 'Left', value: clock(draft.leave) }] : []),
+    { k: 'brk', label: 'Off-duty break', value: dur(draft.brk) },
   ];
   return (
     <SheetShell onClose={a.closeSheet}>
       <T v="h2">Fix a time</T>
-      <Gap h={8} />
-      <T v="bodySmall">Your location record is kept alongside any change, so both show if anyone asks.</T>
-      {rows.map(({ k, label, fmt }) => (
-        <RuleSection key={k}>
-          <T v="bodyStrong">{label}</T>
-          <Stepper value={fmt(draft[k])} onMinus={() => a.fixStep(k, -1)} onPlus={() => a.fixStep(k, 1)} />
-        </RuleSection>
-      ))}
+      <Gap h={6} />
+      <T v="bodySmall">Tap any time to fix it. The GPS time stays on record next to your change.</T>
       <Gap h={16} />
-      <Button label="Save" onPress={() => a.saveFix(draft)} />
-      <Button label="Cancel" variant="text" onPress={a.closeSheet} />
+      <View style={styles.times}>
+        {rows.map(({ k, label, value }, i) => (
+          <View key={k} style={[styles.timeRow, i < rows.length - 1 && styles.timeRowLine]}>
+            <T v="body" c={color.sub}>{label}</T>
+            <View style={styles.stepper}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`${label} earlier`} onPress={() => a.fixStep(k, -1)} style={styles.step}>
+                <MinusIcon size={24} />
+              </Pressable>
+              <T v="bodyStrong" style={styles.stepValue}>{value}</T>
+              <Pressable accessibilityRole="button" accessibilityLabel={`${label} later`} onPress={() => a.fixStep(k, 1)} style={styles.step}>
+                <PlusIcon size={24} />
+              </Pressable>
+            </View>
+          </View>
+        ))}
+      </View>
+      <Gap h={20} />
+      <Button label="Done" onPress={() => a.saveFix(draft)} />
     </SheetShell>
+  );
+}
+
+/** Figma C2 Arrival check: first visit only. Once confirmed, the place starts on its own (E1). */
+function ArrivalSheet() {
+  const { s, a } = useStore();
+  const arrive = s.stop.arrive ?? s.now;
+  const r = s.rules;
+  return (
+    <SheetShell onClose={() => {}}>
+      <T v="h2">You’re at {TODAY_STOP.name}</T>
+      <Gap h={6} />
+      <T v="bodySmall">Pulled in at {clock(arrive)}. Start the clock?</T>
+      <Gap h={14} />
+      <View style={styles.details}>
+        <T v="body">
+          Arrived {clock(arrive)}
+          {r.start === 'appt' ? ` · appointment ${clock(APPT)}` : ''} · {durShort(r.free)} free time, then{' '}
+          {rateShort(r.rate)}.
+        </T>
+      </View>
+      <Gap h={16} />
+      <Button label="Yes, start the clock" onPress={a.confirmArrival} />
+      <Button label="Not a stop" variant="text" onPress={a.cancelArrival} />
+    </SheetShell>
+  );
+}
+
+/** Figma E1 Undo toast: after an automatic start at a known place. */
+function UndoToast({ text }: { text: string }) {
+  const { a } = useStore();
+  const up = useEnter(200);
+  return (
+    <Animated.View
+      style={[
+        styles.undo,
+        {
+          opacity: up.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }),
+          transform: [{ translateY: up.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
+        },
+      ]}
+    >
+      <Text style={[type.bodyStrong, styles.undoText]}>{text}</Text>
+      <Pressable accessibilityRole="button" onPress={a.openFix} hitSlop={10}>
+        <Text style={[type.labelSmall, { color: protoColor.toastAction }]}>Fix</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" onPress={a.cancelArrival} hitSlop={10}>
+        <Text style={[type.labelSmall, { color: color.signal }]}>Undo</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -325,12 +385,15 @@ function LockScreen() {
 
 /** Everything that floats over the screens. Render once, inside the phone. */
 export function Overlays() {
-  const { ui } = useStore();
+  const { s, ui } = useStore();
+  const path = usePathname();
   return (
     <>
       {ui.lock ? <LockScreen /> : null}
+      {s.stop.phase === 'arriving' && path === '/today' ? <ArrivalSheet /> : null}
       {ui.sheet?.kind === 'message' ? <MessageSheet text={ui.sheet.text} /> : null}
       {ui.sheet?.kind === 'fix' ? <FixSheet draft={ui.sheet.draft} /> : null}
+      {ui.undo && !ui.sheet ? <UndoToast key={ui.undo} text={ui.undo} /> : null}
       {ui.toast ? <Toast key={ui.toast} text={ui.toast} /> : null}
       <Island />
     </>
@@ -360,6 +423,37 @@ const styles = StyleSheet.create({
     backgroundColor: color.raise,
     padding: 14,
   },
+  times: { backgroundColor: color.raise, borderRadius: radius.control, borderCurve: 'continuous', paddingHorizontal: 18, paddingVertical: 4 },
+  timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, paddingVertical: 6 },
+  timeRowLine: { borderBottomWidth: 1, borderBottomColor: color.line },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  step: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    backgroundColor: color.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepValue: { minWidth: 80, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  details: { backgroundColor: color.raise, borderRadius: radius.control, borderCurve: 'continuous', padding: 14 },
+  undo: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 96,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: protoColor.island,
+    borderRadius: 18,
+    borderCurve: 'continuous',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    zIndex: 60,
+  },
+  undoText: { flex: 1, minWidth: 0, color: color.bg },
   toast: {
     position: 'absolute',
     left: 20,

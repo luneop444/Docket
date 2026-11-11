@@ -31,6 +31,8 @@ export interface AppState {
   location: LocationMode | null;
   /** Null until the driver adds today's load. Location is only watched while there is one. */
   load: ActiveLoad | null;
+  /** Facilities the driver has confirmed before. Pulling in there starts the clock with no question (Figma E1). */
+  knownPlaces: string[];
   /** Simulated clock, minutes after midnight. */
   now: number;
   stop: Stop;
@@ -53,6 +55,7 @@ export const freshState = (): AppState => ({
   loadStyle: null,
   location: null,
   load: null,
+  knownPlaces: [],
   now: START_NOW,
   stop: freshStop(),
   marks: {},

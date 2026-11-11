@@ -2,9 +2,14 @@
  * Today's stop: its phases, the numbers for it, and the Dynamic Island stage.
  */
 import { calc, type Rules } from './detention';
+import { clock, dur, money } from './format';
 import { APPT } from './sampleData';
 
-export type StopPhase = 'idle' | 'dock' | 'left' | 'logged';
+/**
+ * idle → (pull in) → arriving (first visit: "Start the clock?") → dock → left → logged.
+ * At a known place, pulling in goes straight to dock (with Undo).
+ */
+export type StopPhase = 'idle' | 'arriving' | 'dock' | 'left' | 'logged';
 
 export interface Stop {
   phase: StopPhase;
@@ -51,4 +56,89 @@ export function islandStage(stop: Stop, now: number, rules: Rules, onSummary: bo
 export function sampleBolTimes(stop: Stop): { in: number; out: number } | null {
   if (!stop.bol || stop.arrive == null || stop.leave == null) return null;
   return { in: stop.arrive + 2, out: stop.leave - 2 };
+}
+
+export interface DockEvent {
+  title: string;
+  detail: string;
+  time?: string;
+  state: 'done' | 'current' | 'upcoming';
+  segment: 'free' | 'paid' | 'upcoming' | 'none';
+  /** The "I checked in" button. */
+  canCheckIn?: boolean;
+}
+
+/** Events for the At the dock timeline (Figma C3), in display order. */
+export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[] {
+  const arrive = stop.arrive ?? now;
+  const c = stopCalc(stop, now, rules);
+  const inDetention = now >= c.freeEnd;
+  const fromAppt = rules.start === 'appt';
+  const events: DockEvent[] = [
+    { title: 'Arrived at gate', detail: 'Location, entered facility', time: clock(arrive), state: 'done', segment: 'free' },
+  ];
+  if (fromAppt) {
+    const reached = now >= APPT;
+    events.push({
+      title: 'Appointment time',
+      detail: 'Your company starts the clock here',
+      time: clock(APPT),
+      state: reached ? 'done' : 'upcoming',
+      segment: reached ? 'free' : 'upcoming',
+    });
+  }
+  const checked = stop.checkin != null;
+  events.push({
+    title: 'Checked in',
+    detail: checked ? 'You tapped, location confirms on site' : 'Tap when you check in at the window',
+    time: checked ? clock(stop.checkin as number) : undefined,
+    state: checked ? 'done' : 'current',
+    segment: checked ? 'free' : 'upcoming',
+    canCheckIn: !checked,
+  });
+  events.push({
+    title: 'Free time ends',
+    detail: `${dur(rules.free)} free from ${fromAppt ? 'appointment time' : 'arrival'}`,
+    time: clock(c.freeEnd),
+    state: inDetention ? 'done' : now >= c.start ? 'current' : 'upcoming',
+    segment: inDetention ? 'paid' : 'upcoming',
+  });
+  events.push({
+    title: 'Detention',
+    detail: inDetention ? `${money(rules.rate)} an hour` : 'Starts after free time',
+    time: inDetention ? dur(c.paidMin) : undefined,
+    state: inDetention ? 'current' : 'upcoming',
+    segment: 'none',
+  });
+  return events;
+}
+
+/** Times being edited in the Fix a time sheet. `leave` is null while still at the dock. */
+export interface FixDraft {
+  arrive: number;
+  leave: number | null;
+  brk: number;
+}
+
+/** One tap on − or + in Fix a time: a minute for times, 15 minutes for breaks. Leave stays after arrive. */
+export function stepFix(d: FixDraft, k: 'arrive' | 'leave' | 'brk', dir: 1 | -1): FixDraft {
+  const next = { ...d };
+  if (k === 'leave') {
+    if (next.leave == null) return d;
+    next.leave = Math.max(0, next.leave + dir);
+  } else {
+    next[k] = Math.max(0, next[k] + dir * (k === 'brk' ? 15 : 1));
+  }
+  if (next.leave != null && next.leave <= next.arrive) next.leave = next.arrive + 1;
+  return next;
+}
+
+/** Apply a fix, keeping the original location times the first time anything changes. */
+export function applyFix(st: Stop, d: FixDraft): Stop {
+  const changed = d.arrive !== st.arrive || (d.leave ?? st.leave) !== st.leave;
+  const edited =
+    !st.edited && changed && st.arrive != null
+      ? { arrive: st.arrive, leave: st.leave ?? d.leave ?? st.arrive }
+      : st.edited;
+  return { ...st, arrive: d.arrive, leave: d.leave ?? st.leave, brk: d.brk, edited };
 }

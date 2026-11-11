@@ -35,6 +35,16 @@ export function hm(m: number): string {
   return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 }
 
+/** 120 → "2h", 90 → "1h 30m" (Figma: "2h free time"). */
+export function durShort(m: number): string {
+  return m > 0 && m % 60 === 0 ? `${m / 60}h` : dur(m);
+}
+
+/** 30 → "$30/hr", 27.5 → "$27.50/hr" */
+export function rateShort(rate: number): string {
+  return `$${Number.isInteger(rate) ? rate : rate.toFixed(2)}/hr`;
+}
+
 /** 10.5 → "$10.50" */
 export function money(x: number): string {
   return '$' + (Math.round(x * 100) / 100).toFixed(2);

@@ -30,6 +30,21 @@ export const color = {
 export type ColorToken = keyof typeof color;
 
 /**
+ * The same Figma "Docket" variables in Dark mode. Only used on surfaces that
+ * mirror the Dynamic Island (the black Live card), so app and island match.
+ */
+export const colorDark = {
+  bg: '#000000',
+  ink: '#FFFFFF',
+  sub: '#9B9B9F',
+  line: '#2B2B2B',
+  free: '#4A545B',
+  detention: '#D4F54C',
+  signal: '#D4F54C',
+  signalInk: '#D4F54C',
+} as const;
+
+/**
  * Prototype-only colors. Not Figma variables: they come from the v1 Netlify
  * prototype (device frame, "Faked" tags, simulated iOS chrome).
  */
@@ -46,6 +61,8 @@ export const protoColor = {
   fakeInk: '#6B5A00',
   scrim: 'rgba(0,0,0,0.32)',
   toast: '#111111',
+  /** "Fix" on the black Undo toast (hard-coded in Figma E1). */
+  toastAction: '#BFC4CC',
   shadow: 'rgba(26,31,41,0.06)',
   frameShadow: 'rgba(0,0,0,0.25)',
   moneyGlow: 'rgba(212,245,77,0.55)',
@@ -63,7 +80,7 @@ export const radius = {
   control: 16,
   chip: 14,
   option: 20,
-  sheet: 28,
+  sheet: 24,
 } as const;
 
 /** Font family names registered with expo-font in the root layout. */
