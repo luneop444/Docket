@@ -1,7 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
 import { defaultRules } from '../detention';
 import { durShort, rateShort } from '../format';
-import { applyFix, dockTimeline, freshStop, stepFix, type Stop } from '../stop';
+import { loadAppt, watchedStop } from '../state';
+import { applyFix, dockTimeline, freshStop, shiftStop, stepFix, type Stop } from '../stop';
 
 const t = (h: number, m: number) => h * 60 + m;
 const atDock = (over: Partial<Stop> = {}): Stop => ({ ...freshStop(), phase: 'dock', arrive: t(13, 48), ...over });
@@ -65,6 +66,32 @@ describe('Fix a time', () => {
     const fixed = applyFix(atDock(), { arrive: t(13, 45), leave: null, brk: 0 });
     expect(fixed.leave).toBeNull();
     expect(fixed.edited?.arrive).toBe(t(13, 48));
+  });
+});
+
+describe('appointment from the load (Fix a stop)', () => {
+  it('moves one stop by 15 minutes and stays within the day', () => {
+    const stops = [{ at: 6 * 60 }, { at: 14 * 60 }, { at: 0 }];
+    expect(shiftStop(stops, 1, 1)[1].at).toBe(14 * 60 + 15);
+    expect(shiftStop(stops, 1, 1)[0]).toBe(stops[0]);
+    expect(shiftStop(stops, 2, -1)[2].at).toBe(0);
+  });
+  it('a later appointment moves free time and detention with it', () => {
+    const st = atDock({ appt: t(14, 30) });
+    const ev = dockTimeline(st, t(16, 21), defaultRules);
+    expect(ev[1].time).toBe('2:30 PM');
+    expect(ev.find((e) => e.title === 'Free time ends')?.time).toBe('4:30 PM');
+    expect(ev.find((e) => e.title === 'Detention')?.state).toBe('upcoming');
+  });
+  it('the watched stop is the drop; older saved loads fall back to 2:00 PM', () => {
+    const load = { number: '1', source: 'share' as const, recurring: false, stops: [
+      { name: 'A', kind: 'Pickup' as const, at: 6 * 60 },
+      { name: 'B', kind: 'Drop' as const, at: 13 * 60 },
+    ] };
+    expect(watchedStop(load)?.name).toBe('B');
+    expect(loadAppt(load)).toBe(13 * 60);
+    expect(loadAppt({ number: '1', source: 'share', recurring: false })).toBe(14 * 60);
+    expect(loadAppt(null)).toBe(14 * 60);
   });
 });
 

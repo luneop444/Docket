@@ -20,9 +20,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { clock, clockBare, dur, durShort, rateShort } from '../logic/format';
-import { APPT, TODAY_LABEL, TODAY_STOP } from '../logic/sampleData';
+import { TODAY_LABEL, TODAY_STOP } from '../logic/sampleData';
 import { islandCopy } from '../logic/island';
-import { type FixDraft } from '../logic/stop';
+import { apptOf, type FixDraft } from '../logic/stop';
 import { useStore } from '../state/AppStore';
 import { color, fontFamily, protoColor, radius, type } from '../theme/tokens';
 import { useFramed, useInsets, useIslandStage } from './Chrome';
@@ -46,7 +46,7 @@ function useEnter(duration: number) {
   return v;
 }
 
-function SheetShell({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+export function SheetShell({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   const { footerBottom } = useInsets();
   const fade = useEnter(180);
   const up = useEnter(220);
@@ -168,7 +168,7 @@ function ArrivalSheet() {
       <View style={styles.details}>
         <T v="body">
           Arrived {clock(arrive)}
-          {r.start === 'appt' ? ` · appointment ${clock(APPT)}` : ''} · {durShort(r.free)} free time, then{' '}
+          {r.start === 'appt' ? ` · appointment ${clock(apptOf(s.stop))}` : ''} · {durShort(r.free)} free time, then{' '}
           {rateShort(r.rate)}.
         </T>
       </View>

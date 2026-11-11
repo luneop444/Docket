@@ -5,9 +5,9 @@ import { LiveCard } from '../../components/LiveCard';
 import { Timeline, type TimelineEvent } from '../../components/Timeline';
 import { Button, Card, Fake, Gap, Hr, Pill, ProtoControls, Row, T, TimeBar } from '../../components/ui';
 import { clock, dur, money } from '../../logic/format';
-import { APPT, TODAY_STOP, WATCH_LEAD_MIN, WEEK } from '../../logic/sampleData';
+import { TODAY_STOP, WATCH_LEAD_MIN, WEEK } from '../../logic/sampleData';
 import { weekTotals } from '../../logic/settlement';
-import { setsStopsOnce } from '../../logic/state';
+import { loadAppt, setsStopsOnce } from '../../logic/state';
 import { dockTimeline, stopCalc } from '../../logic/stop';
 import { useStore } from '../../state/AppStore';
 
@@ -71,8 +71,8 @@ function NotAtDock() {
             <T v="h2">{TODAY_STOP.name}</T>
             <Gap h={8} />
             <T v="bodySmall">
-              {s.load.recurring ? 'Weekly route' : `Load ${s.load.number}`} · appointment {clock(APPT)} · on from{' '}
-              {clock(APPT - WATCH_LEAD_MIN)}
+              {s.load.recurring ? 'Weekly route' : `Load ${s.load.number}`} · appointment {clock(loadAppt(s.load))} · on from{' '}
+              {clock(loadAppt(s.load) - WATCH_LEAD_MIN)}
             </T>
             <Hr />
             <Row>

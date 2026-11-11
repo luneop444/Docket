@@ -23,6 +23,7 @@ import { claimText, cleanAmount, weekTotals } from '../logic/settlement';
 import {
   parseState,
   freshState,
+  loadAppt,
   setsStopsOnce,
   STORAGE_KEY,
   type AppState,
@@ -109,7 +110,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         const known = s.knownPlaces.includes(TODAY_STOP.name);
         setS((x) => ({
           ...x,
-          stop: { ...freshStop(), phase: known ? 'dock' : 'arriving', arrive },
+          stop: { ...freshStop(), phase: known ? 'dock' : 'arriving', arrive, appt: loadAppt(s.load) },
           now: arrive,
           islandAlerted: false,
         }));

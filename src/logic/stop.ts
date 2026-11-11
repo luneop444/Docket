@@ -22,7 +22,11 @@ export interface Stop {
   edited: { arrive: number; leave: number } | null;
   /** Whether a BOL photo was used. */
   bol: boolean;
+  /** Appointment at this stop (minutes after midnight), from the load. Missing in data saved before loads had stops. */
+  appt?: number;
 }
+
+export const apptOf = (stop: Stop): number => stop.appt ?? APPT;
 
 export const freshStop = (): Stop => ({
   phase: 'idle', arrive: null, checkin: null, leave: null, brk: 0, edited: null, bol: false,
@@ -32,7 +36,7 @@ export const freshStop = (): Stop => ({
 export function stopCalc(stop: Stop, now: number, rules: Rules) {
   const arrive = stop.arrive ?? now;
   const leave = stop.leave ?? now;
-  return calc(arrive, APPT, leave, stop.brk, rules);
+  return calc(arrive, apptOf(stop), leave, stop.brk, rules);
 }
 
 /**
@@ -78,11 +82,11 @@ export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[]
     { title: 'Arrived at gate', detail: 'Location, entered facility', time: clock(arrive), state: 'done', segment: 'free' },
   ];
   if (fromAppt) {
-    const reached = now >= APPT;
+    const reached = now >= apptOf(stop);
     events.push({
       title: 'Appointment time',
       detail: 'Your company starts the clock here',
-      time: clock(APPT),
+      time: clock(apptOf(stop)),
       state: reached ? 'done' : 'upcoming',
       segment: reached ? 'free' : 'upcoming',
     });
@@ -141,4 +145,9 @@ export function applyFix(st: Stop, d: FixDraft): Stop {
       ? { arrive: st.arrive, leave: st.leave ?? d.leave ?? st.arrive }
       : st.edited;
   return { ...st, arrive: d.arrive, leave: d.leave ?? st.leave, brk: d.brk, edited };
+}
+
+/** Fix a stop: move one stop's appointment by 15 minutes, staying within the day. */
+export function shiftStop<T extends { at: number }>(stops: T[], i: number, dir: 1 | -1): T[] {
+  return stops.map((st, j) => (j === i ? { ...st, at: Math.min(24 * 60 - 15, Math.max(0, st.at + dir * 15)) } : st));
 }

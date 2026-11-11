@@ -2,7 +2,7 @@
  * The persisted app state (what v1 kept in localStorage under "docket-v1").
  */
 import { defaultRules, type Rules } from './detention';
-import { START_NOW, type Marks } from './sampleData';
+import { APPT, START_NOW, type LoadStop, type Marks } from './sampleData';
 import { freshStop, type Stop } from './stop';
 
 export type PayType = 'mile' | 'hour' | 'load';
@@ -21,7 +21,17 @@ export interface ActiveLoad {
    * Docket watches them on every run without the driver adding a load.
    */
   recurring: boolean;
+  /** Stops as checked (and maybe fixed) by the driver. Missing in data saved before Fix a stop existed. */
+  stops?: LoadStop[];
 }
+
+/** The stop Docket watches today: the load's drop. */
+export function watchedStop(load: ActiveLoad | null): LoadStop | undefined {
+  return load?.stops?.find((st) => st.kind === 'Drop') ?? load?.stops?.[load.stops.length - 1];
+}
+
+/** Appointment at the watched stop (2:00 PM for older saved data). */
+export const loadAppt = (load: ActiveLoad | null): number => watchedStop(load)?.at ?? APPT;
 
 /** Dedicated-route drivers set their stops once instead of adding a load each day (Figma A3 note). */
 export const setsStopsOnce = (style: LoadStyle | null): boolean => style === 'same';
