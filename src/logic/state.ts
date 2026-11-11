@@ -16,7 +16,15 @@ export interface ActiveLoad {
   number: string;
   /** How it came in (Figma B1). */
   source: 'share' | 'email';
+  /**
+   * Dedicated route ("Same stops every week"): the stops were set up once and
+   * Docket watches them on every run without the driver adding a load.
+   */
+  recurring: boolean;
 }
+
+/** Dedicated-route drivers set their stops once instead of adding a load each day (Figma A3 note). */
+export const setsStopsOnce = (style: LoadStyle | null): boolean => style === 'same';
 export type CompanySort = 'wait' | 'paid';
 export type AnonAnswer = 'Paid' | 'Partly' | 'Not paid';
 

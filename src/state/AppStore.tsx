@@ -20,7 +20,14 @@ import {
   WEEK_LABEL,
 } from '../logic/sampleData';
 import { claimText, cleanAmount, weekTotals } from '../logic/settlement';
-import { parseState, freshState, STORAGE_KEY, type AppState, type LocationMode } from '../logic/state';
+import {
+  parseState,
+  freshState,
+  setsStopsOnce,
+  STORAGE_KEY,
+  type AppState,
+  type LocationMode,
+} from '../logic/state';
 import { applyFix, freshStop, stepFix, stopCalc, type FixDraft } from '../logic/stop';
 import { clockBare } from '../logic/format';
 
@@ -81,7 +88,13 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         }),
       setPay: (pay: AppState['pay']) => setS((s) => ({ ...s, pay })),
       setRulesCheck: (rulesCheck: AppState['rulesCheck']) => setS((s) => ({ ...s, rulesCheck })),
-      setLoadStyle: (loadStyle: AppState['loadStyle']) => setS((s) => ({ ...s, loadStyle })),
+      /** Also switches an existing load between one-off and every-run. */
+      setLoadStyle: (loadStyle: AppState['loadStyle']) =>
+        setS((s) => ({
+          ...s,
+          loadStyle,
+          load: s.load ? { ...s.load, recurring: setsStopsOnce(loadStyle) } : s.load,
+        })),
       setRule: <K extends keyof Rules>(k: K, v: Rules[K]) => setS((s) => ({ ...s, rules: { ...s.rules, [k]: v } })),
       finishOnboarding: (location: LocationMode) => setS((s) => ({ ...s, location, onboarded: true })),
 

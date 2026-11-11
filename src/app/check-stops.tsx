@@ -4,6 +4,7 @@ import { OnboardingBar, Screen } from '../components/Chrome';
 import { Button, Card, Fake, Gap, Hr, Row, T } from '../components/ui';
 import { clock } from '../logic/format';
 import { SAMPLE_LOAD, WATCH_LEAD_MIN } from '../logic/sampleData';
+import { setsStopsOnce } from '../logic/state';
 import { useStore } from '../state/AppStore';
 import { color } from '../theme/tokens';
 
@@ -11,16 +12,22 @@ import { color } from '../theme/tokens';
 export default function CheckStops() {
   const { s, a } = useStore();
   const { source } = useLocalSearchParams<{ source?: string }>();
+  const weekly = setsStopsOnce(s.loadStyle);
   const company = s.company?.split(' ')[0] ?? 'Your company';
 
   const rows: [string, string][] = [
     ...SAMPLE_LOAD.stops.map((st): [string, string] => [st.name, `${st.kind} ${clock(st.at)}`]),
     ['Detention rules', company],
     ['Watching starts', `${WATCH_LEAD_MIN / 60}h before each stop`],
+    ...(weekly ? [['Repeats', 'Every run'] as [string, string]] : []),
   ];
 
   function start() {
-    a.startWatching({ number: SAMPLE_LOAD.number, source: source === 'email' ? 'email' : 'share' });
+    a.startWatching({
+      number: SAMPLE_LOAD.number,
+      source: source === 'email' ? 'email' : 'share',
+      recurring: weekly,
+    });
     router.navigate('/today');
   }
 
@@ -29,7 +36,7 @@ export default function CheckStops() {
       header={<OnboardingBar onBack={() => router.navigate('/add-load')} />}
       footer={
         <>
-          <Button label="Looks right, start watching" onPress={start} />
+          <Button label={weekly ? 'Looks right, use every run' : 'Looks right, start watching'} onPress={start} />
           <Button
             label="Fix a stop"
             variant="quiet"
@@ -39,10 +46,12 @@ export default function CheckStops() {
         </>
       }
     >
-      <T v="h2">Check your stops</T>
+      <T v="h2">{weekly ? 'Check your weekly stops' : 'Check your stops'}</T>
       <Gap h={8} />
       <T v="body" c={color.sub}>
-        Read from your rate con for load {SAMPLE_LOAD.number}. Fix anything that looks off.
+        {weekly
+          ? `Read from your rate con for load ${SAMPLE_LOAD.number}. Docket watches these stops on every run. Fix anything that looks off.`
+          : `Read from your rate con for load ${SAMPLE_LOAD.number}. Fix anything that looks off.`}
       </T>
       <Gap h={20} />
       <Card>

@@ -7,6 +7,7 @@ import { Button, Card, Fake, Gap, Hr, Pill, ProtoControls, Row, T, TimeBar } fro
 import { clock, dur, money } from '../../logic/format';
 import { APPT, TODAY_STOP, WATCH_LEAD_MIN, WEEK } from '../../logic/sampleData';
 import { weekTotals } from '../../logic/settlement';
+import { setsStopsOnce } from '../../logic/state';
 import { dockTimeline, stopCalc } from '../../logic/stop';
 import { useStore } from '../../state/AppStore';
 
@@ -25,6 +26,7 @@ function NotAtDock() {
   const st = s.stop;
   const week = weekTotals(WEEK, s.rules, s.marks);
   const c = stopCalc(st, s.now, s.rules);
+  const weekly = setsStopsOnce(s.loadStyle);
 
   const lastWeekPill = s.sent ? (
     <Pill label="Asked fleet manager" />
@@ -39,15 +41,28 @@ function NotAtDock() {
       {!s.load ? (
         <>
           <T v="bodySmall" style={styles.kicker}>Today</T>
-          <Card>
-            <T v="h2">No load yet</T>
-            <Gap h={8} />
-            <T v="bodySmall">
-              Add today’s load and Docket watches for its stops. Location stays off until then.
-            </T>
-            <Gap h={16} />
-            <Button label="Add today’s load" small onPress={() => router.push('/add-load')} />
-          </Card>
+          {weekly ? (
+            <Card>
+              <T v="h2">Set up your weekly stops</T>
+              <Gap h={8} />
+              <T v="bodySmall">
+                You run the same stops every week. Set them up once and Docket watches them on every run. Location
+                stays off until then.
+              </T>
+              <Gap h={16} />
+              <Button label="Set up weekly stops" small onPress={() => router.push('/add-load')} />
+            </Card>
+          ) : (
+            <Card>
+              <T v="h2">No load yet</T>
+              <Gap h={8} />
+              <T v="bodySmall">
+                Add today’s load and Docket watches for its stops. Location stays off until then.
+              </T>
+              <Gap h={16} />
+              <Button label="Add today’s load" small onPress={() => router.push('/add-load')} />
+            </Card>
+          )}
         </>
       ) : st.phase === 'idle' || st.phase === 'arriving' ? (
         <>
@@ -56,7 +71,8 @@ function NotAtDock() {
             <T v="h2">{TODAY_STOP.name}</T>
             <Gap h={8} />
             <T v="bodySmall">
-              Load {s.load.number} · appointment {clock(APPT)} · on from {clock(APPT - WATCH_LEAD_MIN)}
+              {s.load.recurring ? 'Weekly route' : `Load ${s.load.number}`} · appointment {clock(APPT)} · on from{' '}
+              {clock(APPT - WATCH_LEAD_MIN)}
             </T>
             <Hr />
             <Row>
@@ -91,7 +107,11 @@ function NotAtDock() {
           </Card>
           <Gap h={12} />
           <T v="bodySmall" style={{ paddingLeft: 4 }}>
-            {st.phase === 'left' ? 'Snap your BOL to finish this stop.' : 'No more stops today. Location is off.'}
+            {st.phase === 'left'
+              ? 'Snap your BOL to finish this stop.'
+              : s.load?.recurring
+                ? 'No more stops today. Location is off until your next run.'
+                : 'No more stops today. Location is off.'}
           </T>
         </>
       )}

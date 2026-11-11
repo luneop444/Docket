@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { BackBar, Screen } from '../components/Chrome';
 import { RuleEditor } from '../components/RuleEditor';
-import { Button, Card, Gap, T } from '../components/ui';
+import { Button, Card, Gap, Seg, T } from '../components/ui';
+import { setsStopsOnce, type LoadStyle } from '../logic/state';
 import { useStore } from '../state/AppStore';
 
 /** v1 19 Your rules (from the profile button) */
@@ -23,6 +24,35 @@ export default function YourRules() {
         today’s stop.
       </T>
       <RuleEditor />
+      <Gap h={24} />
+      <T v="bodyStrong">How your loads come in</T>
+      <Gap h={10} />
+      <Seg<LoadStyle>
+        options={[
+          { key: 'same', label: 'Same stops' },
+          { key: 'different', label: 'Different' },
+          { key: 'mix', label: 'Mix' },
+        ]}
+        value={s.loadStyle}
+        onChange={a.setLoadStyle}
+      />
+      <Gap h={8} />
+      <T v="bodyTiny">
+        {setsStopsOnce(s.loadStyle)
+          ? 'Docket watches your weekly stops on every run. You don’t add loads.'
+          : 'You add each load when dispatch sends it.'}
+      </T>
+      {setsStopsOnce(s.loadStyle) ? (
+        <>
+          <Gap h={12} />
+          <Button
+            label={s.load ? 'Change weekly stops' : 'Set up weekly stops'}
+            variant="quiet"
+            small
+            onPress={() => router.push('/add-load')}
+          />
+        </>
+      ) : null}
       <Gap h={24} />
       <Card>
         <T v="bodyStrong">About this prototype</T>
