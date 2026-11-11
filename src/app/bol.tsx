@@ -7,7 +7,7 @@ import { Button, Fake, Gap, T } from '../components/ui';
 import { clock } from '../logic/format';
 import { TODAY_STOP } from '../logic/sampleData';
 import { useStore } from '../state/AppStore';
-import { color, protoColor } from '../theme/tokens';
+import { color } from '../theme/tokens';
 
 /** Opens the camera (phone) or file picker (desktop). Falls back to the photo library. */
 async function takePhoto(): Promise<string | null> {
@@ -23,7 +23,7 @@ async function takePhoto(): Promise<string | null> {
   return r.canceled ? null : r.assets[0].uri;
 }
 
-/** v1 10 Snap BOL */
+/** Figma C4 Snap BOL: optional. Opened from the island when the geofence sees you leave. */
 export default function SnapBol() {
   const { s, ui, a } = useStore();
 
@@ -44,21 +44,24 @@ export default function SnapBol() {
     <Screen
       header={<BackBar label="Today" onPress={() => router.navigate('/today')} />}
       footer={
-        <>
-          {ui.photoUri ? <Button label="Use this photo" onPress={() => done(true)} /> : null}
-          <Button
-            label="Skip, use location times"
-            variant={ui.photoUri ? 'text' : 'quiet'}
-            onPress={() => done(false)}
-          />
-        </>
+        ui.photoUri ? (
+          <>
+            <Button label="Use this photo" onPress={() => done(true)} />
+            <Button label="Retake" variant="text" onPress={pick} />
+          </>
+        ) : (
+          <>
+            <Button label="Take photo" onPress={pick} />
+            <Button label="No times on the BOL, skip" variant="text" onPress={() => done(false)} />
+          </>
+        )
       }
     >
       <T v="bodySmall">You left {TODAY_STOP.short} at {clock(s.stop.leave ?? s.now)}</T>
       <Gap h={8} />
       <T v="h2">Snap your signed bill of lading</T>
       <Gap h={8} />
-      <T v="bodySmall">
+      <T v="body" c={color.sub}>
         Docket reads the in and out times the facility wrote on it and checks them against your location times. Two
         records that agree are hard to argue with.
       </T>
@@ -67,18 +70,15 @@ export default function SnapBol() {
         {ui.photoUri ? (
           <Image source={{ uri: ui.photoUri }} style={styles.img} accessibilityLabel="Your BOL photo" />
         ) : (
-          <>
-            <View style={styles.frame} />
-            <View style={{ alignItems: 'center' }}>
-              <CameraIcon />
-              <T v="bodySmall" style={{ marginTop: 6 }}>Tap to take a photo</T>
-            </View>
-          </>
+          <View style={{ alignItems: 'center', gap: 6 }}>
+            <CameraIcon />
+            <T v="bodySmall">The photo stays on your phone.</T>
+          </View>
         )}
       </Pressable>
       <Gap h={12} />
       <T v="bodyTiny">
-        The photo stays on your phone. <Fake /> Reading the times off the photo uses a sample result for now.
+        <Fake /> Reading the in and out times off the photo uses a sample result for now.
       </T>
     </Screen>
   );
@@ -87,7 +87,7 @@ export default function SnapBol() {
 const styles = StyleSheet.create({
   photo: {
     width: '100%',
-    aspectRatio: 3 / 4,
+    aspectRatio: 4 / 3,
     borderRadius: 24,
     backgroundColor: color.raise,
     alignItems: 'center',
@@ -95,15 +95,4 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   img: { width: '100%', height: '100%', resizeMode: 'cover' },
-  frame: {
-    position: 'absolute',
-    top: 28,
-    left: 28,
-    right: 28,
-    bottom: 28,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: protoColor.dashed,
-    borderRadius: 16,
-  },
 });

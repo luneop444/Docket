@@ -79,7 +79,9 @@ function NotAtDock() {
               <T v="bodyStrong">{TODAY_STOP.name}</T>
               {st.phase === 'left' ? <Pill label="Needs BOL" /> : <Pill label="Logged" tone="signal" />}
             </Row>
-            <Gap h={8} />
+            <Gap h={10} />
+            <TimeBar free={Math.max(0, c.wait - c.paidMin)} detention={c.paidMin} />
+            <Gap h={10} />
             <Row base>
               <T v="bodySmall">Waited {dur(c.wait)}</T>
               <T v="numberS">{money(c.owed)} expected</T>

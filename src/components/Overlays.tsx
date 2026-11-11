@@ -19,9 +19,10 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { clock, clockBare, dur, durShort, hm, money, rateShort } from '../logic/format';
+import { clock, clockBare, dur, durShort, rateShort } from '../logic/format';
 import { APPT, TODAY_LABEL, TODAY_STOP } from '../logic/sampleData';
-import { stopCalc, type FixDraft } from '../logic/stop';
+import { islandCopy } from '../logic/island';
+import { type FixDraft } from '../logic/stop';
 import { useStore } from '../state/AppStore';
 import { color, fontFamily, protoColor, radius, type } from '../theme/tokens';
 import { useFramed, useInsets, useIslandStage } from './Chrome';
@@ -228,28 +229,12 @@ function Toast({ text }: { text: string }) {
 function useIslandContent() {
   const { s } = useStore();
   const stg = useIslandStage();
-  const st = s.stop;
-  const c = stopCalc(st, s.now, s.rules);
-  const arrive = st.arrive ?? s.now;
-  switch (stg) {
-    case 1:
-      return { stg, val: hm(Math.max(0, c.freeEnd - s.now)), white: true, title: 'Free time',
-        line: `${hm(s.now - arrive)} waited · detention at ${clock(c.freeEnd)}`, bars: [1, 0, 0, 0] };
-    case 2:
-      return { stg, val: money(c.owed), white: false, title: 'Detention starts now',
-        line: `Free time is up · ${money(s.rules.rate)}/hr`, bars: [1, 1, 0, 0] };
-    case 3:
-      return { stg, val: money(c.owed), white: false, title: 'Detention running',
-        line: `${hm(s.now - arrive)} waited · ${money(s.rules.rate)}/hr`, bars: [1, 1, 1, 0] };
-    case 4:
-      return { stg, val: money(c.owed), white: false, title: `Left ${TODAY_STOP.short}`,
-        line: `Tap to snap your BOL · left ${clock(st.leave ?? s.now)}`, bars: [1, 1, 1, 1] };
-    case 5:
-      return { stg, val: money(c.owed), white: true, title: 'Stop logged',
-        line: `${dur(c.wait)} waited · ${money(c.owed)} expected`, bars: [1, 1, 1, 1] };
-    default:
-      return null;
-  }
+  const copy = islandCopy(stg, s.stop, s.now, s.rules, {
+    name: TODAY_STOP.name,
+    short: TODAY_STOP.short,
+    load: s.load?.number ?? TODAY_STOP.load,
+  });
+  return copy ? { ...copy, stg } : null;
 }
 
 const ISLAND = {
@@ -306,7 +291,7 @@ function Island() {
               <View style={styles.lead}>
                 <TruckIcon />
               </View>
-              <Text style={[styles.islandVal, content.white && { color: color.bg }]}>{content.val}</Text>
+              <Text style={[styles.islandVal, !content.compactLime && { color: color.bg }]}>{content.compact}</Text>
             </Animated.View>
             <Animated.View style={[styles.exp, { opacity: showExp }]}>
               <Row style={{ alignItems: 'center', gap: 0 }}>
@@ -316,18 +301,18 @@ function Island() {
                 <View style={styles.expText}>
                   <T v="bodyStrong" c={color.bg}>{content.title}</T>
                   <Text numberOfLines={1} style={styles.islandSub}>
-                    {TODAY_STOP.name} · Load {TODAY_STOP.load}
+                    {content.sub}
                   </Text>
                 </View>
-                <T v="numberM" c={content.white ? color.bg : color.signal}>{content.val}</T>
+                <T v="numberM" c={content.valueLime ? color.signal : color.bg}>{content.value}</T>
               </Row>
               <View style={styles.ibar}>
-                {content.bars.map((b, i) => (
+                {[0, 1, 2, 3].map((i) => (
                   <View
                     key={i}
                     style={[
                       styles.ibarSeg,
-                      { backgroundColor: b ? (i < 3 && stg >= 2 ? color.signal : color.bg) : protoColor.islandOff },
+                      { backgroundColor: i < content.filled ? (stg === 1 ? color.bg : color.signal) : protoColor.islandOff },
                     ]}
                   />
                 ))}
@@ -343,40 +328,35 @@ function Island() {
 
 function LockScreen() {
   const { s, a } = useStore();
-  const c = stopCalc(s.stop, s.now, s.rules);
-  const inD = s.now >= c.freeEnd;
-  const arrive = s.stop.arrive ?? s.now;
+  const content = useIslandContent();
   return (
     <Pressable style={StyleSheet.absoluteFill} onPress={() => a.setLock(false)} accessibilityLabel="Unlock">
       <LinearGradient colors={[protoColor.lockTop, protoColor.lockBottom]} style={styles.lock}>
         <Text style={styles.lockDate}>{TODAY_LABEL}</Text>
         <Text style={styles.lockClock}>{clockBare(s.now)}</Text>
-        <View style={styles.lockCard}>
-          <Row style={{ justifyContent: 'flex-start', gap: 8 }}>
-            <View style={[styles.lead, { width: 24, height: 24 }]}>
-              <TruckIcon size={14} />
+        {content ? (
+          <View style={styles.lockCard}>
+            <Row style={{ justifyContent: 'flex-start', gap: 8 }}>
+              <View style={[styles.lead, { width: 24, height: 24 }]}>
+                <TruckIcon size={14} />
+              </View>
+              <T v="labelSmall">Docket · {TODAY_STOP.name}</T>
+            </Row>
+            <Gap h={12} />
+            <Row base>
+              <T v="bodyStrong" style={{ fontSize: 19 }}>{content.lockTitle}</T>
+              <T v="numberL" style={{ fontSize: 40 }}>{content.stg === 1 ? content.compact : content.value}</T>
+            </Row>
+            <Gap h={12} />
+            <View style={styles.ibar}>
+              {[0, 1, 2, 3].map((i) => (
+                <View key={i} style={[styles.ibarSeg, { backgroundColor: i < content.filled ? color.ink : color.raise2 }]} />
+              ))}
             </View>
-            <T v="labelSmall">Docket · {TODAY_STOP.name}</T>
-          </Row>
-          <Gap h={12} />
-          <Row base>
-            <T v="bodyStrong" style={{ fontSize: 19 }}>{inD ? 'Detention so far' : 'Free time left'}</T>
-            <T v="numberL" style={{ fontSize: 40 }}>{inD ? money(c.owed) : hm(c.freeEnd - s.now)}</T>
-          </Row>
-          <Gap h={12} />
-          <View style={styles.ibar}>
-            {[0, 1, 2, 3].map((i) => (
-              <View
-                key={i}
-                style={[styles.ibarSeg, { backgroundColor: (inD ? i < 3 : i < 1) ? color.ink : color.raise2 }]}
-              />
-            ))}
+            <Gap h={8} />
+            <T v="bodyTiny">{content.lockLine}</T>
           </View>
-          <Gap h={8} />
-          <T v="bodyTiny">
-            {hm(s.now - arrive)} waited{inD ? ` · started ${clock(c.freeEnd)}` : ''}
-          </T>
-        </View>
+        ) : null}
         <Text style={styles.lockHint}>Simulated lock screen · tap to unlock</Text>
       </LinearGradient>
     </Pressable>

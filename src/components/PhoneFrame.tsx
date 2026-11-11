@@ -77,7 +77,7 @@ function Aside() {
   const { a } = useStore();
   return (
     <View style={styles.aside}>
-      <Text style={styles.asideH2}>Docket · Prototype v1</Text>
+      <Text style={styles.asideH2}>Docket · Prototype v2</Text>
       <Text style={styles.asideText}>
         Open on a phone for the real experience. On a computer, use it inside this frame.
       </Text>
@@ -85,8 +85,10 @@ function Aside() {
       <Bullets
         items={[
           'Set up your company’s rules',
-          'Pull into Harbor Foods and watch free time run out',
+          'Add today’s load and start watching',
+          'Pull into Harbor Foods, start the clock, and watch free time run out',
           'Leave, snap a BOL, check the stop',
+          'Start the stop again: Docket now starts on its own, with Undo',
           'Mark last week’s settlement and message your fleet manager',
         ]}
       />
@@ -98,7 +100,7 @@ function Aside() {
         items={[
           'GPS arriving and leaving (buttons)',
           'Time runs 60× faster',
-          'Reading the BOL and settlement (sample results)',
+          'Reading the rate con, BOL and settlement (sample results)',
           'Company list and wait data (made-up)',
           'The Dynamic Island / lock screen Live Activity is drawn by the page, not iOS',
         ]}

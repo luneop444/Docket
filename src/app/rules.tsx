@@ -28,8 +28,8 @@ export default function YourRules() {
         <T v="bodyStrong">About this prototype</T>
         <Gap h={8} />
         <T v="bodySmall">
-          Prototype v1 for AIxD Project 3. Location, time passing, BOL and settlement reading, and company data are
-          simulated. Your rules, the detention math, the camera and the message to your fleet manager are real.
+          Prototype v2 for AIxD Project 3. Location, time passing, rate con, BOL and settlement reading, and company
+          data are simulated. Your rules, the detention math, the camera and the message to your fleet manager are real.
         </T>
         <Gap h={12} />
         <Button
