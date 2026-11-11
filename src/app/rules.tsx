@@ -40,9 +40,11 @@ export default function YourRules() {
       <T v="bodyTiny">
         {setsStopsOnce(s.loadStyle)
           ? 'Docket watches your weekly stops on every run. You don’t add loads.'
-          : 'You add each load when dispatch sends it.'}
+          : s.loadStyle === 'mix'
+            ? 'Add loads when dispatch sends them, or save one as your weekly route.'
+            : 'You add each load when dispatch sends it.'}
       </T>
-      {setsStopsOnce(s.loadStyle) ? (
+      {setsStopsOnce(s.loadStyle) || (s.loadStyle === 'mix' && s.load?.recurring) ? (
         <>
           <Gap h={12} />
           <Button

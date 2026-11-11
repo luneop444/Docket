@@ -96,7 +96,8 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         setS((s) => ({
           ...s,
           loadStyle,
-          load: s.load ? { ...s.load, recurring: setsStopsOnce(loadStyle) } : s.load,
+          // "A mix of both" keeps whatever the current load already is.
+          load: s.load && loadStyle !== 'mix' ? { ...s.load, recurring: setsStopsOnce(loadStyle) } : s.load,
         })),
       setRule: <K extends keyof Rules>(k: K, v: Rules[K]) => setS((s) => ({ ...s, rules: { ...s.rules, [k]: v } })),
       finishOnboarding: (location: LocationMode) => setS((s) => ({ ...s, location, onboarded: true })),

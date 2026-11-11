@@ -3,6 +3,7 @@ import { Fragment, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { OnboardingBar, Screen } from '../components/Chrome';
 import { MinusIcon, PlusIcon } from '../components/Icons';
+import { Switch } from '../components/RuleEditor';
 import { SheetShell } from '../components/Overlays';
 import { Button, Card, Fake, Gap, Hr, Row, T } from '../components/ui';
 import { clock } from '../logic/format';
@@ -16,7 +17,10 @@ import { color, radius } from '../theme/tokens';
 export default function CheckStops() {
   const { s, a } = useStore();
   const { source } = useLocalSearchParams<{ source?: string }>();
-  const weekly = setsStopsOnce(s.loadStyle);
+  const mix = s.loadStyle === 'mix';
+  // Mixed drivers choose per load whether these are their weekly stops.
+  const [saveWeekly, setSaveWeekly] = useState(() => mix && !!s.load?.recurring);
+  const weekly = setsStopsOnce(s.loadStyle) || (mix && saveWeekly);
   const company = s.company?.split(' ')[0] ?? 'Your company';
   // Changing weekly stops starts from the saved ones; a new load starts from the rate con.
   const [stops, setStops] = useState<LoadStop[]>(() => s.load?.recurring && s.load.stops ? s.load.stops : SAMPLE_LOAD.stops);
@@ -71,6 +75,20 @@ export default function CheckStops() {
             </Fragment>
           ))}
         </Card>
+        {mix ? (
+          <>
+            <Gap h={12} />
+            <Card>
+              <Row>
+                <View style={styles.flex}>
+                  <T v="bodyStrong">Same stops every week</T>
+                  <T v="bodyTiny">Save these as your weekly route so you don’t add them again.</T>
+                </View>
+                <Switch on={saveWeekly} onChange={setSaveWeekly} />
+              </Row>
+            </Card>
+          </>
+        ) : null}
         <Gap h={12} />
         <T v="bodyTiny">
           <Fake label="Sample data" /> Reading the rate con is faked. These stops come from a sample load.
