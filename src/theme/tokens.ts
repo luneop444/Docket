@@ -29,6 +29,43 @@ export const color = {
 
 export type ColorToken = keyof typeof color;
 
+/**
+ * Prototype-only colors. Not Figma variables: they come from the v1 Netlify
+ * prototype (device frame, "Faked" tags, simulated iOS chrome).
+ */
+export const protoColor = {
+  /** Page behind the phone on desktop. */
+  desk: '#E9ECEF',
+  bezel: '#111111',
+  bezelEdge: '#333333',
+  asideInk: '#3A3F45',
+  /** Dashed border around "Prototype controls". */
+  dashed: '#8A9097',
+  /** Yellow "Faked" / "Sample data" tag. */
+  fakeBg: '#F6F9D6',
+  fakeInk: '#6B5A00',
+  scrim: 'rgba(0,0,0,0.32)',
+  toast: '#111111',
+  shadow: 'rgba(26,31,41,0.06)',
+  frameShadow: 'rgba(0,0,0,0.25)',
+  moneyGlow: 'rgba(212,245,77,0.55)',
+  /** Dynamic Island is always black; these are its secondary text and empty bar. */
+  island: '#000000',
+  islandSub: '#AAAAAA',
+  islandOff: '#3A3A3A',
+  lockTop: '#9AA8BF',
+  lockBottom: '#4C5568',
+  knobShadow: 'rgba(0,0,0,0.25)',
+} as const;
+
+export const radius = {
+  card: 28,
+  control: 16,
+  chip: 14,
+  option: 20,
+  sheet: 28,
+} as const;
+
 /** Font family names registered with expo-font in the root layout. */
 export const fontFamily = {
   regular: 'GoogleSansFlex-Regular',

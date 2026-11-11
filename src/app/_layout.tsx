@@ -1,9 +1,24 @@
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { router, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Overlays } from '../components/Overlays';
 import { PhoneFrame } from '../components/PhoneFrame';
+import { AppStoreProvider, useStore } from '../state/AppStore';
 import { color, fontAssets } from '../theme/tokens';
+
+const ONBOARDING = ['/welcome', '/company', '/paytype', '/company-rules', '/edit-rules', '/location'];
+
+/** Like v1: until onboarding is finished, every other screen goes to Welcome. */
+function OnboardingGuard() {
+  const { s } = useStore();
+  const path = usePathname();
+  useEffect(() => {
+    if (!s.onboarded && path !== '/' && !ONBOARDING.includes(path)) router.replace('/welcome');
+  }, [s.onboarded, path]);
+  return null;
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);
@@ -14,15 +29,20 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <PhoneFrame>
-        <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: color.bg },
-          }}
-        />
-      </PhoneFrame>
+      <AppStoreProvider>
+        <PhoneFrame>
+          <StatusBar style="dark" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'none',
+              contentStyle: { backgroundColor: color.bg },
+            }}
+          />
+          <Overlays />
+          <OnboardingGuard />
+        </PhoneFrame>
+      </AppStoreProvider>
     </SafeAreaProvider>
   );
 }
