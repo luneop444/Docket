@@ -37,7 +37,8 @@ export function islandCopy(
   const arrive = stop.arrive ?? now;
   const waited = hm((stop.leave ?? now) - arrive);
   const owed = money(c.owed);
-  const sub = `${place.name} · Load ${place.load}`;
+  const loadBit = place.load ? ` · Load ${place.load}` : '';
+  const sub = `${place.name}${loadBit}`;
   switch (stage) {
     case 1: {
       const left = hm(Math.max(0, c.freeEnd - Math.max(now, c.start)));
@@ -63,7 +64,7 @@ export function islandCopy(
     case 4:
       return {
         compact: `Out ${clockBare(stop.leave ?? now)}`, compactLime: false,
-        title: `You left ${place.short}`, sub: `${waited} waited · Load ${place.load}`, value: owed, valueLime: true,
+        title: `You left ${place.short}`, sub: `${waited} waited${loadBit}`, value: owed, valueLime: true,
         line: 'Tap to snap your signed BOL', filled: 4,
         lockTitle: 'Snap your BOL', lockLine: `Left ${clock(stop.leave ?? now)} · tap to add photo`,
       };

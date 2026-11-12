@@ -15,7 +15,6 @@ import {
   SAMPLE_SETTLEMENT,
   SIM_MINUTES_PER_SECOND,
   START_NOW,
-  TODAY_STOP,
   WEEK,
   WEEK_LABEL,
 } from '../logic/sampleData';
@@ -24,6 +23,7 @@ import {
   parseState,
   freshState,
   loadAppt,
+  placeOf,
   setsStopsOnce,
   STORAGE_KEY,
   type AppState,
@@ -51,6 +51,8 @@ interface Ui {
 }
 
 const UNDO_SECONDS = 10;
+
+const remember = (places: string[], name: string) => (places.includes(name) ? places : [...places, name]);
 
 const freshUi = (): Ui => ({ expanded: false, lock: false, sheet: null, toast: null, undo: null, siri: false, photoUri: null });
 
@@ -110,7 +112,8 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
       pullIn: () => {
         const s = sRef.current;
         const arrive = START_NOW + 1;
-        const known = s.knownPlaces.includes(TODAY_STOP.name);
+        const place = placeOf(s.load);
+        const known = s.knownPlaces.includes(place.name);
         setS((x) => ({
           ...x,
           stop: { ...freshStop(), phase: known ? 'dock' : 'arriving', arrive, appt: loadAppt(s.load) },
@@ -119,7 +122,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         }));
         if (known) {
           // E1: confirmed here before, so the clock starts with no question. Undo stays up for 10 s.
-          setUi((u) => ({ ...u, undo: `Started at ${TODAY_STOP.short} ${clockBare(arrive)}` }));
+          setUi((u) => ({ ...u, undo: `Started at ${place.short} ${clockBare(arrive)}` }));
           clearTimeout(timers.current.undo);
           timers.current.undo = setTimeout(() => setUi((u) => ({ ...u, undo: null })), UNDO_SECONDS * 1000);
           flashIsland();
@@ -135,7 +138,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
             stop,
             now: stopNow(stop, s.now, ms),
             islandAlerted: false,
-            knownPlaces: s.knownPlaces.includes(TODAY_STOP.name) ? s.knownPlaces : [...s.knownPlaces, TODAY_STOP.name],
+            knownPlaces: remember(s.knownPlaces, placeOf(s.load).name),
           };
         });
         setUi((u) => ({ ...u, undo: null }));
@@ -146,7 +149,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         setS((s) => ({
           ...s,
           stop: { ...s.stop, phase: 'dock' },
-          knownPlaces: s.knownPlaces.includes(TODAY_STOP.name) ? s.knownPlaces : [...s.knownPlaces, TODAY_STOP.name],
+          knownPlaces: remember(s.knownPlaces, placeOf(s.load).name),
         }));
         flashIsland();
       },

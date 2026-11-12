@@ -5,7 +5,7 @@ import { BackBar, Screen } from '../components/Chrome';
 import { CameraIcon } from '../components/Icons';
 import { Button, Fake, Gap, T } from '../components/ui';
 import { clock } from '../logic/format';
-import { TODAY_STOP } from '../logic/sampleData';
+import { placeOf } from '../logic/state';
 import { useStore } from '../state/AppStore';
 import { color } from '../theme/tokens';
 
@@ -57,7 +57,7 @@ export default function SnapBol() {
         )
       }
     >
-      <T v="bodySmall">You left {TODAY_STOP.short} at {clock(s.stop.leave ?? s.now)}</T>
+      <T v="bodySmall">You left {placeOf(s.load).short} at {clock(s.stop.leave ?? s.now)}</T>
       <Gap h={8} />
       <T v="h2">Snap your signed bill of lading</T>
       <Gap h={8} />

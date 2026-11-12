@@ -5,9 +5,9 @@ import { LiveCard } from '../../components/LiveCard';
 import { Timeline, type TimelineEvent } from '../../components/Timeline';
 import { Button, Card, Fake, Gap, Hr, Pill, ProtoControls, Row, T, TimeBar } from '../../components/ui';
 import { clock, dur, money } from '../../logic/format';
-import { TODAY_STOP, WATCH_LEAD_MIN, WEEK } from '../../logic/sampleData';
+import { WATCH_LEAD_MIN, WEEK } from '../../logic/sampleData';
 import { weekTotals } from '../../logic/settlement';
-import { loadAppt, setsStopsOnce } from '../../logic/state';
+import { loadAppt, placeOf, setsStopsOnce } from '../../logic/state';
 import { dockTimeline, stopCalc } from '../../logic/stop';
 import { useStore } from '../../state/AppStore';
 
@@ -27,6 +27,7 @@ function NotAtDock() {
   const week = weekTotals(WEEK, s.rules, s.marks);
   const c = stopCalc(st, s.now, s.rules);
   const weekly = setsStopsOnce(s.loadStyle);
+  const place = placeOf(s.load);
 
   const lastWeekPill = s.sent ? (
     <Pill label="Asked fleet manager" />
@@ -68,23 +69,27 @@ function NotAtDock() {
         <>
           <T v="bodySmall" style={styles.kicker}>Watching for your next stop</T>
           <Card>
-            <T v="h2">{TODAY_STOP.name}</T>
+            <T v="h2">{place.name}</T>
             <Gap h={8} />
             <T v="bodySmall">
-              {s.load.recurring ? 'Weekly route' : `Load ${s.load.number}`} · appointment {clock(loadAppt(s.load))} · on from{' '}
+              {s.load.recurring ? 'Weekly route' : s.load.number ? `Load ${s.load.number}` : 'Today’s load'} · appointment {clock(loadAppt(s.load))} · on from{' '}
               {clock(loadAppt(s.load) - WATCH_LEAD_MIN)}
             </T>
-            <Hr />
-            <Row>
-              <T v="bodySmall">Drivers usually wait here</T>
-              <T v="bodyStrong">{TODAY_STOP.typicalWait}</T>
-            </Row>
-            <Gap h={8} />
-            <TimeBar free={s.rules.free} detention={Math.max(0, TODAY_STOP.typicalWaitMin - s.rules.free)} height={8} />
-            <Gap h={8} />
-            <T v="bodyTiny">
-              Location is on only near this stop. It turns off after your last stop. <Fake label="Sample data" />
-            </T>
+            {place.typical ? (
+              <>
+                <Hr />
+                <Row>
+                  <T v="bodySmall">Drivers usually wait here</T>
+                  <T v="bodyStrong">{place.typical.label}</T>
+                </Row>
+                <Gap h={8} />
+                <TimeBar free={s.rules.free} detention={Math.max(0, place.typical.min - s.rules.free)} height={8} />
+                <Gap h={8} />
+                <T v="bodyTiny">
+                  Location is on only near this stop. It turns off after your last stop. <Fake label="Sample data" />
+                </T>
+              </>
+            ) : null}
             <Gap h={16} />
             <Button label="I’m here, start the clock" small onPress={a.arriveNow} />
             <Gap h={8} />
@@ -96,7 +101,7 @@ function NotAtDock() {
           <T v="bodySmall" style={styles.kicker}>Today</T>
           <Card onPress={() => router.push(st.phase === 'left' ? '/bol' : '/summary')}>
             <Row>
-              <T v="bodyStrong">{TODAY_STOP.name}</T>
+              <T v="bodyStrong">{place.name}</T>
               {st.phase === 'left' ? <Pill label="Needs BOL" /> : <Pill label="Logged" tone="signal" />}
             </Row>
             <Gap h={10} />
@@ -136,7 +141,7 @@ function NotAtDock() {
         <ProtoControls note="Prototype controls. These stand in for GPS.">
           {st.phase === 'idle' || st.phase === 'arriving' ? (
             <>
-              <Button label={`Pull into ${TODAY_STOP.short}`} variant="quiet" small onPress={a.pullIn} />
+              <Button label={`Pull into ${place.short}`} variant="quiet" small onPress={a.pullIn} />
               <Button
                 label="Pull in with phone locked"
                 variant="quiet"
@@ -161,6 +166,7 @@ function AtTheDock() {
   const st = s.stop;
   const arrive = st.arrive ?? s.now;
   const c = stopCalc(st, s.now, s.rules);
+  const place = placeOf(s.load);
   const events: TimelineEvent[] = dockTimeline(st, s.now, s.rules).map(({ canCheckIn, ...e }) => ({
     ...e,
     action: canCheckIn ? { label: 'I checked in', onPress: a.checkIn } : undefined,
@@ -169,8 +175,8 @@ function AtTheDock() {
   return (
     <>
       <Row base>
-        <T v="bodyStrong">{TODAY_STOP.name}</T>
-        <T v="bodyTiny">Load {s.load?.number ?? TODAY_STOP.load}</T>
+        <T v="bodyStrong">{place.name}</T>
+        {place.load ? <T v="bodyTiny">Load {place.load}</T> : null}
       </Row>
       <Gap h={16} />
       <LiveCard

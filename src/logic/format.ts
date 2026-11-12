@@ -49,3 +49,21 @@ export function rateShort(rate: number): string {
 export function money(x: number): string {
   return '$' + (Math.round(x * 100) / 100).toFixed(2);
 }
+
+/**
+ * Typed time → minutes after midnight, or null if it can't be read.
+ * "7:30 AM", "7:30a", "730pm", "19:30", "7 pm", "1930". No AM/PM means 24-hour.
+ */
+export function parseClock(input: string): number | null {
+  const t = input.trim().toLowerCase().replace(/\s+/g, '').replace(/\./g, '');
+  const m = t.match(/^(\d{1,2})(?::?(\d{2}))?(a|am|p|pm)?$/);
+  if (!m) return null;
+  let h = Number(m[1]);
+  const min = m[2] ? Number(m[2]) : 0;
+  if (min > 59) return null;
+  if (m[3]) {
+    if (h < 1 || h > 12) return null;
+    h = (h % 12) + (m[3].startsWith('p') ? 12 : 0);
+  } else if (h > 23) return null;
+  return h * 60 + min;
+}

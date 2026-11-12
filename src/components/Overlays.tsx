@@ -13,6 +13,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  ScrollView,
   Share,
   StyleSheet,
   Text,
@@ -21,7 +22,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { clock, clockBare, dur, durShort, rateShort } from '../logic/format';
-import { TODAY_LABEL, TODAY_STOP } from '../logic/sampleData';
+import { TODAY_LABEL } from '../logic/sampleData';
+import { placeOf } from '../logic/state';
 import { islandCopy } from '../logic/island';
 import { apptOf, stopCalc, type FixDraft } from '../logic/stop';
 import { useStore } from '../state/AppStore';
@@ -47,7 +49,16 @@ function useEnter(duration: number) {
   return v;
 }
 
-export function SheetShell({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+export function SheetShell({
+  onClose,
+  children,
+  scroll,
+}: {
+  onClose: () => void;
+  children: ReactNode;
+  /** Long content (editing a load's stops) scrolls inside the sheet. */
+  scroll?: boolean;
+}) {
   const { footerBottom } = useInsets();
   const fade = useEnter(180);
   const up = useEnter(220);
@@ -67,7 +78,13 @@ export function SheetShell({ onClose, children }: { onClose: () => void; childre
           ]}
         >
           <View style={styles.grab} />
-          {children}
+          {scroll ? (
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
+              {children}
+            </ScrollView>
+          ) : (
+            children
+          )}
         </Animated.View>
       </KeyboardAvoidingView>
     </Animated.View>
@@ -165,7 +182,7 @@ function ArrivalSheet() {
   const r = s.rules;
   return (
     <SheetShell onClose={() => {}}>
-      <T v="h2">You’re at {TODAY_STOP.name}</T>
+      <T v="h2">You’re at {placeOf(s.load).name}</T>
       <Gap h={6} />
       <T v="bodySmall">Pulled in at {clock(arrive)}. Start the clock?</T>
       <Gap h={14} />
@@ -235,11 +252,7 @@ function Toast({ text, atTop }: { text: string; atTop?: boolean }) {
 function useIslandContent() {
   const { s } = useStore();
   const stg = useIslandStage();
-  const copy = islandCopy(stg, s.stop, s.now, s.rules, {
-    name: TODAY_STOP.name,
-    short: TODAY_STOP.short,
-    load: s.load?.number ?? TODAY_STOP.load,
-  });
+  const copy = islandCopy(stg, s.stop, s.now, s.rules, placeOf(s.load));
   return copy ? { ...copy, stg } : null;
 }
 
@@ -347,9 +360,10 @@ function LockActivity({
   /** Pinned to the top (E4 banner) instead of above the bottom of the lock screen. */
   top?: boolean;
 }) {
+  const { s } = useStore();
   return (
     <View style={[styles.lockCard, styles.lockActivity, top && styles.lockActivityTop]}>
-      <Text style={[type.labelSmall, { color: color.sub }]}>Docket · {TODAY_STOP.name}</Text>
+      <Text style={[type.labelSmall, { color: color.sub }]}>Docket · {placeOf(s.load).name}</Text>
       <View style={styles.lockActivityRow}>
         <View style={{ gap: 2 }}>
           <T v="bodyStrong">{title}</T>
@@ -425,7 +439,7 @@ function LockScreen() {
               <View style={[styles.lead, { width: 24, height: 24 }]}>
                 <TruckIcon size={14} />
               </View>
-              <T v="labelSmall">Docket · {TODAY_STOP.name}</T>
+              <T v="labelSmall">Docket · {placeOf(s.load).name}</T>
             </Row>
             <Gap h={12} />
             <Row base>
@@ -460,7 +474,7 @@ function SiriScreen() {
         <LockActivity
           top
           title={`Checked in · ${clock(s.stop.checkin ?? s.now)}`}
-          line={`${TODAY_STOP.name} · free time ends ${clock(c.freeEnd)}`}
+          line={`${placeOf(s.load).name} · free time ends ${clock(c.freeEnd)}`}
           buttons={[{ label: 'Undo', onPress: a.undoCheckIn }]}
         />
         <Text style={[type.h2, styles.siriQuote]}>“Hey Siri, I checked in”</Text>
@@ -493,6 +507,7 @@ export function Overlays() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   keyboard: { width: '100%', maxHeight: '92%' },
+  sheetScroll: { flexGrow: 0, flexShrink: 1 },
   scrim: { backgroundColor: protoColor.scrim, zIndex: 40, justifyContent: 'flex-end' },
   sheet: {
     width: '100%',

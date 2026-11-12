@@ -2,7 +2,7 @@
  * The persisted app state (what v1 kept in localStorage under "docket-v1").
  */
 import { defaultRules, type Rules } from './detention';
-import { APPT, START_NOW, type LoadStop, type Marks } from './sampleData';
+import { APPT, START_NOW, TODAY_STOP, type LoadStop, type Marks } from './sampleData';
 import { freshStop, type Stop } from './stop';
 
 export type PayType = 'mile' | 'hour' | 'load';
@@ -14,8 +14,8 @@ export type RulesCheck = 'matches' | 'different' | 'unsure';
 /** Today's load once the driver has checked its stops. */
 export interface ActiveLoad {
   number: string;
-  /** How it came in (Figma B1). */
-  source: 'share' | 'email';
+  /** How it came in (Figma B1), or typed in by the driver. */
+  source: 'share' | 'email' | 'manual';
   /**
    * Dedicated route ("Same stops every week"): the stops were set up once and
    * Docket watches them on every run without the driver adding a load.
@@ -32,6 +32,31 @@ export function watchedStop(load: ActiveLoad | null): LoadStop | undefined {
 
 /** Appointment at the watched stop (2:00 PM for older saved data). */
 export const loadAppt = (load: ActiveLoad | null): number => watchedStop(load)?.at ?? APPT;
+
+/** The facility Docket is watching today, for headings, the island and the lock screen. */
+export interface Place {
+  name: string;
+  short: string;
+  /** Load number ("" if the driver didn't enter one). */
+  load: string;
+  /** What other drivers report waiting here. Only the sample facility has this for now. */
+  typical: { label: string; min: number } | null;
+}
+
+/** "Harbor Foods DC" → "Harbor Foods". Drops a trailing DC / warehouse word for tight spots. */
+export const shortName = (name: string): string =>
+  name.replace(/\s+(DC|D\.C\.|Distribution Center|Warehouse|Whse)$/i, '').trim() || name;
+
+export function placeOf(load: ActiveLoad | null): Place {
+  const name = watchedStop(load)?.name.trim() || TODAY_STOP.name;
+  const sample = name === TODAY_STOP.name;
+  return {
+    name,
+    short: sample ? TODAY_STOP.short : shortName(name),
+    load: load?.number ?? TODAY_STOP.load,
+    typical: sample ? { label: TODAY_STOP.typicalWait, min: TODAY_STOP.typicalWaitMin } : null,
+  };
+}
 
 /** Dedicated-route drivers set their stops once instead of adding a load each day (Figma A3 note). */
 export const setsStopsOnce = (style: LoadStyle | null): boolean => style === 'same';

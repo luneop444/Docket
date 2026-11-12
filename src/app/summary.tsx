@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
 import { Button, Card, Fake, Gap, Row, T } from '../components/ui';
 import { clock, dur, money } from '../logic/format';
-import { TODAY_STOP } from '../logic/sampleData';
+import { placeOf } from '../logic/state';
 import { sampleBolTimes, stopCalc } from '../logic/stop';
 import { useStore } from '../state/AppStore';
 import { color, fontFamily, type } from '../theme/tokens';
@@ -50,9 +50,9 @@ export default function StopSummary() {
         </>
       }
     >
-      <T v="bodySmall">Stop logged for load {TODAY_STOP.load}</T>
+      <T v="bodySmall">Stop logged{placeOf(s.load).load ? ` for load ${placeOf(s.load).load}` : ''}</T>
       <Gap h={8} />
-      <T v="h2">{TODAY_STOP.name}</T>
+      <T v="h2">{placeOf(s.load).name}</T>
       <Gap h={16} />
       <Card>
         <View style={styles.thead}>

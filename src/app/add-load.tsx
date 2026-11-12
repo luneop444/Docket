@@ -8,7 +8,7 @@ import { setsStopsOnce } from '../logic/state';
 import { useStore } from '../state/AppStore';
 import { color } from '../theme/tokens';
 
-type Source = 'share' | 'email';
+type Source = 'share' | 'email' | 'manual';
 
 /**
  * Figma B1 Add a load: share it the way it came in, no typing addresses.
@@ -48,13 +48,22 @@ export default function AddLoad() {
           selected={source === 'email'}
           onPress={() => setSource('email')}
         />
+        <Option
+          radio
+          label="Type it in yourself"
+          sub="Facility names and appointment times. Takes a minute."
+          selected={source === 'manual'}
+          onPress={() => setSource('manual')}
+        />
       </View>
       <Gap h={16} />
       {weekly ? null : <T v="bodyTiny">Been here before? Pick a recent stop: {RECENT_STOPS.join(', ')}.</T>}
       <Gap h={20} />
-      <T v="bodyTiny">
-        <Fake /> Continue stands in for receiving a shared rate con. Docket fills in a sample load.
-      </T>
+      {source === 'manual' ? null : (
+        <T v="bodyTiny">
+          <Fake /> Continue stands in for receiving a shared rate con. Docket fills in a sample load.
+        </T>
+      )}
     </Screen>
   );
 }
