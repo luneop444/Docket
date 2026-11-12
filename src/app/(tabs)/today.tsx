@@ -5,7 +5,8 @@ import { LiveCard } from '../../components/LiveCard';
 import { Timeline, type TimelineEvent } from '../../components/Timeline';
 import { Button, Card, Fake, Gap, Hr, Pill, ProtoControls, Row, T, TimeBar } from '../../components/ui';
 import { clock, dur, money } from '../../logic/format';
-import { WATCH_LEAD_MIN, WEEK } from '../../logic/sampleData';
+import { payWeeks } from '../../logic/history';
+import { WATCH_LEAD_MIN } from '../../logic/sampleData';
 import { weekTotals } from '../../logic/settlement';
 import { loadAppt, placeOf, setsStopsOnce } from '../../logic/state';
 import { dockTimeline, stopCalc } from '../../logic/stop';
@@ -24,7 +25,8 @@ export default function Today() {
 function NotAtDock() {
   const { s, a } = useStore();
   const st = s.stop;
-  const week = weekTotals(WEEK, s.rules, s.marks);
+  const payWeek = payWeeks(s.history)[0];
+  const week = weekTotals(payWeek.loads, s.rules, s.marks);
   const c = stopCalc(st, s.now, s.rules);
   const weekly = setsStopsOnce(s.loadStyle);
   const place = placeOf(s.load);
@@ -126,7 +128,7 @@ function NotAtDock() {
       )}
       <Gap h={12} />
       <Card onPress={() => router.navigate('/paycheck')}>
-        <T v="bodyTiny">Last week</T>
+        <T v="bodyTiny">{payWeek.sample ? 'Last week' : payWeek.label}</T>
         <Gap h={8} />
         <Row base>
           <T v="numberL">{money(week.expected)}</T>
@@ -134,7 +136,8 @@ function NotAtDock() {
         </Row>
         <Gap h={8} />
         <T v="bodySmall">
-          detention expected from {dur(week.wait)} waiting at {WEEK.length} stops
+          detention expected from {dur(week.wait)} waiting at {payWeek.loads.length} stop
+          {payWeek.loads.length === 1 ? '' : 's'}
         </T>
       </Card>
       {!s.load ? null : (

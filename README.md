@@ -27,9 +27,16 @@ npm run build:web        # static web export to dist/ (what Netlify deploys)
 - `src/state/` – app state (AsyncStorage) and the simulated clock
 - `assets/fonts/` – Google Sans Flex (SIL Open Font License, see `OFL.txt`)
 
-All data stays on the device (AsyncStorage). GPS, time passing, document
-reading, Siri and the Dynamic Island are simulated in the prototype and
-marked "Faked" in the UI.
+All data stays on the device (AsyncStorage).
+
+Real today: type in a load (Add a load → Type it in yourself), tap "I'm here"
+when you pull in and "I left" when you go. The stop is timed with the phone's
+clock (it keeps counting if the app is closed), saved to your history, and the
+Paycheck tab checks those stops week by week (Monday to Sunday).
+
+Still simulated and marked "Faked" in the UI: GPS arriving and leaving, the
+60× clock behind the prototype controls, reading rate cons, BOLs and
+settlements, company data, Siri and the Dynamic Island.
 
 ## iOS
 

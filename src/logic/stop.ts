@@ -31,6 +31,8 @@ export interface Stop {
   live?: boolean;
   /** Epoch ms of local midnight on the day a live stop started. */
   dayStart?: number;
+  /** Live stops: id of its history entry (the epoch ms it started). */
+  id?: string;
 }
 
 /** Epoch ms of local midnight on the day of `ms`. */
@@ -58,6 +60,7 @@ export function startLiveStop(ms: number, appt: number): Stop {
     ...freshStop(),
     phase: 'dock',
     live: true,
+    id: String(ms),
     dayStart,
     arrive,
     appt: appt + 12 * 60 < arrive ? appt + 24 * 60 : appt,

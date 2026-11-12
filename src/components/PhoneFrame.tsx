@@ -101,7 +101,7 @@ function Aside() {
           'GPS arriving and leaving (buttons)',
           'Time runs 60× faster (prototype controls only)',
           'Reading the rate con, BOL and settlement (sample results)',
-          'Company list and wait data (made-up)',
+          'Company list, wait data and the first paycheck week (made-up)',
           'The Dynamic Island / lock screen Live Activity is drawn by the page, not iOS',
           'Siri check-in (a button stands in for the voice command)',
         ]}
@@ -111,6 +111,7 @@ function Aside() {
         items={[
           'Rules you enter drive every number',
           '“I’m here” and “I left” time a stop with your phone’s real clock',
+          'Loads you type in, and the Paycheck check built from the stops you timed',
           'Camera for the BOL photo',
           'The message opens your own text app with the claim filled in',
         ]}

@@ -4,7 +4,7 @@
  */
 import { calc, rulesLine, type DetentionResult, type Rules } from './detention';
 import { clock, dur, money } from './format';
-import type { Marks, WeekLoad } from './sampleData';
+import { loadNo, type Marks, type WeekLoad } from './sampleData';
 
 export interface FlaggedLoad {
   l: WeekLoad;
@@ -56,7 +56,7 @@ export function cleanAmount(v: string): string {
 
 export function claimText(totals: WeekTotals, rules: Rules, weekLabel: string): string {
   const lines = totals.flagged.map(({ l, c, got }) =>
-    `Load ${l.id}, ${l.name} (${l.day}): arrived ${clock(l.arrive)}, left ${clock(l.leave)}. ` +
+    `${loadNo(l) ? `Load ${loadNo(l)}, ` : ''}${l.name} (${l.day}): arrived ${clock(l.arrive)}, left ${clock(l.leave)}. ` +
     `That’s ${dur(c.paidMin)} past free time, so ${money(c.owed)} by our policy. ` +
     (got > 0 ? `My settlement shows ${money(got)}.` : 'It’s not on my settlement.'),
   );

@@ -10,14 +10,8 @@ import {
   type ReactNode,
 } from 'react';
 import type { Rules } from '../logic/detention';
-import {
-  COMPANIES,
-  SAMPLE_SETTLEMENT,
-  SIM_MINUTES_PER_SECOND,
-  START_NOW,
-  WEEK,
-  WEEK_LABEL,
-} from '../logic/sampleData';
+import { toLogged, upsert, type PayWeek } from '../logic/history';
+import { COMPANIES, SAMPLE_SETTLEMENT, SIM_MINUTES_PER_SECOND, START_NOW } from '../logic/sampleData';
 import { claimText, cleanAmount, weekTotals } from '../logic/settlement';
 import {
   parseState,
@@ -51,6 +45,13 @@ interface Ui {
 }
 
 const UNDO_SECONDS = 10;
+
+/** Keep a finished live stop in the history (prototype stops aren't kept). */
+function saveToHistory(s: AppState): AppState {
+  const place = placeOf(s.load);
+  const entry = s.stop.phase === 'logged' ? toLogged(s.stop, place.name, place.load) : null;
+  return entry ? { ...s, history: upsert(s.history, entry) } : s;
+}
 
 const remember = (places: string[], name: string) => (places.includes(name) ? places : [...places, name]);
 
@@ -185,7 +186,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         flashIsland();
       },
       logStop: (bol: boolean) => {
-        setS((s) => ({ ...s, stop: { ...s.stop, bol, phase: 'logged' } }));
+        setS((s) => saveToHistory({ ...s, stop: { ...s.stop, bol, phase: 'logged' } }));
         flashIsland();
       },
       restartStop: () => {
@@ -203,7 +204,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
       fixStep: (k: 'arrive' | 'leave' | 'brk', dir: 1 | -1) =>
         setUi((u) => (u.sheet?.kind === 'fix' ? { ...u, sheet: { kind: 'fix', draft: stepFix(u.sheet.draft, k, dir) } } : u)),
       saveFix: (d: FixDraft) => {
-        setS((s) => ({ ...s, stop: applyFix(s.stop, d) }));
+        setS((s) => saveToHistory({ ...s, stop: applyFix(s.stop, d) }));
         setUi((u) => ({ ...u, sheet: null }));
         toast('Time fixed. The GPS time stays on record.');
       },
@@ -217,9 +218,9 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         setS((s) => ({ ...s, marks: JSON.parse(JSON.stringify(SAMPLE_SETTLEMENT)), sent: false }));
         toast('Sample settlement read. Check each load.');
       },
-      openMessage: () => {
+      openMessage: (week: PayWeek) => {
         const s = sRef.current;
-        const text = claimText(weekTotals(WEEK, s.rules, s.marks), s.rules, WEEK_LABEL);
+        const text = claimText(weekTotals(week.loads, s.rules, s.marks), s.rules, week.label);
         setUi((u) => ({ ...u, sheet: { kind: 'message', text } }));
       },
       markSent: () => {
@@ -229,6 +230,14 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
       setAnon: (anon: AppState['anon']) => {
         setS((s) => ({ ...s, anon }));
         toast('Thanks. Added anonymously.');
+      },
+      /** Take a logged stop out of the paycheck check (a test tap, a stop that wasn't one). */
+      removeLogged: (id: string) => {
+        setS((s) => {
+          const { [id]: _gone, ...marks } = s.marks;
+          return { ...s, history: s.history.filter((h) => h.id !== id), marks };
+        });
+        toast('Stop removed.');
       },
       setSort: (sort: AppState['sort']) => setS((s) => ({ ...s, sort })),
 

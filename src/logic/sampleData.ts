@@ -77,7 +77,10 @@ export const COMPANIES: Company[] = [
 ];
 
 export interface WeekLoad {
+  /** Key for settlement marks. For the sample week it's also the load number. */
   id: string;
+  /** Load number when it differs from `id` (logged stops). */
+  number?: string;
   name: string;
   day: string;
   arrive: number;
@@ -93,6 +96,9 @@ export const WEEK: WeekLoad[] = [
   { id: '48240', name: 'Lehigh Grocery DC', day: 'Wed Oct 28', arrive: 13 * 60 + 15, appt: 13 * 60 + 15, leave: 19 * 60, brk: 0 },
   { id: '48251', name: 'Valley Paper Co.', day: 'Thu Oct 29', arrive: 10 * 60 + 5, appt: 10 * 60, leave: 11 * 60 + 40, brk: 0 },
 ];
+
+/** The load number to show for a week's load, or "" if the driver didn't enter one. */
+export const loadNo = (l: WeekLoad): string => l.number ?? (/^\d{1,8}$/.test(l.id) ? l.id : '');
 
 export type Mark = { m: 'paid' | 'less' | 'none'; amt?: string };
 export type Marks = Record<string, Mark>;

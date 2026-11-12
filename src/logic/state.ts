@@ -3,6 +3,7 @@
  */
 import { defaultRules, type Rules } from './detention';
 import { APPT, START_NOW, TODAY_STOP, type LoadStop, type Marks } from './sampleData';
+import type { LoggedStop } from './history';
 import { freshStop, type Stop } from './stop';
 
 export type PayType = 'mile' | 'hour' | 'load';
@@ -84,6 +85,8 @@ export interface AppState {
   anon: AnonAnswer | null;
   sort: CompanySort;
   islandAlerted: boolean;
+  /** Stops logged with the real clock, newest first. */
+  history: LoggedStop[];
 }
 
 export const STORAGE_KEY = 'docket-v1';
@@ -106,6 +109,7 @@ export const freshState = (): AppState => ({
   anon: null,
   sort: 'wait',
   islandAlerted: false,
+  history: [],
 });
 
 /** Parse stored JSON, falling back to a fresh state if it's missing or broken. */
