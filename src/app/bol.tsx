@@ -1,13 +1,16 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
 import { CameraIcon } from '../components/Icons';
-import { Button, Fake, Gap, T } from '../components/ui';
+import { Button, Gap, T } from '../components/ui';
 import { clock } from '../logic/format';
 import { placeOf } from '../logic/state';
+import { bolFromReading } from '../logic/stop';
 import { useStore } from '../state/AppStore';
-import { color } from '../theme/tokens';
+import { BolReadError, readBol } from '../state/readBol';
+import { color, protoColor } from '../theme/tokens';
 
 /** Opens the camera (phone) or file picker (desktop). Falls back to the photo library. */
 async function takePhoto(): Promise<string | null> {
@@ -35,8 +38,27 @@ export default function SnapBol() {
       a.toast('Couldn’t open the camera.');
     }
   }
+  const [reading, setReading] = useState(false);
+
   function done(bol: boolean) {
     a.logStop(bol);
+    router.replace('/summary');
+  }
+
+  /** Read the times off the photo, then log the stop. If reading fails the photo still counts. */
+  async function readPhoto(uri: string) {
+    setReading(true);
+    try {
+      const r = await readBol(uri);
+      a.logStop(true, bolFromReading(s.stop, r));
+      if (!r.found) a.toast(r.note || 'No times found on the BOL.');
+    } catch (e) {
+      // Prototype stops fall back to the sample reading; real stops keep the photo without times.
+      a.logStop(true);
+      a.toast(e instanceof BolReadError ? e.message : 'Couldn’t read the BOL. The photo is kept with the stop.');
+    } finally {
+      setReading(false);
+    }
     router.replace('/summary');
   }
 
@@ -46,8 +68,12 @@ export default function SnapBol() {
       footer={
         ui.photoUri ? (
           <>
-            <Button label="Use this photo" onPress={() => done(true)} />
-            <Button label="Retake" variant="text" onPress={pick} />
+            <Button
+              label={reading ? 'Reading the times…' : 'Use this photo'}
+              disabled={reading}
+              onPress={() => readPhoto(ui.photoUri as string)}
+            />
+            <Button label="Retake" variant="text" disabled={reading} onPress={pick} />
           </>
         ) : (
           <>
@@ -68,17 +94,24 @@ export default function SnapBol() {
       <Gap h={16} />
       <Pressable accessibilityRole="button" accessibilityLabel="Take a photo of your BOL" onPress={pick} style={styles.photo}>
         {ui.photoUri ? (
-          <Image source={{ uri: ui.photoUri }} style={styles.img} accessibilityLabel="Your BOL photo" />
+          <>
+            <Image source={{ uri: ui.photoUri }} style={styles.img} accessibilityLabel="Your BOL photo" />
+            {reading ? (
+              <View style={styles.reading}>
+                <ActivityIndicator color={color.bg} />
+              </View>
+            ) : null}
+          </>
         ) : (
           <View style={{ alignItems: 'center', gap: 6 }}>
             <CameraIcon />
-            <T v="bodySmall">The photo stays on your phone.</T>
+            <T v="bodySmall">Tap to take a photo</T>
           </View>
         )}
       </Pressable>
       <Gap h={12} />
       <T v="bodyTiny">
-        <Fake /> Reading the in and out times off the photo uses a sample result for now.
+        Claude reads the times off the photo. The photo isn’t saved anywhere, and only the times stay on your phone.
       </T>
     </Screen>
   );
@@ -95,4 +128,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   img: { width: '100%', height: '100%', resizeMode: 'cover' },
+  reading: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: protoColor.scrim,
+  },
 });

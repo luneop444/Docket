@@ -5,7 +5,7 @@ import { BackBar, Screen } from '../components/Chrome';
 import { Button, Card, Fake, Gap, Row, T } from '../components/ui';
 import { clock, dur, money } from '../logic/format';
 import { placeOf } from '../logic/state';
-import { sampleBolTimes, stopCalc } from '../logic/stop';
+import { bolGap, bolTimesOf, stopCalc } from '../logic/stop';
 import { useStore } from '../state/AppStore';
 import { color, fontFamily, type } from '../theme/tokens';
 
@@ -37,7 +37,8 @@ export default function StopSummary() {
   const { s, a } = useStore();
   const st = s.stop;
   const c = stopCalc(st, s.now, s.rules);
-  const bol = sampleBolTimes(st);
+  const bol = bolTimesOf(st);
+  const gap = bolGap(st);
   const orig = st.edited;
 
   return (
@@ -59,15 +60,21 @@ export default function StopSummary() {
           <Text style={[styles.th, styles.first]} />
           <Text style={styles.th}>Location</Text>
           <Text style={styles.th}>
-            BOL {st.bol ? <Fake label="Sample" /> : null}
+            BOL {bol?.sample ? <Fake label="Sample" /> : null}
           </Text>
         </View>
-        <TRow label="In" loc={<TimeCell cur={st.arrive} orig={orig?.arrive} />} bol={bol ? <TimeCell cur={bol.in} /> : <None />} />
+        <TRow label="In" loc={<TimeCell cur={st.arrive} orig={orig?.arrive} />} bol={bol && bol.in != null ? <TimeCell cur={bol.in} /> : <None />} />
         <TRow label="Checked in" loc={<TimeCell cur={st.checkin} />} bol={<None text="—" />} />
         {st.brk ? <TRow label="Off-duty break" loc={<Text style={styles.td}>{dur(st.brk)}</Text>} bol={<None text="—" />} /> : null}
-        <TRow label="Out" loc={<TimeCell cur={st.leave} orig={orig?.leave} />} bol={bol ? <TimeCell cur={bol.out} /> : <None />} />
+        <TRow label="Out" loc={<TimeCell cur={st.leave} orig={orig?.leave} />} bol={bol && bol.out != null ? <TimeCell cur={bol.out} /> : <None />} />
         <T v="bodyTiny" style={{ marginTop: 8 }}>
-          {st.bol ? 'Location and BOL times agree within a few minutes.' : 'Location times only. No BOL photo.'}
+          {!st.bol
+            ? 'Location times only. No BOL photo.'
+            : gap == null
+              ? `No times read off the BOL.${st.bolTimes?.note ? ` ${st.bolTimes.note}` : ''}`
+              : gap <= 15
+                ? `Location and BOL times agree within ${Math.max(1, Math.round(gap))} minute${Math.round(gap) > 1 ? 's' : ''}.`
+                : `Location and BOL times are ${dur(gap)} apart. Your company may go by the BOL; fix a time if location was off.`}
           {orig ? ' You fixed a time; the original location record is kept.' : ''}
         </T>
       </Card>

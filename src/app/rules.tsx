@@ -80,8 +80,9 @@ export default function YourRules() {
         <Gap h={8} />
         <T v="bodySmall">
           Prototype v2 for AIxD Project 3. Real: your rules and the detention math, loads you type in, stops timed
-          with your phone’s clock and location, the paycheck check, the camera and the message to your fleet manager.
-          Simulated: background location, the prototype controls, settlement reading and company data.
+          with your phone’s clock and location, the paycheck check, reading your BOL photo and the message to your fleet
+          manager. Simulated: background location, the prototype controls, rate con and settlement reading, and company
+          data.
         </T>
         <Gap h={12} />
         <Button

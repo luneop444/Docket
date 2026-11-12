@@ -34,9 +34,30 @@ when you pull in and "I left" when you go. The stop is timed with the phone's
 clock (it keeps counting if the app is closed), saved to your history, and the
 Paycheck tab checks those stops week by week (Monday to Sunday).
 
-Still simulated and marked "Faked" in the UI: GPS arriving and leaving, the
-60× clock behind the prototype controls, reading rate cons, BOLs and
-settlements, company data, Siri and the Dynamic Island.
+With location allowed, the first "I'm here" at a facility saves where it is;
+after that Docket starts the clock on its own when you pull in and asks when
+you drive away (only while the app is open; background tracking needs the
+iPhone build).
+
+A BOL photo is shrunk and sent to `netlify/functions/read-bol.mts`, which asks
+Claude for the facility's in and out times. The photo isn't stored.
+
+Still simulated and marked "Faked" in the UI: background location, the 60×
+clock behind the prototype controls, reading rate cons and settlements,
+company data, Siri and the Dynamic Island.
+
+## Reading BOLs (Claude API key)
+
+The key lives only in Netlify, never in the app or the repo:
+
+1. Get an API key at https://platform.claude.com (Settings → API keys).
+2. Netlify → the site → Site configuration → Environment variables → Add
+   `ANTHROPIC_API_KEY` (scope: Functions). Redeploy.
+
+Without the key the app still works: the photo is kept and the summary says no
+times were read. Locally, `npx expo start --web` has no functions; to try the
+reader locally use `npx netlify-cli dev` with the key in `.env` (see
+`.env.example`; `.env` is git-ignored).
 
 ## iOS
 

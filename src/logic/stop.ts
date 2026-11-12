@@ -33,6 +33,14 @@ export interface Stop {
   dayStart?: number;
   /** Live stops: id of its history entry (the epoch ms it started). */
   id?: string;
+  /** Times read off the BOL photo (minutes, on the same scale as `arrive`), and what the reader said. */
+  bolTimes?: BolTimes;
+}
+
+export interface BolTimes {
+  in: number | null;
+  out: number | null;
+  note: string;
 }
 
 /** Epoch ms of local midnight on the day of `ms`. */
@@ -101,6 +109,47 @@ export function islandStage(stop: Stop, now: number, rules: Rules, onSummary: bo
 export function sampleBolTimes(stop: Stop): { in: number; out: number } | null {
   if (!stop.bol || stop.arrive == null || stop.leave == null) return null;
   return { in: stop.arrive + 2, out: stop.leave - 2 };
+}
+
+/** "14:05" → 845, or null. */
+export function parseHHMM(s: string | null | undefined): number | null {
+  const m = s?.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+/** A time of day placed on the same day as `near` (or the day after/before), whichever is closest. */
+export function alignToStop(m: number, near: number): number {
+  return [m - 1440, m, m + 1440].reduce((best, x) => (Math.abs(x - near) < Math.abs(best - near) ? x : best));
+}
+
+/** Turn the reader's "HH:MM" answer into stop times. */
+export function bolFromReading(stop: Stop, r: { in: string | null; out: string | null; note: string }): BolTimes {
+  const i = parseHHMM(r.in);
+  const o = parseHHMM(r.out);
+  return {
+    in: i == null ? null : alignToStop(i, stop.arrive ?? i),
+    out: o == null ? null : alignToStop(o, stop.leave ?? stop.arrive ?? o),
+    note: r.note,
+  };
+}
+
+/** BOL times to show: what was read, or the sample result for a prototype stop with a photo. */
+export function bolTimesOf(stop: Stop): { in: number | null; out: number | null; sample: boolean } | null {
+  if (stop.bolTimes) return { in: stop.bolTimes.in, out: stop.bolTimes.out, sample: false };
+  const s = stop.live ? null : sampleBolTimes(stop);
+  return s ? { ...s, sample: true } : null;
+}
+
+/** Largest gap in minutes between location and BOL times, or null if there's nothing to compare. */
+export function bolGap(stop: Stop): number | null {
+  const b = bolTimesOf(stop);
+  if (!b) return null;
+  const gaps = [
+    b.in != null && stop.arrive != null ? Math.abs(b.in - stop.arrive) : null,
+    b.out != null && stop.leave != null ? Math.abs(b.out - stop.leave) : null,
+  ].filter((g): g is number => g != null);
+  return gaps.length ? Math.max(...gaps) : null;
 }
 
 export interface DockEvent {

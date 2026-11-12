@@ -24,7 +24,7 @@ import {
   type AppState,
   type LocationMode,
 } from '../logic/state';
-import { applyFix, freshStop, startLiveStop, stepFix, stopCalc, stopNow, type FixDraft } from '../logic/stop';
+import { applyFix, type BolTimes, freshStop, startLiveStop, stepFix, stopCalc, stopNow, type FixDraft } from '../logic/stop';
 import { clockBare } from '../logic/format';
 
 export type Sheet =
@@ -213,8 +213,8 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         setUi((u) => ({ ...u, undo: null, sheet: u.sheet?.kind === 'left' ? null : u.sheet }));
         flashIsland();
       },
-      logStop: (bol: boolean) => {
-        setS((s) => saveToHistory({ ...s, stop: { ...s.stop, bol, phase: 'logged' } }));
+      logStop: (bol: boolean, bolTimes?: BolTimes) => {
+        setS((s) => saveToHistory({ ...s, stop: { ...s.stop, bol, bolTimes, phase: 'logged' } }));
         flashIsland();
       },
       restartStop: () => {

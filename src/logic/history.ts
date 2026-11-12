@@ -19,6 +19,9 @@ export interface LoggedStop {
   leave: number;
   brk: number;
   bol: boolean;
+  /** Times read off the BOL photo, if any. */
+  bolIn?: number | null;
+  bolOut?: number | null;
 }
 
 export interface PayWeek {
@@ -72,6 +75,8 @@ export function toLogged(stop: Stop, place: string, load: string): LoggedStop | 
     leave: stop.leave,
     brk: stop.brk,
     bol: stop.bol,
+    bolIn: stop.bolTimes?.in ?? null,
+    bolOut: stop.bolTimes?.out ?? null,
   };
 }
 

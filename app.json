@@ -31,8 +31,8 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Docket uses the camera to photograph your signed bill of lading. The photo stays on your phone.",
-          "photosPermission": "Docket lets you pick a photo of your bill of lading. The photo stays on your phone.",
+          "cameraPermission": "Docket uses the camera to photograph your signed bill of lading, so it can read the in and out times. The photo isn't saved.",
+          "photosPermission": "Docket lets you pick a photo of your bill of lading, so it can read the in and out times. The photo isn't saved.",
           "microphonePermission": false
         }
       ],
