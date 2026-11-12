@@ -24,6 +24,44 @@ export interface Stop {
   bol: boolean;
   /** Appointment at this stop (minutes after midnight), from the load. Missing in data saved before loads had stops. */
   appt?: number;
+  /**
+   * Timed with the phone's real clock ("I'm here"), not the prototype's fast
+   * clock. Times are then minutes after local midnight of `dayStart`.
+   */
+  live?: boolean;
+  /** Epoch ms of local midnight on the day a live stop started. */
+  dayStart?: number;
+}
+
+/** Epoch ms of local midnight on the day of `ms`. */
+export function localMidnight(ms: number): number {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/** Minutes after `dayStart` (can pass 24 * 60 when a stop runs past midnight). */
+export const minutesSince = (dayStart: number, ms: number): number => (ms - dayStart) / 60000;
+
+/** The current time for a stop: real minutes for a live stop, otherwise the simulated clock. */
+export const stopNow = (stop: Stop, simNow: number, ms: number): number =>
+  stop.live && stop.dayStart != null ? minutesSince(stop.dayStart, ms) : simNow;
+
+/**
+ * Start a live stop at real time `ms`. An appointment that reads more than 12
+ * hours before arrival is taken to be after midnight.
+ */
+export function startLiveStop(ms: number, appt: number): Stop {
+  const dayStart = localMidnight(ms);
+  const arrive = Math.floor(minutesSince(dayStart, ms));
+  return {
+    ...freshStop(),
+    phase: 'dock',
+    live: true,
+    dayStart,
+    arrive,
+    appt: appt + 12 * 60 < arrive ? appt + 24 * 60 : appt,
+  };
 }
 
 export const apptOf = (stop: Stop): number => stop.appt ?? APPT;

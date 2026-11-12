@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
 import { clock, hm, money, rateShort } from '../logic/format';
 import { colorDark, radius, type } from '../theme/tokens';
@@ -85,7 +85,7 @@ export function LiveCard({
 }
 
 function PulseDot({ live }: { live: boolean }) {
-  const v = useRef(new Animated.Value(1)).current;
+  const [v] = useState(() => new Animated.Value(1));
   useEffect(() => {
     if (!live) return;
     const loop = Animated.loop(

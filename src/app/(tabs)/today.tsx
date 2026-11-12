@@ -85,6 +85,10 @@ function NotAtDock() {
             <T v="bodyTiny">
               Location is on only near this stop. It turns off after your last stop. <Fake label="Sample data" />
             </T>
+            <Gap h={16} />
+            <Button label="I’m here, start the clock" small onPress={a.arriveNow} />
+            <Gap h={8} />
+            <T v="bodyTiny">Tap when you pull in. Docket times the stop with your phone’s clock.</T>
           </Card>
         </>
       ) : (
@@ -181,31 +185,54 @@ function AtTheDock() {
       />
       <Gap h={20} />
       <Timeline events={events} />
-      <ProtoControls
-        note={
-          <>
-            Prototype controls. These stand in for time passing and GPS. <Fake label="Time runs 60× faster" />
-          </>
-        }
-      >
-        <Row style={{ gap: 8 }}>
-          <Button label="Skip ahead 30 min" variant="quiet" small style={styles.flex} onPress={() => a.skip(30)} />
+      {st.live ? (
+        <>
+          <Gap h={20} />
           <Button
-            label="Leave the facility"
-            variant="quiet"
-            small
-            style={styles.flex}
+            label="I left"
             onPress={() => {
               a.leave();
               router.push('/bol');
             }}
           />
-        </Row>
-        <Button label="Show lock screen" variant="quiet" small onPress={() => a.setLock(true)} />
-        {st.checkin == null ? (
-          <Button label="Say “Hey Siri, I checked in”" variant="quiet" small onPress={a.siriCheckIn} />
-        ) : null}
-      </ProtoControls>
+          <Gap h={8} />
+          <T v="bodyTiny" style={styles.center}>
+            Timed with your phone’s clock since {clock(arrive)}. Keeps counting if you close the app.
+          </T>
+          <ProtoControls note="Prototype controls">
+            <Button label="Show lock screen" variant="quiet" small onPress={() => a.setLock(true)} />
+            {st.checkin == null ? (
+              <Button label="Say “Hey Siri, I checked in”" variant="quiet" small onPress={a.siriCheckIn} />
+            ) : null}
+          </ProtoControls>
+        </>
+      ) : (
+        <ProtoControls
+          note={
+            <>
+              Prototype controls. These stand in for time passing and GPS. <Fake label="Time runs 60× faster" />
+            </>
+          }
+        >
+          <Row style={{ gap: 8 }}>
+            <Button label="Skip ahead 30 min" variant="quiet" small style={styles.flex} onPress={() => a.skip(30)} />
+            <Button
+              label="Leave the facility"
+              variant="quiet"
+              small
+              style={styles.flex}
+              onPress={() => {
+                a.leave();
+                router.push('/bol');
+              }}
+            />
+          </Row>
+          <Button label="Show lock screen" variant="quiet" small onPress={() => a.setLock(true)} />
+          {st.checkin == null ? (
+            <Button label="Say “Hey Siri, I checked in”" variant="quiet" small onPress={a.siriCheckIn} />
+          ) : null}
+        </ProtoControls>
+      )}
     </>
   );
 }
@@ -213,4 +240,5 @@ function AtTheDock() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   kicker: { marginTop: 4, marginBottom: 8 },
+  center: { textAlign: 'center' },
 });

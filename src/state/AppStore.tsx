@@ -29,7 +29,7 @@ import {
   type AppState,
   type LocationMode,
 } from '../logic/state';
-import { applyFix, freshStop, stepFix, stopCalc, type FixDraft } from '../logic/stop';
+import { applyFix, freshStop, startLiveStop, stepFix, stopCalc, stopNow, type FixDraft } from '../logic/stop';
 import { clockBare } from '../logic/format';
 
 export type Sheet =
@@ -125,6 +125,22 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
           flashIsland();
         }
       },
+      /** Real: the driver taps "I'm here" and the stop is timed with the phone's clock. */
+      arriveNow: () => {
+        const ms = Date.now();
+        setS((s) => {
+          const stop = startLiveStop(ms, loadAppt(s.load));
+          return {
+            ...s,
+            stop,
+            now: stopNow(stop, s.now, ms),
+            islandAlerted: false,
+            knownPlaces: s.knownPlaces.includes(TODAY_STOP.name) ? s.knownPlaces : [...s.knownPlaces, TODAY_STOP.name],
+          };
+        });
+        setUi((u) => ({ ...u, undo: null }));
+        flashIsland();
+      },
       /** C2 "Yes, start the clock": remembers the place for next time. */
       confirmArrival: () => {
         setS((s) => ({
@@ -144,10 +160,10 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         setUi((u) => ({ ...u, undo: null }));
         clearTimeout(timers.current.undo);
       },
-      checkIn: () => setS((s) => ({ ...s, stop: { ...s.stop, checkin: s.now } })),
+      checkIn: () => setS((s) => ({ ...s, stop: { ...s.stop, checkin: Math.round(stopNow(s.stop, s.now, Date.now())) } })),
       /** E4: App Intent stand-in. Same safety net as everywhere else: Undo. */
       siriCheckIn: () => {
-        setS((s) => ({ ...s, stop: { ...s.stop, checkin: s.now } }));
+        setS((s) => ({ ...s, stop: { ...s.stop, checkin: Math.round(stopNow(s.stop, s.now, Date.now())) } }));
         setUi((u) => ({ ...u, siri: true }));
       },
       undoCheckIn: () => {
@@ -155,9 +171,13 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         setUi((u) => ({ ...u, siri: false }));
       },
       closeSiri: () => setUi((u) => ({ ...u, siri: false })),
-      skip: (m: number) => setS((s) => ({ ...s, now: s.now + m })),
+      /** Prototype only: a live stop runs on the real clock and can't be skipped. */
+      skip: (m: number) => setS((s) => (s.stop.live ? s : { ...s, now: s.now + m })),
       leave: () => {
-        setS((s) => ({ ...s, stop: { ...s.stop, leave: Math.round(s.now), phase: 'left' } }));
+        setS((s) => {
+          const now = stopNow(s.stop, s.now, Date.now());
+          return { ...s, now, stop: { ...s.stop, leave: Math.max(Math.round(now), (s.stop.arrive ?? 0) + 1), phase: 'left' } };
+        });
         setUi((u) => ({ ...u, undo: null }));
         flashIsland();
       },
@@ -254,13 +274,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     if (s) AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(s)).catch(() => {});
   }, [s]);
 
-  // Simulated time: while at the dock, 1 real second = 1 simulated minute.
+  // While at the dock the clock ticks every second: real time for a live stop,
+  // otherwise the prototype's fast clock (1 real second = 1 simulated minute).
   const atDock = s?.stop.phase === 'dock';
+  const live = !!s?.stop.live;
   useEffect(() => {
     if (!atDock) return;
-    const id = setInterval(() => setS((x) => ({ ...x, now: x.now + SIM_MINUTES_PER_SECOND })), 1000);
+    const tick = () =>
+      setS((x) => ({ ...x, now: x.stop.live ? stopNow(x.stop, x.now, Date.now()) : x.now + SIM_MINUTES_PER_SECOND }));
+    if (live) tick(); // catch up after the app was closed
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [atDock, setS]);
+  }, [atDock, live, setS]);
 
   // When free time runs out, the island auto-expands once (Figma stage 2).
   const inDetention = s && atDock ? s.now >= stopCalc(s.stop, s.now, s.rules).freeEnd : false;

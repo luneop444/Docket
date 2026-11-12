@@ -99,7 +99,7 @@ function Aside() {
       <Bullets
         items={[
           'GPS arriving and leaving (buttons)',
-          'Time runs 60× faster',
+          'Time runs 60× faster (prototype controls only)',
           'Reading the rate con, BOL and settlement (sample results)',
           'Company list and wait data (made-up)',
           'The Dynamic Island / lock screen Live Activity is drawn by the page, not iOS',
@@ -110,6 +110,7 @@ function Aside() {
       <Bullets
         items={[
           'Rules you enter drive every number',
+          '“I’m here” and “I left” time a stop with your phone’s real clock',
           'Camera for the BOL photo',
           'The message opens your own text app with the claim filled in',
         ]}

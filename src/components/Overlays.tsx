@@ -5,7 +5,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, usePathname } from 'expo-router';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   Animated,
   Easing,
@@ -35,7 +35,7 @@ import { Button, Gap, Row, T } from './ui';
    ========================================================= */
 
 function useEnter(duration: number) {
-  const v = useRef(new Animated.Value(0)).current;
+  const [v] = useState(() => new Animated.Value(0));
   useEffect(() => {
     Animated.timing(v, {
       toValue: 1,
@@ -257,10 +257,10 @@ function Island() {
   const stg = content?.stg ?? 0;
   const mode = !content ? 'idle' : ui.expanded ? 'expanded' : 'live';
 
-  const w = useRef(new Animated.Value(ISLAND.idle.w)).current;
-  const h = useRef(new Animated.Value(ISLAND.idle.h)).current;
-  const r = useRef(new Animated.Value(ISLAND.idle.r)).current;
-  const showExp = useRef(new Animated.Value(0)).current;
+  const [w] = useState(() => new Animated.Value(ISLAND.idle.w));
+  const [h] = useState(() => new Animated.Value(ISLAND.idle.h));
+  const [r] = useState(() => new Animated.Value(ISLAND.idle.r));
+  const [showExp] = useState(() => new Animated.Value(0));
   useEffect(() => {
     const t = ISLAND[mode];
     const cfg = { duration: 350, easing: Easing.bezier(0.2, 0.9, 0.25, 1.1), useNativeDriver: false };
