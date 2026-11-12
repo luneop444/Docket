@@ -48,8 +48,8 @@ export default function LocationPermission() {
       </Card>
       <Gap h={20} />
       <T v="bodyTiny">
-        <Fake label="Simulated" /> A web prototype can’t track location in the background. Buttons on the Today screen
-        stand in for arriving and leaving.
+        <Fake label="Web" /> In the browser Docket only sees location while the app is open. It learns each stop the
+        first time you tap “I’m here” there. Background tracking comes with the iPhone app.
       </T>
     </Screen>
   );

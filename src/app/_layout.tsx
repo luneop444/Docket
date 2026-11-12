@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Overlays } from '../components/Overlays';
 import { PhoneFrame } from '../components/PhoneFrame';
 import { AppStoreProvider, useStore } from '../state/AppStore';
+import { LocationWatcher } from '../state/location';
 import { color, fontAssets } from '../theme/tokens';
 
 const ONBOARDING = ['/welcome', '/company', '/company-rules', '/edit-rules', '/loads', '/location'];
@@ -41,6 +42,7 @@ export default function RootLayout() {
           />
           <Overlays />
           <OnboardingGuard />
+          <LocationWatcher />
         </PhoneFrame>
       </AppStoreProvider>
     </SafeAreaProvider>

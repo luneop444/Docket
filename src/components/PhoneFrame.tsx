@@ -98,7 +98,7 @@ function Aside() {
       </View>
       <Bullets
         items={[
-          'GPS arriving and leaving (buttons)',
+          'Background location (the web only sees location while the app is open)',
           'Time runs 60× faster (prototype controls only)',
           'Reading the rate con, BOL and settlement (sample results)',
           'Company list, wait data and the first paycheck week (made-up)',
@@ -112,6 +112,7 @@ function Aside() {
           'Rules you enter drive every number',
           '“I’m here” and “I left” time a stop with your phone’s real clock',
           'Loads you type in, and the Paycheck check built from the stops you timed',
+          'Location while the app is open: starts the clock at stops you’ve been to, asks when you leave',
           'Camera for the BOL photo',
           'The message opens your own text app with the claim filled in',
         ]}

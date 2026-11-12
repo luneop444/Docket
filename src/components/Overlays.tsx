@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { clock, clockBare, dur, durShort, rateShort } from '../logic/format';
 import { TODAY_LABEL } from '../logic/sampleData';
+import { headerDate } from '../logic/history';
 import { placeOf } from '../logic/state';
 import { islandCopy } from '../logic/island';
 import { apptOf, stopCalc, type FixDraft } from '../logic/stop';
@@ -196,6 +197,28 @@ function ArrivalSheet() {
       <Gap h={16} />
       <Button label="Yes, start the clock" onPress={a.confirmArrival} />
       <Button label="Not a stop" variant="text" onPress={a.cancelArrival} />
+    </SheetShell>
+  );
+}
+
+/** Location saw the driver drive away from a live stop. */
+function LeftSheet({ at }: { at: number }) {
+  const { s, a } = useStore();
+  const d = new Date(at);
+  return (
+    <SheetShell onClose={a.stillHere}>
+      <T v="h2">Did you leave {placeOf(s.load).short}?</T>
+      <Gap h={6} />
+      <T v="bodySmall">Your location moved away from the facility at {clock(d.getHours() * 60 + d.getMinutes())}.</T>
+      <Gap h={16} />
+      <Button
+        label="Yes, I left"
+        onPress={() => {
+          a.leave(at);
+          router.push('/bol');
+        }}
+      />
+      <Button label="I’m still here" variant="text" onPress={a.stillHere} />
     </SheetShell>
   );
 }
@@ -431,7 +454,7 @@ function LockScreen() {
       accessibilityLabel="Unlock"
     >
       <LinearGradient colors={[protoColor.lockTop, protoColor.lockBottom]} style={styles.lock}>
-        <Text style={styles.lockDate}>{TODAY_LABEL}</Text>
+        <Text style={styles.lockDate}>{headerDate(s.stop, TODAY_LABEL)}</Text>
         <Text style={styles.lockClock}>{clockBare(s.now)}</Text>
         {arrival ?? checkIn ?? (content ? (
           <View style={styles.lockCard}>
@@ -469,7 +492,7 @@ function SiriScreen() {
   return (
     <Pressable style={[StyleSheet.absoluteFill, styles.lockRoot]} onPress={a.closeSiri} accessibilityLabel="Close">
       <LinearGradient colors={[protoColor.lockTop, protoColor.lockBottom]} style={styles.lock}>
-        <Text style={styles.lockDate}>{TODAY_LABEL}</Text>
+        <Text style={styles.lockDate}>{headerDate(s.stop, TODAY_LABEL)}</Text>
         <Text style={styles.lockClock}>{clockBare(s.now)}</Text>
         <LockActivity
           top
@@ -494,6 +517,7 @@ export function Overlays() {
       {s.stop.phase === 'arriving' && path === '/today' && !ui.lock ? <ArrivalSheet /> : null}
       {ui.sheet?.kind === 'message' ? <MessageSheet text={ui.sheet.text} /> : null}
       {ui.sheet?.kind === 'fix' ? <FixSheet draft={ui.sheet.draft} /> : null}
+      {ui.sheet?.kind === 'left' && !ui.lock ? <LeftSheet at={ui.sheet.at} /> : null}
       {ui.undo && !ui.sheet && !ui.lock ? <UndoToast key={ui.undo} text={ui.undo} /> : null}
       {ui.toast ? <Toast key={ui.toast} text={ui.toast} atTop={!!ui.sheet} /> : null}
       <Island />

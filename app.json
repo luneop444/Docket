@@ -35,6 +35,12 @@
           "photosPermission": "Docket lets you pick a photo of your bill of lading. The photo stays on your phone.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Docket notices when you pull into and leave the stops on your load, so it can time your detention. Location stays on your phone and is never shared with your company."
+        }
       ]
     ],
     "scheme": "docket",

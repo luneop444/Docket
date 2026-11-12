@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { BackBar, Screen } from '../components/Chrome';
 import { RuleEditor } from '../components/RuleEditor';
 import { Button, Card, Gap, Seg, T } from '../components/ui';
-import { setsStopsOnce, type LoadStyle } from '../logic/state';
+import { setsStopsOnce, type LoadStyle, type LocationMode } from '../logic/state';
 import { useStore } from '../state/AppStore';
 
 /** v1 19 Your rules (from the profile button) */
@@ -56,12 +56,32 @@ export default function YourRules() {
         </>
       ) : null}
       <Gap h={24} />
+      <T v="bodyStrong">Noticing your stops</T>
+      <Gap h={10} />
+      <Seg<LocationMode>
+        options={[
+          { key: 'always', label: 'Use location' },
+          { key: 'manual', label: 'By hand' },
+        ]}
+        value={s.location}
+        onChange={a.setLocation}
+      />
+      <Gap h={8} />
+      <T v="bodyTiny">
+        {s.location === 'always'
+          ? `Docket starts the clock at stops you’ve been to and asks when you leave, while the app is open. ${
+              Object.keys(s.placeCoords).length
+            } place${Object.keys(s.placeCoords).length === 1 ? '' : 's'} saved on this phone.`
+          : 'You tap “I’m here” and “I left”. Location stays off.'}
+      </T>
+      <Gap h={24} />
       <Card>
         <T v="bodyStrong">About this prototype</T>
         <Gap h={8} />
         <T v="bodySmall">
-          Prototype v2 for AIxD Project 3. Location, time passing, rate con, BOL and settlement reading, and company
-          data are simulated. Your rules, the detention math, the camera and the message to your fleet manager are real.
+          Prototype v2 for AIxD Project 3. Real: your rules and the detention math, loads you type in, stops timed
+          with your phone’s clock and location, the paycheck check, the camera and the message to your fleet manager.
+          Simulated: background location, the prototype controls, settlement reading and company data.
         </T>
         <Gap h={12} />
         <Button

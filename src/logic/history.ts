@@ -38,6 +38,13 @@ export function dayLabel(ms: number): string {
   return `${DAYS[d.getDay()]} ${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
+/** "Thu, Nov 12" for the header and lock screen: the real date for a live stop, the sample day otherwise. */
+export function headerDate(stop: Stop, sampleLabel: string): string {
+  if (!stop.live || stop.dayStart == null) return sampleLabel;
+  const [d, m, n] = dayLabel(stop.dayStart).split(' ');
+  return `${d}, ${m} ${n}`;
+}
+
 /** Local midnight on the Monday of the week containing `ms`. */
 export function weekStart(ms: number): number {
   const d = new Date(ms);

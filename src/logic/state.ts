@@ -3,6 +3,7 @@
  */
 import { defaultRules, type Rules } from './detention';
 import { APPT, START_NOW, TODAY_STOP, type LoadStop, type Marks } from './sampleData';
+import type { LatLon } from './geo';
 import type { LoggedStop } from './history';
 import { freshStop, type Stop } from './stop';
 
@@ -87,6 +88,8 @@ export interface AppState {
   islandAlerted: boolean;
   /** Stops logged with the real clock, newest first. */
   history: LoggedStop[];
+  /** Where each facility is, saved the first time the driver taps "I'm here" there. */
+  placeCoords: Record<string, LatLon>;
 }
 
 export const STORAGE_KEY = 'docket-v1';
@@ -110,6 +113,7 @@ export const freshState = (): AppState => ({
   sort: 'wait',
   islandAlerted: false,
   history: [],
+  placeCoords: {},
 });
 
 /** Parse stored JSON, falling back to a fresh state if it's missing or broken. */

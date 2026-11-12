@@ -7,6 +7,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TODAY_LABEL } from '../logic/sampleData';
+import { headerDate } from '../logic/history';
 import { islandStage } from '../logic/stop';
 import { useStore } from '../state/AppStore';
 import { color, fontFamily, type } from '../theme/tokens';
@@ -65,9 +66,10 @@ export function TopBar({ trailing }: { trailing?: ReactNode }) {
 
 /** Date + profile button (opens Your rules). */
 export function ProfileTrailing() {
+  const { s } = useStore();
   return (
     <>
-      <T v="bodyTiny">{TODAY_LABEL}</T>
+      <T v="bodyTiny">{headerDate(s.stop, TODAY_LABEL)}</T>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Profile and rules"

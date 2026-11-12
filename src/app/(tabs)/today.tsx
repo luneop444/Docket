@@ -11,6 +11,7 @@ import { weekTotals } from '../../logic/settlement';
 import { loadAppt, placeOf, setsStopsOnce } from '../../logic/state';
 import { dockTimeline, stopCalc } from '../../logic/stop';
 import { useStore } from '../../state/AppStore';
+import { rememberSpot } from '../../state/location';
 
 /** Figma C1 / C3 / C5 (+ E1): Today — watching, at the dock, stop logged */
 export default function Today() {
@@ -93,9 +94,22 @@ function NotAtDock() {
               </>
             ) : null}
             <Gap h={16} />
-            <Button label="I’m here, start the clock" small onPress={a.arriveNow} />
+            <Button
+              label="I’m here, start the clock"
+              small
+              onPress={() => {
+                a.arriveNow();
+                if (s.location === 'always') rememberSpot(a, place.name);
+              }}
+            />
             <Gap h={8} />
-            <T v="bodyTiny">Tap when you pull in. Docket times the stop with your phone’s clock.</T>
+            <T v="bodyTiny">
+              {s.location !== 'always'
+                ? 'Tap when you pull in. Docket times the stop with your phone’s clock.'
+                : s.placeCoords[place.name]
+                  ? 'Docket starts the clock when you pull in here, while the app is open. Or tap.'
+                  : 'Tap when you pull in. Docket saves where this stop is, so next time it starts on its own.'}
+            </T>
           </Card>
         </>
       ) : (
@@ -207,6 +221,7 @@ function AtTheDock() {
           <Gap h={8} />
           <T v="bodyTiny" style={styles.center}>
             Timed with your phone’s clock since {clock(arrive)}. Keeps counting if you close the app.
+            {s.location === 'always' && s.placeCoords[place.name] ? ' Docket asks when location sees you leave.' : ''}
           </T>
           <ProtoControls note="Prototype controls">
             <Button label="Show lock screen" variant="quiet" small onPress={() => a.setLock(true)} />

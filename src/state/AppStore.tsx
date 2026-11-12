@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { Rules } from '../logic/detention';
+import type { LatLon } from '../logic/geo';
 import { toLogged, upsert, type PayWeek } from '../logic/history';
 import { COMPANIES, SAMPLE_SETTLEMENT, SIM_MINUTES_PER_SECOND, START_NOW } from '../logic/sampleData';
 import { claimText, cleanAmount, weekTotals } from '../logic/settlement';
@@ -29,6 +30,8 @@ import { clockBare } from '../logic/format';
 export type Sheet =
   | { kind: 'message'; text: string }
   | { kind: 'fix'; draft: FixDraft }
+  /** Location says the driver drove away from a live stop: confirm the time (epoch ms). */
+  | { kind: 'left'; at: number }
   | null;
 
 /** UI-only state. Not persisted (the BOL photo stays in memory only, like v1). */
@@ -42,6 +45,8 @@ interface Ui {
   /** Figma E4: "Hey Siri, I checked in" shown over the lock screen. */
   siri: boolean;
   photoUri: string | null;
+  /** "Still here" on the left-the-stop question: don't ask again before this time (epoch ms). */
+  leftSnooze: number;
 }
 
 const UNDO_SECONDS = 10;
@@ -55,7 +60,7 @@ function saveToHistory(s: AppState): AppState {
 
 const remember = (places: string[], name: string) => (places.includes(name) ? places : [...places, name]);
 
-const freshUi = (): Ui => ({ expanded: false, lock: false, sheet: null, toast: null, undo: null, siri: false, photoUri: null });
+const freshUi = (): Ui => ({ expanded: false, lock: false, sheet: null, toast: null, undo: null, siri: false, photoUri: null, leftSnooze: 0 });
 
 function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (u: Ui) => Ui) => void, sRef: { current: AppState }) {
   const timers = useRef<{
@@ -103,6 +108,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
           load: s.load && loadStyle !== 'mix' ? { ...s.load, recurring: setsStopsOnce(loadStyle) } : s.load,
         })),
       setRule: <K extends keyof Rules>(k: K, v: Rules[K]) => setS((s) => ({ ...s, rules: { ...s.rules, [k]: v } })),
+      setLocation: (location: LocationMode) => setS((s) => ({ ...s, location })),
       finishOnboarding: (location: LocationMode) => setS((s) => ({ ...s, location, onboarded: true })),
 
       /* loads */
@@ -129,9 +135,15 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
           flashIsland();
         }
       },
-      /** Real: the driver taps "I'm here" and the stop is timed with the phone's clock. */
-      arriveNow: () => {
+      /**
+       * Real: the driver taps "I'm here" (or location sees them pull in, `auto`)
+       * and the stop is timed with the phone's clock. An automatic start shows Undo (Figma E1).
+       */
+      arriveNow: (auto = false) => {
+        // Location can report twice before the stop shows as started.
+        if (auto && sRef.current.stop.phase !== 'idle') return;
         const ms = Date.now();
+        const place = placeOf(sRef.current.load);
         setS((s) => {
           const stop = startLiveStop(ms, loadAppt(s.load));
           return {
@@ -139,12 +151,27 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
             stop,
             now: stopNow(stop, s.now, ms),
             islandAlerted: false,
-            knownPlaces: remember(s.knownPlaces, placeOf(s.load).name),
+            knownPlaces: remember(s.knownPlaces, place.name),
           };
         });
-        setUi((u) => ({ ...u, undo: null }));
+        clearTimeout(timers.current.undo);
+        if (auto) {
+          const at = new Date(ms);
+          setUi((u) => ({ ...u, undo: `Started at ${place.short} ${clockBare(at.getHours() * 60 + at.getMinutes())}` }));
+          timers.current.undo = setTimeout(() => setUi((u) => ({ ...u, undo: null })), UNDO_SECONDS * 1000);
+        } else {
+          setUi((u) => ({ ...u, undo: null }));
+        }
         flashIsland();
       },
+      /** Remember where a facility is, for noticing the next visit. */
+      savePlace: (name: string, at: LatLon) =>
+        setS((s) => ({ ...s, placeCoords: { ...s.placeCoords, [name]: at } })),
+      /** Location saw the driver leave a live stop. */
+      askLeft: (at: number) =>
+        setUi((u) => (u.sheet || Date.now() < u.leftSnooze ? u : { ...u, sheet: { kind: 'left', at } })),
+      /** "Still here": the yard is big or GPS wandered. Don't ask again for 15 minutes. */
+      stillHere: () => setUi((u) => ({ ...u, sheet: null, leftSnooze: Date.now() + 15 * 60000 })),
       /** C2 "Yes, start the clock": remembers the place for next time. */
       confirmArrival: () => {
         setS((s) => ({
@@ -177,12 +204,13 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
       closeSiri: () => setUi((u) => ({ ...u, siri: false })),
       /** Prototype only: a live stop runs on the real clock and can't be skipped. */
       skip: (m: number) => setS((s) => (s.stop.live ? s : { ...s, now: s.now + m })),
-      leave: () => {
+      /** Leave the stop, now or at the time location noticed (epoch ms). */
+      leave: (atMs?: number) => {
         setS((s) => {
-          const now = stopNow(s.stop, s.now, Date.now());
+          const now = stopNow(s.stop, s.now, atMs ?? Date.now());
           return { ...s, now, stop: { ...s.stop, leave: Math.max(Math.round(now), (s.stop.arrive ?? 0) + 1), phase: 'left' } };
         });
-        setUi((u) => ({ ...u, undo: null }));
+        setUi((u) => ({ ...u, undo: null, sheet: u.sheet?.kind === 'left' ? null : u.sheet }));
         flashIsland();
       },
       logStop: (bol: boolean) => {
