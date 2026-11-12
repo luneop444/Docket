@@ -4,7 +4,7 @@ import { StyleSheet, TextInput, View } from 'react-native';
 import { OnboardingBar, Screen } from '../components/Chrome';
 import { SearchIcon } from '../components/Icons';
 import { Fake, Gap, noFocusRing, Option, T } from '../components/ui';
-import { COMPANIES } from '../logic/sampleData';
+import { COMPANIES, SUGGESTED } from '../logic/sampleData';
 import { useStore } from '../state/AppStore';
 import { color, radius, type } from '../theme/tokens';
 
@@ -14,7 +14,7 @@ export default function PickCompany() {
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const q = query.trim();
-  const hits = COMPANIES.filter((c) => !q || c.name.toLowerCase().includes(q.toLowerCase()));
+  const hits = q ? COMPANIES.filter((c) => c.name.toLowerCase().includes(q.toLowerCase())).slice(0, 6) : SUGGESTED;
   const exact = COMPANIES.some((c) => c.name.toLowerCase() === q.toLowerCase());
 
   function pick(name: string, custom: boolean) {
@@ -35,7 +35,7 @@ export default function PickCompany() {
           onChangeText={setQuery}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder="Company name"
+          placeholder="Search or add your company"
           placeholderTextColor={color.faint}
           autoCorrect={false}
           autoComplete="off"
@@ -44,6 +44,12 @@ export default function PickCompany() {
         />
       </View>
       <Gap h={16} />
+      {!q ? (
+        <>
+          <T v="bodyTiny" c={color.sub}>Most drivers on Docket</T>
+          <Gap h={8} />
+        </>
+      ) : null}
       <View style={{ gap: 8 }}>
         {hits.map((c) => (
           <Option key={c.name} label={c.name} sub={`${c.drivers} drivers on Docket`} onPress={() => pick(c.name, false)} />
@@ -55,7 +61,7 @@ export default function PickCompany() {
       </View>
       <Gap h={16} />
       <T v="bodyTiny">
-        <Fake label="Sample data" /> Company names here are made up for this prototype. Type your real company to add it.
+        <Fake label="Sample data" /> Real company names. Driver counts and rules are made up for this prototype. Not listed? Type it to add it.
       </T>
     </Screen>
   );

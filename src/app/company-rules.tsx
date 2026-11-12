@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { Fragment } from 'react';
 import { OnboardingBar, Screen } from '../components/Chrome';
-import { Button, Card, Gap, Hr, Row, T } from '../components/ui';
+import { Button, Card, Fake, Gap, Hr, Row, T } from '../components/ui';
 import { dur, money } from '../logic/format';
-import { COMPANIES } from '../logic/sampleData';
+import { COMPANIES, TEST_SETUP } from '../logic/sampleData';
 import type { RulesCheck } from '../logic/state';
 import { useStore } from '../state/AppStore';
 import { color } from '../theme/tokens';
@@ -53,6 +53,14 @@ export default function CompanyRules() {
           </Fragment>
         ))}
       </Card>
+      {TEST_SETUP?.company !== s.company ? (
+        <>
+          <Gap h={12} />
+          <T v="bodyTiny">
+            <Fake label="Sample data" /> These rules are made up for this prototype, not {s.company}’s real policy.
+          </T>
+        </>
+      ) : null}
     </Screen>
   );
 }

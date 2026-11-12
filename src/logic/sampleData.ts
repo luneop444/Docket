@@ -58,23 +58,129 @@ export interface Company {
   paid: number;
 }
 
-export const COMPANIES: Company[] = [
-  {
-    name: 'Northbound Transport', drivers: 204, reported: 52,
-    rules: { free: 120, start: 'appt', rate: 30, breaksCount: false },
-    avg: '1h 52m', past: 28, paid: 81,
-  },
-  {
-    name: 'Ridgeline Freight', drivers: 318, reported: 77,
-    rules: { free: 120, start: 'arrival', rate: 25, breaksCount: true },
-    avg: '2h 48m', past: 41, paid: 62,
-  },
-  {
-    name: 'Keel Logistics', drivers: 12, reported: 4,
-    rules: { free: 180, start: 'arrival', rate: 20, breaksCount: true },
-    avg: '3h 35m', past: 52, paid: 38,
-  },
+/**
+ * Real carrier names (public facts). Everything else per company (driver
+ * counts, rules, wait stats) is made up to simulate Docket being widely used,
+ * and is tagged "Sample data" in the UI.
+ * [name, drivers, free min, clock start, $/hr, breaks count, avg wait, % past free, % paid]
+ */
+const CARRIERS: [string, number, number, 'appt' | 'arrival', number, boolean, string, number, number][] = [
+  ['Schneider National', 1840, 120, 'appt', 20, false, '2h 05m', 33, 64],
+  ['Werner Enterprises', 1520, 120, 'arrival', 18, true, '2h 22m', 38, 58],
+  ['J.B. Hunt Transport', 1710, 120, 'appt', 20, false, '1h 58m', 30, 69],
+  ['Swift Transportation', 2260, 120, 'arrival', 15, true, '2h 40m', 44, 47],
+  ['Knight Transportation', 1180, 120, 'arrival', 15, true, '2h 31m', 41, 51],
+  ['Prime Inc.', 1390, 120, 'appt', 18, false, '2h 12m', 36, 60],
+  ['Heartland Express', 610, 120, 'arrival', 15, true, '2h 26m', 39, 55],
+  ['Covenant Logistics', 420, 120, 'appt', 18, false, '2h 18m', 37, 57],
+  ['Marten Transport', 540, 120, 'appt', 20, false, '1h 55m', 29, 71],
+  ['CRST', 760, 120, 'arrival', 15, true, '2h 44m', 45, 46],
+  ['Crete Carrier', 480, 120, 'appt', 20, false, '1h 49m', 27, 73],
+  ['Roehl Transport', 350, 120, 'appt', 18, false, '2h 03m', 32, 66],
+  ['Hirschbach Motor Lines', 330, 120, 'arrival', 18, true, '2h 35m', 42, 52],
+  ['Maverick Transportation', 290, 120, 'appt', 20, false, '1h 57m', 31, 68],
+  ['Old Dominion Freight Line', 980, 60, 'arrival', 25, true, '1h 20m', 24, 74],
+  ['Estes Express Lines', 870, 60, 'arrival', 25, true, '1h 26m', 26, 70],
+  ['Saia', 640, 60, 'arrival', 22, true, '1h 31m', 28, 67],
+  ['XPO', 910, 60, 'arrival', 22, true, '1h 34m', 29, 63],
+  ['ABF Freight', 590, 60, 'arrival', 25, true, '1h 24m', 25, 72],
+  ['R+L Carriers', 520, 60, 'arrival', 22, true, '1h 38m', 31, 61],
+  ['FedEx Freight', 1260, 60, 'arrival', 25, true, '1h 22m', 23, 75],
+  ['TForce Freight', 450, 60, 'arrival', 22, true, '1h 36m', 30, 62],
+  ['Southeastern Freight Lines', 310, 60, 'arrival', 22, true, '1h 29m', 27, 68],
+  ['Averitt Express', 380, 60, 'arrival', 22, true, '1h 33m', 28, 66],
+  ['Pitt Ohio', 260, 60, 'arrival', 25, true, '1h 18m', 22, 76],
+  ['Penske Logistics', 690, 90, 'appt', 22, false, '1h 46m', 30, 65],
+  ['Ryder', 720, 90, 'appt', 22, false, '1h 51m', 32, 63],
+  ['Sysco', 650, 90, 'appt', 20, false, '1h 42m', 29, 59],
+  ['US Foods', 470, 90, 'appt', 20, false, '1h 47m', 31, 57],
+  ['Giant Eagle', 140, 90, 'appt', 20, false, '1h 39m', 27, 61],
 ];
+
+const BASE_COMPANIES: Company[] = CARRIERS.map(([name, drivers, free, start, rate, breaksCount, avg, past, paid]) => ({
+  name,
+  drivers,
+  reported: Math.round(drivers * 0.24),
+  rules: { free, start, rate, breaksCount },
+  avg,
+  past,
+  paid,
+}));
+
+/**
+ * Researcher setup for a user test (Wizard of Oz). Open the prototype with
+ *   ?company=Estes%20Express%20Lines&free=60&rate=25&start=arrival&breaks=1
+ * and that company appears first with the participant's real rules.
+ * It is remembered on this browser until ?setup=clear.
+ */
+export interface TestSetup {
+  company: string;
+  rules: Rules;
+}
+
+const SETUP_KEY = 'docket-test-setup';
+
+export function parseSetup(search: string): TestSetup | 'clear' | null {
+  const q = new URLSearchParams(search);
+  if (q.get('setup') === 'clear') return 'clear';
+  const company = q.get('company')?.trim();
+  if (!company) return null;
+  const num = (k: string, d: number) => {
+    const v = Number(q.get(k));
+    return Number.isFinite(v) && v > 0 ? v : d;
+  };
+  const known = BASE_COMPANIES.find((c) => c.name.toLowerCase() === company.toLowerCase());
+  const base = known?.rules ?? { free: 120, start: 'appt' as const, rate: 20, breaksCount: false };
+  const start = q.get('start') === 'arrival' ? 'arrival' : q.get('start') === 'appt' ? 'appt' : base.start;
+  const breaks = q.get('breaks');
+  return {
+    company: known?.name ?? company,
+    rules: {
+      free: Math.round(num('free', base.free / 60) * 60),
+      start,
+      rate: num('rate', base.rate),
+      breaksCount: breaks == null ? base.breaksCount : breaks === '1' || breaks === 'true',
+    },
+  };
+}
+
+export function withSetup(list: Company[], setup: TestSetup | null): Company[] {
+  if (!setup) return list;
+  const known = list.find((c) => c.name === setup.company);
+  const mine: Company = known
+    ? { ...known, rules: setup.rules }
+    : { name: setup.company, drivers: 96, reported: 23, rules: setup.rules, avg: '1h 54m', past: 31, paid: 62 };
+  return [mine, ...list.filter((c) => c.name !== setup.company)];
+}
+
+function loadSetup(): TestSetup | null {
+  try {
+    if (typeof window === 'undefined' || !window.location) return null;
+    const parsed = parseSetup(window.location.search);
+    if (parsed === 'clear') {
+      window.localStorage?.removeItem(SETUP_KEY);
+      return null;
+    }
+    if (parsed) {
+      window.localStorage?.setItem(SETUP_KEY, JSON.stringify(parsed));
+      return parsed;
+    }
+    const saved = window.localStorage?.getItem(SETUP_KEY);
+    return saved ? (JSON.parse(saved) as TestSetup) : null;
+  } catch {
+    return null;
+  }
+}
+
+export const TEST_SETUP: TestSetup | null = loadSetup();
+
+/** Every company on "Docket", the test participant's first when set up. */
+export const COMPANIES: Company[] = withSetup(BASE_COMPANIES, TEST_SETUP);
+
+/** Shown before the driver types: their company (if set up), then the most used. */
+export const SUGGESTED: Company[] = TEST_SETUP
+  ? COMPANIES.slice(0, 3)
+  : [...COMPANIES].sort((a, b) => b.drivers - a.drivers).slice(0, 3);
 
 export interface WeekLoad {
   /** Key for settlement marks. For the sample week it's also the load number. */

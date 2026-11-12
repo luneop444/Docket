@@ -51,7 +51,7 @@ export default function Companies() {
       </View>
       <Gap h={16} />
       <T v="bodyTiny">
-        <Fake label="Sample data" /> Made-up companies and numbers. After Concept Lock this is a secondary feature, not
+        <Fake label="Sample data" /> Real company names, made-up numbers. After Concept Lock this is a secondary feature, not
         part of the core use case.
       </T>
     </Screen>
