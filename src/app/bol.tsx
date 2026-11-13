@@ -9,7 +9,7 @@ import { clock } from '../logic/format';
 import { placeOf } from '../logic/state';
 import { bolFromReading } from '../logic/stop';
 import { useStore } from '../state/AppStore';
-import { BolReadError, readBol } from '../state/readBol';
+import { BolReadError, BolReadingOff, readBol } from '../state/readBol';
 import { color, protoColor } from '../theme/tokens';
 
 /** Opens the camera (phone) or file picker (desktop). Falls back to the photo library. */
@@ -55,7 +55,12 @@ export default function SnapBol() {
     } catch (e) {
       // Prototype stops fall back to the sample reading; real stops keep the photo without times.
       a.logStop(true);
-      a.toast(e instanceof BolReadError ? e.message : 'Couldn’t read the BOL. The photo is kept with the stop.');
+      if (e instanceof BolReadingOff) {
+        // No API key on this site, by choice. A prototype stop shows the labeled sample reading, so stay quiet.
+        if (s.stop.live) a.toast('Photo saved. Reading the times is off in this prototype.');
+      } else {
+        a.toast(e instanceof BolReadError ? e.message : 'Couldn’t read the BOL. The photo is kept with the stop.');
+      }
     } finally {
       setReading(false);
     }

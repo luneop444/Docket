@@ -21,6 +21,9 @@ const API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? '';
 
 export class BolReadError extends Error {}
 
+/** The site has no Claude API key, so reading is off on purpose (the free prototype setup). */
+export class BolReadingOff extends BolReadError {}
+
 export async function readBol(uri: string): Promise<BolReading> {
   if (!API_BASE && Platform.OS !== 'web') throw new BolReadError('Reading BOLs needs the app’s web address set.');
 
@@ -41,6 +44,7 @@ export async function readBol(uri: string): Promise<BolReading> {
   const body = (await res.json().catch(() => null)) as (BolReading & { error?: string }) | null;
   // The local dev server answers with the app's HTML, not JSON.
   if (!body) throw new BolReadError('Reading BOLs works on the deployed site, not the local dev server.');
+  if (res.status === 503) throw new BolReadingOff(body.error ?? 'Reading BOLs isn’t set up on this site.');
   if (!res.ok || body.error) throw new BolReadError(body.error ?? 'Couldn’t read the BOL right now.');
   return { found: !!body.found, in: body.in ?? null, out: body.out ?? null, note: body.note ?? '' };
 }
