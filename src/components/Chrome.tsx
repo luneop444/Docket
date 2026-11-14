@@ -3,8 +3,8 @@
  * scroll + footer scaffold every screen uses.
  */
 import { router, usePathname } from 'expo-router';
-import { createContext, useContext, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { createContext, useContext, type ReactNode, type RefObject } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TODAY_LABEL } from '../logic/sampleData';
 import { headerDate } from '../logic/history';
@@ -151,24 +151,38 @@ export function Screen({
   footer,
   children,
   contentStyle,
+  scrollRef,
+  onScrollY,
+  overlay,
 }: {
   header: ReactNode;
   footer?: ReactNode;
   children: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
+  /** For screens that jump to a spot in their content (the A–Z company index). */
+  scrollRef?: RefObject<ScrollViewInstance | null>;
+  onScrollY?: (y: number) => void;
+  /** Pinned over the scrolling area, e.g. an index strip. */
+  overlay?: ReactNode;
 }) {
   const { footerBottom } = useInsets();
   return (
     <View style={styles.screen}>
       {header}
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={[styles.scroll, contentStyle]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {children}
-      </ScrollView>
+      <View style={styles.flex}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.flex}
+          contentContainerStyle={[styles.scroll, contentStyle]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          onScroll={onScrollY ? (e) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}
+          scrollEventThrottle={onScrollY ? 32 : undefined}
+        >
+          {children}
+        </ScrollView>
+        {overlay}
+      </View>
       {footer ? <View style={[styles.footer, { paddingBottom: footerBottom }]}>{footer}</View> : null}
     </View>
   );
