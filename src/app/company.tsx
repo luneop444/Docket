@@ -9,13 +9,23 @@ import { COMPANIES, SUGGESTED } from '../logic/sampleData';
 import { useStore } from '../state/AppStore';
 import { color, radius, type } from '../theme/tokens';
 
+/** "Swift Transportation" → "ST", "J.B. Hunt Transport" → "JH". Stand-in for a logo. */
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w.replace(/[^a-z]/gi, '')[0] ?? '')
+    .join('')
+    .toUpperCase();
+}
+
 /** v1 02 Pick company (onboarding step 1; v2 starts from the company's reported rules) */
 export default function PickCompany() {
   const { a } = useStore();
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const q = query.trim();
-  const hits = q ? COMPANIES.filter((c) => c.name.toLowerCase().includes(q.toLowerCase())).slice(0, 6) : SUGGESTED;
+  const hits = q ? COMPANIES.filter((c) => c.name.toLowerCase().includes(q.toLowerCase())).slice(0, 6) : [];
   const exact = COMPANIES.some((c) => c.name.toLowerCase() === q.toLowerCase());
   /** Every company A–Z, grouped by first letter like Contacts. Shown under the suggestions. */
   const byLetter = [...COMPANIES]
@@ -70,7 +80,7 @@ export default function PickCompany() {
     >
       <T v="h2">Who do you drive for?</T>
       <Gap h={8} />
-      <T v="body" c={color.sub}>Each company sets its own detention rules, so Docket starts from yours.</T>
+      <T v="body" c={color.sub}>Every company pays detention its own way. Pick yours and you’ll check its rules next.</T>
       <Gap h={20} />
       <View style={[styles.field, focused && styles.fieldFocus]}>
         <SearchIcon />
@@ -90,8 +100,25 @@ export default function PickCompany() {
       <Gap h={16} />
       {!q ? (
         <>
-          <T v="bodyTiny" c={color.sub}>Most drivers on Docket</T>
+          <T v="bodyTiny" c={color.sub}>Popular with drivers</T>
           <Gap h={8} />
+          {/* Six visible before scrolling: Plaid found more visible choices meant fewer people had to search. */}
+          <View style={styles.grid}>
+            {SUGGESTED.map((c) => (
+              <Pressable
+                key={c.name}
+                accessibilityRole="button"
+                accessibilityLabel={`${c.name}, ${c.drivers} drivers on Docket`}
+                onPress={() => pick(c.name, false)}
+                style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
+              >
+                <View style={styles.mono}>
+                  <T v="bodyTiny" c={color.bg}>{initials(c.name)}</T>
+                </View>
+                <T v="bodyStrong" numberOfLines={2}>{c.name}</T>
+              </Pressable>
+            ))}
+          </View>
         </>
       ) : null}
       <View style={{ gap: 8 }}>
@@ -101,7 +128,6 @@ export default function PickCompany() {
         {q && !exact ? (
           <Option label={`Add “${q}”`} sub="Not listed yet. You’ll enter your company’s rules." onPress={() => pick(q, true)} />
         ) : null}
-        {!hits.length && !q ? <T v="bodySmall">Start typing your company’s name.</T> : null}
       </View>
       <Gap h={16} />
       <T v="bodyTiny">
@@ -154,6 +180,18 @@ const styles = StyleSheet.create({
     backgroundColor: color.raise,
   },
   fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tile: {
+    width: '48.5%',
+    flexGrow: 1,
+    minHeight: 92,
+    padding: 12,
+    gap: 10,
+    borderRadius: radius.control,
+    backgroundColor: color.raise,
+  },
+  tilePressed: { backgroundColor: color.line },
+  mono: { width: 32, height: 32, borderRadius: 8, backgroundColor: color.ink, alignItems: 'center', justifyContent: 'center' },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line, marginTop: 8 },
   // Compact like Contacts; right padding leaves room for the A–Z strip.
   row: {

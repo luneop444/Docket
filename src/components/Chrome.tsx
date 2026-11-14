@@ -123,11 +123,17 @@ export function OnboardingBar({ step, onBack }: { step?: number; onBack: () => v
             accessibilityLabel={`Step ${step} of ${ONBOARDING_STEPS}`}
           >
             {Array.from({ length: ONBOARDING_STEPS }, (_, i) => (
-              <View key={i} style={[styles.dash, { backgroundColor: i < step ? color.ink : color.line }]} />
+              <View key={i} style={[styles.dash, { backgroundColor: i < step ? color.ink : color.faint }]} />
             ))}
           </View>
         ) : null}
       </View>
+      {step ? (
+        // The count sits on the left, in line with the title, so the bar row isn't right-heavy.
+        <T v="bodyTiny" c={color.sub} style={styles.stepLabel} importantForAccessibility="no" accessibilityElementsHidden>
+          Step {step} of {ONBOARDING_STEPS}
+        </T>
+      ) : null}
     </>
   );
 }
@@ -193,8 +199,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
   scroll: { paddingHorizontal: 20, paddingBottom: 28 },
   footer: { paddingTop: 24, paddingHorizontal: 20, gap: 8, backgroundColor: color.bg },
-  progress: { flexDirection: 'row', gap: 4, paddingRight: 12 },
-  dash: { width: 27, height: 3, borderRadius: 2 },
+  // Full width between the back button and the edge; empty segments use faint (4.3:1 on white, WCAG non-text 3:1).
+  progress: { flex: 1, flexDirection: 'row', gap: 4, paddingLeft: 8, paddingRight: 12 },
+  stepLabel: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 2 },
+  dash: { flex: 1, height: 4, borderRadius: 2 },
   topbar: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -179,8 +179,8 @@ export const COMPANIES: Company[] = withSetup(BASE_COMPANIES, TEST_SETUP);
 
 /** Shown before the driver types: their company (if set up), then the most used. */
 export const SUGGESTED: Company[] = TEST_SETUP
-  ? COMPANIES.slice(0, 3)
-  : [...COMPANIES].sort((a, b) => b.drivers - a.drivers).slice(0, 3);
+  ? COMPANIES.slice(0, 6)
+  : [...COMPANIES].sort((a, b) => b.drivers - a.drivers).slice(0, 6);
 
 export interface WeekLoad {
   /** Key for settlement marks. For the sample week it's also the load number. */
