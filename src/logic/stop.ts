@@ -206,7 +206,7 @@ export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[]
     title: 'Free time ends',
     detail: `${dur(rules.free)} free from ${fromAppt ? 'appointment time' : 'arrival'}`,
     time: clock(c.freeEnd),
-    state: inDetention ? 'done' : now >= c.start ? 'current' : 'upcoming',
+    state: inDetention ? 'done' : 'upcoming',
     segment: inDetention ? 'paid' : 'upcoming',
     icon: 'hourglass',
   });
@@ -218,7 +218,14 @@ export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[]
     segment: 'none',
     icon: 'dollar',
   });
-  return events;
+  // Only one point is lit: detention once it runs, then check-in until it's tapped (Figma 08),
+  // then the next step not done yet.
+  const at = inDetention
+    ? events.length - 1
+    : !checked
+      ? events.findIndex((e) => e.canCheckIn)
+      : events.findIndex((e) => e.state !== 'done');
+  return events.map((e, i) => (e.state === 'done' ? e : { ...e, state: i === at ? 'current' : 'upcoming' }));
 }
 
 /** Times being edited in the Fix a time sheet. `leave` is null while still at the dock. */

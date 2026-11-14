@@ -11,10 +11,24 @@ describe('dockTimeline (Figma C3 Timeline / Event states)', () => {
   it('during free time: arrived done, check-in current with a button, detention upcoming', () => {
     const ev = dockTimeline(atDock(), t(14, 30), defaultRules);
     expect(ev.map((e) => e.title)).toEqual(['Arrived at gate', 'Appointment time', 'Checked in', 'Free time ends', 'Detention']);
-    expect(ev.map((e) => e.state)).toEqual(['done', 'done', 'current', 'current', 'upcoming']);
+    expect(ev.map((e) => e.state)).toEqual(['done', 'done', 'current', 'upcoming', 'upcoming']);
     expect(ev[2].canCheckIn).toBe(true);
     expect(ev[3].time).toBe('4:00 PM');
     expect(ev[4].segment).toBe('none');
+  });
+
+  it('after check-in, free time ends is the one lit point', () => {
+    const ev = dockTimeline(atDock({ checkin: t(13, 49) }), t(14, 30), defaultRules);
+    expect(ev.map((e) => e.state)).toEqual(['done', 'done', 'done', 'current', 'upcoming']);
+  });
+
+  it('never lights more than one point', () => {
+    for (let now = t(13, 48); now <= t(17, 0); now += 7) {
+      for (const checkin of [null, t(13, 49)]) {
+        const ev = dockTimeline(atDock({ checkin }), now, defaultRules);
+        expect(ev.filter((e) => e.state === 'current')).toHaveLength(1);
+      }
+    }
   });
 
   it('before the appointment the clock has not started', () => {
