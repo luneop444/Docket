@@ -1,10 +1,9 @@
 import { router } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
-import { LiveCard } from '../../components/LiveCard';
 import { Timeline, type TimelineEvent } from '../../components/Timeline';
 import { Button, Card, Fake, Gap, Hr, Pill, ProtoControls, Row, T, TimeBar } from '../../components/ui';
-import { clock, dur, money } from '../../logic/format';
+import { clock, dur, hm, money } from '../../logic/format';
 import { payWeeks } from '../../logic/history';
 import { WATCH_LEAD_MIN } from '../../logic/sampleData';
 import { weekTotals } from '../../logic/settlement';
@@ -12,6 +11,7 @@ import { loadAppt, placeOf, setsStopsOnce } from '../../logic/state';
 import { dockTimeline, stopCalc } from '../../logic/stop';
 import { useStore } from '../../state/AppStore';
 import { rememberSpot } from '../../state/location';
+import { color, type } from '../../theme/tokens';
 
 /** Figma C1 / C3 / C5 (+ E1): Today — watching, at the dock, stop logged */
 export default function Today() {
@@ -184,6 +184,7 @@ function AtTheDock() {
   const arrive = st.arrive ?? s.now;
   const c = stopCalc(st, s.now, s.rules);
   const place = placeOf(s.load);
+  const inDetention = s.now >= c.freeEnd;
   const events: TimelineEvent[] = dockTimeline(st, s.now, s.rules).map(({ canCheckIn, ...e }) => ({
     ...e,
     action: canCheckIn ? { label: 'I checked in', onPress: a.checkIn } : undefined,
@@ -196,16 +197,32 @@ function AtTheDock() {
         {place.load ? <T v="bodyTiny">Load {place.load}</T> : null}
       </Row>
       <Gap h={16} />
-      <LiveCard
-        waitedMin={s.now - arrive}
-        owed={c.owed}
-        start={c.start}
-        freeEnd={c.freeEnd}
-        now={s.now}
-        arrive={arrive}
-        rate={s.rules.rate}
-        fromAppt={s.rules.start === 'appt'}
-      />
+      {/* Figma 08 / 09: big waited timer, status line, and the lime money card once detention starts. */}
+      <View style={styles.timerRow}>
+        <Text style={styles.timer}>{hm(s.now - arrive)}</Text>
+        <Text style={styles.waited}>waited</Text>
+      </View>
+      <Gap h={8} />
+      <View style={styles.status}>
+        <View style={styles.dot} />
+        <T v="labelSmall" style={styles.flex}>
+          {inDetention
+            ? 'Detention running'
+            : s.now < c.start
+              ? `Clock starts at your ${clock(c.start)} ${s.rules.start === 'appt' ? 'appointment' : 'arrival'}`
+              : `Free time until ${clock(c.freeEnd)}`}
+        </T>
+      </View>
+      {inDetention ? (
+        <>
+          <Gap h={16} />
+          <Card tone="signal">
+            <T v="bodyTiny" c={color.onSignal}>Detention so far</T>
+            <Gap h={4} />
+            <T v="numberL" c={color.onSignal}>{money(c.owed)}</T>
+          </Card>
+        </>
+      ) : null}
       <Gap h={20} />
       <Timeline events={events} />
       {st.live ? (
@@ -265,4 +282,9 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   kicker: { marginTop: 4, marginBottom: 8 },
   center: { textAlign: 'center' },
+  timerRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  timer: { ...type.displayTimer, color: color.ink, fontVariant: ['tabular-nums'] },
+  waited: { ...type.numberS, color: color.sub },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3.5 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.signal },
 });

@@ -158,6 +158,8 @@ export interface DockEvent {
   time?: string;
   state: 'done' | 'current' | 'upcoming';
   segment: 'free' | 'paid' | 'upcoming' | 'none';
+  /** Figma "Icon/Timeline/…" for the node. */
+  icon: 'pin' | 'clock' | 'check' | 'hourglass' | 'dollar';
   /** The "I checked in" button. */
   canCheckIn?: boolean;
 }
@@ -169,7 +171,15 @@ export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[]
   const inDetention = now >= c.freeEnd;
   const fromAppt = rules.start === 'appt';
   const events: DockEvent[] = [
-    { title: 'Arrived at gate', detail: 'Location, entered facility', time: clock(arrive), state: 'done', segment: 'free' },
+    {
+      title: 'Arrived at gate',
+      detail: 'Location, entered facility',
+      time: clock(arrive),
+      state: 'done',
+      // Grey until the clock starts (Figma 08), free time after (09).
+      segment: now >= c.start ? 'free' : 'upcoming',
+      icon: 'pin',
+    },
   ];
   if (fromAppt) {
     const reached = now >= apptOf(stop);
@@ -179,6 +189,7 @@ export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[]
       time: clock(apptOf(stop)),
       state: reached ? 'done' : 'upcoming',
       segment: reached ? 'free' : 'upcoming',
+      icon: 'clock',
     });
   }
   const checked = stop.checkin != null;
@@ -188,6 +199,7 @@ export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[]
     time: checked ? clock(stop.checkin as number) : undefined,
     state: checked ? 'done' : 'current',
     segment: checked ? 'free' : 'upcoming',
+    icon: 'check',
     canCheckIn: !checked,
   });
   events.push({
@@ -196,6 +208,7 @@ export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[]
     time: clock(c.freeEnd),
     state: inDetention ? 'done' : now >= c.start ? 'current' : 'upcoming',
     segment: inDetention ? 'paid' : 'upcoming',
+    icon: 'hourglass',
   });
   events.push({
     title: 'Detention',
@@ -203,6 +216,7 @@ export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[]
     time: inDetention ? dur(c.paidMin) : undefined,
     state: inDetention ? 'current' : 'upcoming',
     segment: 'none',
+    icon: 'dollar',
   });
   return events;
 }

@@ -41,7 +41,8 @@
         {
           "locationWhenInUsePermission": "Docket notices when you pull into and leave the stops on your load, so it can time your detention. Location stays on your phone and is never shared with your company."
         }
-      ]
+      ],
+      "expo-image"
     ],
     "scheme": "docket",
     "experiments": {
