@@ -192,13 +192,14 @@ const styles = StyleSheet.create({
   },
   tilePressed: { backgroundColor: color.line },
   mono: { width: 32, height: 32, borderRadius: 8, backgroundColor: color.ink, alignItems: 'center', justifyContent: 'center' },
-  rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line, marginTop: 8 },
+  rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line, marginTop: 8, marginRight: 24 },
   // Compact like Contacts; right padding leaves room for the A–Z strip.
   row: {
     minHeight: 56,
     justifyContent: 'center',
     paddingVertical: 8,
-    paddingRight: 28,
+    // Margin, not padding, so the divider stops short of the A–Z strip like Contacts.
+    marginRight: 24,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: color.line,
   },
