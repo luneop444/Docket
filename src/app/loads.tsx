@@ -16,6 +16,7 @@ export default function HowLoadsComeIn() {
   const { s, a } = useStore();
   return (
     <Screen
+      step={3}
       header={
         <OnboardingBar
           step={3}

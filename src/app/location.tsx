@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { OnboardingBar, Screen } from '../components/Chrome';
+import { resetStepMotion } from '../components/stepMotion';
 import { CheckIcon } from '../components/Icons';
 import { Button, Card, Fake, Gap, T } from '../components/ui';
 import type { LocationMode } from '../logic/state';
@@ -18,10 +19,12 @@ export default function LocationPermission() {
   const { a } = useStore();
   function finish(mode: LocationMode) {
     a.finishOnboarding(mode);
+    resetStepMotion();
     router.replace('/today');
   }
   return (
     <Screen
+      step={4}
       header={<OnboardingBar step={4} onBack={() => router.navigate('/loads')} />}
       footer={
         <>

@@ -10,6 +10,7 @@ export default function EditRules() {
   const { s } = useStore();
   return (
     <Screen
+      step={2}
       header={
         <OnboardingBar step={2} onBack={() => router.navigate(s.customCompany ? '/company' : '/company-rules')} />
       }

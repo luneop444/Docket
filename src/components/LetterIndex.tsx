@@ -1,14 +1,8 @@
-import { useRef, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  type GestureResponderEvent,
-  type HostInstance,
-} from "react-native";
-import { color, fontFamily } from "../theme/tokens";
+import { useRef, useState } from 'react';
+import { StyleSheet, Text, View, type GestureResponderEvent, type HostInstance } from 'react-native';
+import { color, fontFamily } from '../theme/tokens';
 
-export const INDEX_LETTERS = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ", "#"];
+export const INDEX_LETTERS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '#'];
 
 /**
  * The A–Z strip from iOS Contacts. Slide a finger along it (or tap) to jump.
@@ -16,20 +10,14 @@ export const INDEX_LETTERS = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ", "#"];
  * big bubble shows the letter under your finger. VoiceOver/TalkBack treat it as
  * one adjustable control: swipe up or down to step through the letters.
  */
-export function LetterIndex({
-  onLetter,
-}: {
-  onLetter: (letter: string) => void;
-}) {
+export function LetterIndex({ onLetter }: { onLetter: (letter: string) => void }) {
   const strip = useRef<HostInstance>(null);
   const box = useRef({ top: 0, height: 1 });
   const [active, setActive] = useState<string | null>(null);
   const [a11y, setA11y] = useState(0);
 
   function letterAt(pageY: number) {
-    const i = Math.floor(
-      ((pageY - box.current.top) / box.current.height) * INDEX_LETTERS.length,
-    );
+    const i = Math.floor(((pageY - box.current.top) / box.current.height) * INDEX_LETTERS.length);
     return INDEX_LETTERS[Math.max(0, Math.min(INDEX_LETTERS.length - 1, i))];
   }
   function go(e: GestureResponderEvent) {
@@ -72,16 +60,11 @@ export function LetterIndex({
           accessibilityRole="adjustable"
           accessibilityLabel="Jump to letter"
           accessibilityValue={{ text: INDEX_LETTERS[a11y] }}
-          accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
-          onAccessibilityAction={(e) =>
-            step(e.nativeEvent.actionName === "increment" ? 1 : -1)
-          }
+          accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+          onAccessibilityAction={(e) => step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
         >
           {INDEX_LETTERS.map((l) => (
-            <Text
-              key={l}
-              style={[styles.letter, l === active && styles.letterOn]}
-            >
+            <Text key={l} style={[styles.letter, l === active && styles.letterOn]}>
               {l}
             </Text>
           ))}
@@ -99,15 +82,15 @@ export function LetterIndex({
 const styles = StyleSheet.create({
   // Centered and compact like iOS Contacts, so it never runs into the rounded screen corners.
   column: {
-    position: "absolute",
+    position: 'absolute',
     right: 0,
     top: 12,
     bottom: 12,
-    justifyContent: "center",
+    justifyContent: 'center',
   },
   hit: {
     width: 32,
-    alignItems: "flex-end",
+    alignItems: 'flex-end',
     paddingRight: 4,
     paddingVertical: 6,
   },
@@ -117,19 +100,19 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     color: color.ink,
     width: 16,
-    textAlign: "center",
+    textAlign: 'center',
   },
   letterOn: { color: color.sub },
   bubble: {
-    position: "absolute",
-    alignSelf: "center",
-    top: "40%",
+    position: 'absolute',
+    alignSelf: 'center',
+    top: '40%',
     width: 72,
     height: 72,
     borderRadius: 20,
     backgroundColor: color.ink,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bubbleText: {
     fontFamily: fontFamily.semibold,

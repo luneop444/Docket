@@ -19,6 +19,11 @@ export const color = {
   signal: '#D4F54C',
   signalInk: '#000000',
   onSignal: '#000000',
+  /**
+   * Inactive onboarding progress segment. Not a Figma variable: the reference
+   * uses a very light gray, darkened here to 3.06:1 on white (WCAG 1.4.11).
+   */
+  track: '#8E949B',
   /** Bar segment for time inside free time. */
   free: '#B9C2C8',
   /** Bar segment for paid detention time. */

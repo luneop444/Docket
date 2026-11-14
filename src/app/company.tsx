@@ -73,6 +73,7 @@ export default function PickCompany() {
 
   return (
     <Screen
+      step={1}
       header={<OnboardingBar step={1} onBack={() => router.navigate('/welcome')} />}
       scrollRef={scroll}
       onScrollY={onScrollY}

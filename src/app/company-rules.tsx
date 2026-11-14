@@ -27,6 +27,7 @@ export default function CompanyRules() {
 
   return (
     <Screen
+      step={2}
       header={<OnboardingBar step={2} onBack={() => router.navigate('/company')} />}
       footer={
         <>
