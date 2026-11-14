@@ -16,6 +16,16 @@ export default function PickCompany() {
   const q = query.trim();
   const hits = q ? COMPANIES.filter((c) => c.name.toLowerCase().includes(q.toLowerCase())).slice(0, 6) : SUGGESTED;
   const exact = COMPANIES.some((c) => c.name.toLowerCase() === q.toLowerCase());
+  /** Every company A–Z, grouped by first letter like Contacts. Shown under the suggestions. */
+  const byLetter = [...COMPANIES]
+    .sort((x, y) => x.name.localeCompare(y.name))
+    .reduce<[string, typeof COMPANIES][]>((groups, c) => {
+      const letter = /[a-z]/i.test(c.name[0]) ? c.name[0].toUpperCase() : '#';
+      const last = groups[groups.length - 1];
+      if (last && last[0] === letter) last[1].push(c);
+      else groups.push([letter, [c]]);
+      return groups;
+    }, []);
 
   function pick(name: string, custom: boolean) {
     a.pickCompany(name, custom);
@@ -63,6 +73,24 @@ export default function PickCompany() {
       <T v="bodyTiny">
         <Fake label="Sample data" /> Real company names. Driver counts and rules are made up for this prototype. Not listed? Type it to add it.
       </T>
+      {!q ? (
+        <>
+          <Gap h={28} />
+          <T v="bodyTiny" c={color.sub}>All companies</T>
+          {byLetter.map(([letter, list]) => (
+            <View key={letter}>
+              <Gap h={16} />
+              <T v="bodyTiny" c={color.faint} accessibilityRole="header">{letter}</T>
+              <Gap h={8} />
+              <View style={{ gap: 8 }}>
+                {list.map((c) => (
+                  <Option key={c.name} label={c.name} sub={`${c.drivers} drivers on Docket`} onPress={() => pick(c.name, false)} />
+                ))}
+              </View>
+            </View>
+          ))}
+        </>
+      ) : null}
     </Screen>
   );
 }
