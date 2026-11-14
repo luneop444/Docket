@@ -112,6 +112,7 @@ function Aside() {
           'Rules you enter drive every number',
           '“I’m here” and “I left” time a stop with your phone’s real clock',
           'Loads you type in, and the Paycheck check built from the stops you timed',
+          'Your stops: a record you can copy as text or download as a CSV',
           'Location while the app is open: starts the clock at stops you’ve been to, asks when you leave',
           'Claude reads the in and out times off your BOL photo (on the deployed site)',
           'The message opens your own text app with the claim filled in',

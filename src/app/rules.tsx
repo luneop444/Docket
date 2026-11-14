@@ -75,6 +75,16 @@ export default function YourRules() {
           : 'You tap “I’m here” and “I left”. Location stays off.'}
       </T>
       <Gap h={24} />
+      <Card onPress={() => router.push('/history')}>
+        <T v="bodyStrong">Your stops</T>
+        <Gap h={4} />
+        <T v="bodySmall">
+          {s.history.length
+            ? `${s.history.length} stop${s.history.length === 1 ? '' : 's'} logged. See them, copy them as text, or download a CSV.`
+            : 'Stops you time with “I’m here” are kept here, ready to copy or export.'}
+        </T>
+      </Card>
+      <Gap h={24} />
       <Card>
         <T v="bodyStrong">About this prototype</T>
         <Gap h={8} />

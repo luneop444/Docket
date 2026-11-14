@@ -33,6 +33,8 @@ Real today: type in a load (Add a load → Type it in yourself), tap "I'm here"
 when you pull in and "I left" when you go. The stop is timed with the phone's
 clock (it keeps counting if the app is closed), saved to your history, and the
 Paycheck tab checks those stops week by week (Monday to Sunday).
+Your stops (from Paycheck or the profile button) lists them all and copies
+them as text or downloads a CSV, as a record if a settlement comes up short.
 
 With location allowed, the first "I'm here" at a facility saves where it is;
 after that Docket starts the clock on its own when you pull in and asks when

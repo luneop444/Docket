@@ -105,6 +105,9 @@ export default function Paycheck() {
           </Card>
         ) : null}
         <Summary week={week} />
+        {s.history.length ? (
+          <Button label="All your stops · copy or export" variant="text" onPress={() => router.push('/history')} />
+        ) : null}
       </View>
     </Screen>
   );
