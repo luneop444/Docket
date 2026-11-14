@@ -12,7 +12,7 @@ import {
 import type { Rules } from '../logic/detention';
 import type { LatLon } from '../logic/geo';
 import { toLogged, upsert, type PayWeek } from '../logic/history';
-import { COMPANIES, SAMPLE_SETTLEMENT, SIM_MINUTES_PER_SECOND, START_NOW } from '../logic/sampleData';
+import { COMPANIES, SAMPLE_SETTLEMENT, SIM_MINUTES_PER_SECOND, START_NOW, type Marks } from '../logic/sampleData';
 import { claimText, cleanAmount, weekTotals } from '../logic/settlement';
 import {
   parseState,
@@ -242,6 +242,8 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         setS((s) => ({ ...s, marks: { ...s.marks, [id]: { ...(s.marks[id] ?? {}), m } }, sent: false })),
       setAmt: (id: string, v: string) =>
         setS((s) => ({ ...s, marks: { ...s.marks, [id]: { ...(s.marks[id] ?? { m: 'less' }), amt: cleanAmount(v) } } })),
+      /** Marks read off a real settlement; the driver's own marks on other loads stay. */
+      applySettlement: (marks: Marks) => setS((s) => ({ ...s, marks: { ...s.marks, ...marks }, sent: false })),
       scanSample: () => {
         setS((s) => ({ ...s, marks: JSON.parse(JSON.stringify(SAMPLE_SETTLEMENT)), sent: false }));
         toast('Sample settlement read. Check each load.');

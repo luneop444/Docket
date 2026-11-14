@@ -41,14 +41,20 @@ after that Docket starts the clock on its own when you pull in and asks when
 you drive away (only while the app is open; background tracking needs the
 iPhone build).
 
-A BOL photo is shrunk and sent to `netlify/functions/read-bol.mts`, which asks
-Claude for the facility's in and out times. The photo isn't stored.
+Claude reads three documents, each through its own Netlify Function (shared
+code in `netlify/lib/readDocument.mts`). Nothing sent is stored.
+
+- BOL photo → `read-bol`: the facility's in and out times.
+- Rate con screenshot or PDF → `read-ratecon`: load number and stops, which
+  open in Check your stops for the driver to confirm.
+- Settlement screenshot or PDF → `read-settlement`: detention per load,
+  matched to your stops by load number to mark Paid / Less / Not there.
 
 Still simulated and marked "Faked" in the UI: background location, the 60×
-clock behind the prototype controls, reading rate cons and settlements,
-company data, Siri and the Dynamic Island.
+clock behind the prototype controls, sharing or emailing a rate con into the
+app, company data, Siri and the Dynamic Island.
 
-## Reading BOLs (Claude API key)
+## Reading documents (Claude API key)
 
 The key lives only in Netlify, never in the app or the repo:
 
@@ -56,8 +62,9 @@ The key lives only in Netlify, never in the app or the repo:
 2. Netlify → the site → Site configuration → Environment variables → Add
    `ANTHROPIC_API_KEY` (scope: Functions). Redeploy.
 
-Without the key the app still works: the photo is kept and the summary says no
-times were read. Locally, `npx expo start --web` has no functions; to try the
+Without the key the app still works: the BOL photo is kept with no times read,
+Add a load falls back to the labeled sample load, and settlements are marked by
+hand. Locally, `npx expo start --web` has no functions; to try the
 reader locally use `npx netlify-cli dev` with the key in `.env` (see
 `.env.example`; `.env` is git-ignored).
 

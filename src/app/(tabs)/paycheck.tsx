@@ -1,16 +1,18 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PageHead, Screen } from '../../components/Chrome';
 import { ChevronLeft, ChevronRight, DocIcon } from '../../components/Icons';
 import { Button, Card, Fake, Gap, noFocusRing, Row, Seg, T, TimeBar } from '../../components/ui';
 import { calc, rulesLine } from '../../logic/detention';
+import { marksFromSettlement, type SettlementReading } from '../../logic/documents';
 import { clock, dur, money } from '../../logic/format';
 import { payWeeks, type PayWeek } from '../../logic/history';
 import { loadNo, type WeekLoad } from '../../logic/sampleData';
 import { isFlagged, weekTotals } from '../../logic/settlement';
 import type { AnonAnswer } from '../../logic/state';
 import { useStore } from '../../state/AppStore';
+import { DocReadError, DocReadingOff, pickFile, pickScreenshot, postDoc, type DocFile } from '../../state/readDoc';
 import { color, fontFamily, radius } from '../../theme/tokens';
 
 /** v1 14–17: Paycheck check */
@@ -24,6 +26,40 @@ export default function Paycheck() {
   const loads = week.loads.map((l) => ({ l, c: calc(l.arrive, l.appt, l.leave, l.brk, s.rules) }));
   const owedLoads = loads.filter((x) => x.c.owed > 0);
   const inFree = loads.filter((x) => x.c.owed <= 0);
+  const [reading, setReading] = useState(false);
+
+  /** Claude reads the settlement; loads are matched by load number and marked. */
+  async function scan() {
+    let file: DocFile | null;
+    try {
+      file = await (Platform.OS === 'web' ? pickFile() : pickScreenshot());
+    } catch (e) {
+      a.toast(e instanceof DocReadError ? e.message : 'Couldn’t open that file.');
+      return;
+    }
+    if (!file) return;
+    setReading(true);
+    try {
+      const r = await postDoc<SettlementReading>('read-settlement', file, 'settlement');
+      if (!r.found) {
+        a.toast(r.note || 'No loads found on that page. Mark them below.');
+        return;
+      }
+      const got = marksFromSettlement(week.loads, s.rules, r);
+      a.applySettlement(got.marks);
+      a.toast(
+        !got.matched
+          ? 'None of these loads are on that settlement. Check the load numbers, or mark them below.'
+          : got.missing.length
+            ? `Marked ${got.matched} of ${got.matched + got.missing.length}. Mark the rest below.`
+            : `Marked all ${got.matched} from your settlement. Check each one.`,
+      );
+    } catch (e) {
+      a.toast(e instanceof DocReadingOff || e instanceof DocReadError ? e.message : 'Couldn’t read the settlement. Try again.');
+    } finally {
+      setReading(false);
+    }
+  }
 
   return (
     <Screen header={<PageHead title="Paycheck check" right={weeks.length > 1 ? undefined : week.label} />}>
@@ -64,8 +100,16 @@ export default function Paycheck() {
         <Gap h={12} />
         <Row style={{ gap: 12 }}>
           <Button label="Change rules" variant="white" small style={styles.flex} onPress={() => router.push('/rules')} />
-          {week.sample ? (
-            <Button label="Scan" variant="white" small style={styles.flex} icon={<DocIcon />} onPress={a.scanSample} />
+          {w.eligible ? (
+            <Button
+              label={reading ? 'Reading…' : 'Scan'}
+              variant="white"
+              small
+              style={styles.flex}
+              icon={<DocIcon />}
+              disabled={reading}
+              onPress={week.sample ? a.scanSample : scan}
+            />
           ) : null}
         </Row>
         <Gap h={8} />
@@ -76,7 +120,7 @@ export default function Paycheck() {
               sample settlement.
             </>
           ) : (
-            'From the stops you timed. Mark each load from your settlement below.'
+            'From the stops you timed. Scan your settlement and Claude marks each load by its number, or mark them below.'
           )}
         </T>
       </Card>

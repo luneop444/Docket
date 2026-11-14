@@ -100,7 +100,7 @@ function Aside() {
         items={[
           'Background location (the web only sees location while the app is open)',
           'Time runs 60× faster (prototype controls only)',
-          'Reading the rate con and settlement (sample results)',
+          'Sharing a rate con into Docket and forwarding it by email (choose the file instead)',
           'Company list, wait data and the first paycheck week (made-up)',
           'The Dynamic Island / lock screen Live Activity is drawn by the page, not iOS',
           'Siri check-in (a button stands in for the voice command)',
@@ -114,7 +114,7 @@ function Aside() {
           'Loads you type in, and the Paycheck check built from the stops you timed',
           'Your stops: a record you can copy as text or download as a CSV',
           'Location while the app is open: starts the clock at stops you’ve been to, asks when you leave',
-          'Claude reads the in and out times off your BOL photo (on the deployed site)',
+          'Claude reads your BOL times, the stops on your rate con, and the detention on your settlement (on the deployed site)',
           'The message opens your own text app with the claim filled in',
         ]}
       />

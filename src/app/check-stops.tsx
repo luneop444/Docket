@@ -6,6 +6,7 @@ import { SheetShell } from '../components/Overlays';
 import { Switch } from '../components/RuleEditor';
 import { blankStop, StopsEditor, stopsReady } from '../components/StopsEditor';
 import { Button, Card, Fake, Gap, Hr, Row, T } from '../components/ui';
+import type { LoadDraft } from '../logic/documents';
 import { clock } from '../logic/format';
 import { SAMPLE_LOAD, WATCH_LEAD_MIN, type LoadStop } from '../logic/sampleData';
 import { setsStopsOnce } from '../logic/state';
@@ -18,8 +19,17 @@ import { color } from '../theme/tokens';
  */
 export default function CheckStops() {
   const { s, a } = useStore();
-  const { source } = useLocalSearchParams<{ source?: string }>();
+  const { source, read } = useLocalSearchParams<{ source?: string; read?: string }>();
   const manual = source === 'manual';
+  // What Claude read off the driver's rate con, if they chose one. Otherwise the sample load.
+  const [draft] = useState<LoadDraft | null>(() => {
+    try {
+      return read ? (JSON.parse(read) as LoadDraft) : null;
+    } catch {
+      return null;
+    }
+  });
+  const base = draft ?? { number: SAMPLE_LOAD.number, stops: SAMPLE_LOAD.stops, noTime: [] as number[] };
   const mix = s.loadStyle === 'mix';
   // Mixed drivers choose per load whether these are their weekly stops.
   const [saveWeekly, setSaveWeekly] = useState(() => mix && !!s.load?.recurring);
@@ -27,18 +37,23 @@ export default function CheckStops() {
   const company = s.company?.split(' ')[0] ?? 'Your company';
   // Changing weekly stops starts from the saved ones; a new load from the rate con, or blank when typed in.
   const editingSaved = !!(s.load?.recurring && s.load.stops);
-  const [number, setNumber] = useState(() => (editingSaved ? s.load!.number : manual ? '' : SAMPLE_LOAD.number));
+  const [number, setNumber] = useState(() => (editingSaved ? s.load!.number : manual ? '' : base.number));
   const [stops, setStops] = useState<LoadStop[]>(() =>
-    editingSaved ? s.load!.stops! : manual ? [blankStop('Drop', 8 * 60)] : SAMPLE_LOAD.stops,
+    editingSaved ? s.load!.stops! : manual ? [blankStop('Drop', 8 * 60)] : base.stops,
   );
   const [fixing, setFixing] = useState(false);
-  const fixed = stops.length !== SAMPLE_LOAD.stops.length || stops.some((st, i) => st.at !== SAMPLE_LOAD.stops[i]?.at || st.name !== SAMPLE_LOAD.stops[i]?.name);
+  const fixed = stops.length !== base.stops.length || stops.some((st, i) => st.at !== base.stops[i]?.at || st.name !== base.stops[i]?.name);
+  // Stops the rate con gave no time for, until the driver changes anything.
+  const noTime = fixed ? [] : base.noTime;
   const ready = stopsReady(stops);
   // Typed in from scratch: edit right on the page.
   const inline = manual && !editingSaved;
 
   const rows: [string, string][] = [
-    ...stops.map((st): [string, string] => [st.name || 'Unnamed stop', `${st.kind} ${clock(st.at)}`]),
+    ...stops.map((st, i): [string, string] => [
+      st.name || 'Unnamed stop',
+      noTime.includes(i) ? `${st.kind}, no time` : `${st.kind} ${clock(st.at)}`,
+    ]),
     ['Detention rules', company],
     ['Watching starts', `${WATCH_LEAD_MIN / 60}h before each stop`],
     ...(weekly ? [['Repeats', 'Every run'] as [string, string]] : []),
@@ -132,9 +147,15 @@ export default function CheckStops() {
         </Card>
         {weeklySwitch}
         <Gap h={12} />
-        {editingSaved ? null : (
+        {editingSaved ? null : draft ? (
           <T v="bodyTiny">
-            <Fake label="Sample data" /> Reading the rate con is faked. These stops come from a sample load.
+            Claude read these off your rate con. Check the names and times before you start.
+            {noTime.length ? ' Tap Fix a stop to add the missing appointment time.' : ''}
+            {fixed ? ' You changed it.' : ''}
+          </T>
+        ) : (
+          <T v="bodyTiny">
+            <Fake label="Sample data" /> These stops come from a sample load, not your rate con.
             {fixed ? ' You changed it.' : ''}
           </T>
         )}
