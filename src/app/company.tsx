@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     height: 56,
     // Pill: radius is half the height; 20 inset keeps the icon clear of the round end.
     paddingHorizontal: 20,
-    borderRadius: 28,
+    borderRadius: 28, borderCurve: 'continuous',
     backgroundColor: color.raise,
   },
   fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
@@ -187,11 +187,11 @@ const styles = StyleSheet.create({
     minHeight: 92,
     padding: 16,
     gap: 10,
-    borderRadius: radius.control,
+    borderRadius: radius.control, borderCurve: 'continuous',
     backgroundColor: color.raise,
   },
   tilePressed: { backgroundColor: color.line },
-  mono: { width: 32, height: 32, borderRadius: 8, backgroundColor: color.raise2, alignItems: 'center', justifyContent: 'center' },
+  mono: { width: 32, height: 32, borderRadius: 8, borderCurve: 'continuous', backgroundColor: color.raise2, alignItems: 'center', justifyContent: 'center' },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line, marginTop: 8, marginRight: 24 },
   // Compact like Contacts; right padding leaves room for the A–Z strip.
   row: {

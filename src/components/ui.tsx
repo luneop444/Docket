@@ -240,7 +240,7 @@ export function Seg<K extends string>({
 /** Free time (grey) then detention (black). Heights 6 (cards) or 8 (hero). */
 export function TimeBar({ free, detention, height = 6 }: { free: number; detention: number; height?: number }) {
   return (
-    <View style={[styles.bar, { height, borderRadius: height / 2 }]}>
+    <View style={[styles.bar, { height, borderRadius: height / 2, borderCurve: 'continuous' }]}>
       {free > 0 ? <View style={{ flex: free, backgroundColor: color.free }} /> : null}
       {detention > 0 ? <View style={{ flex: detention, backgroundColor: color.detention }} /> : null}
     </View>
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   rowBase: { alignItems: 'baseline' },
   hr: { height: 1, backgroundColor: color.line, marginVertical: 14 },
-  card: { backgroundColor: color.raise, borderRadius: radius.card, padding: 18 },
+  card: { backgroundColor: color.raise, borderRadius: radius.card, borderCurve: 'continuous', padding: 18 },
   cardSignal: { backgroundColor: color.signal },
   cardFlagged: { boxShadow: `inset 0 0 0 1.5px ${color.flag}` },
   btn: {
@@ -297,20 +297,20 @@ const styles = StyleSheet.create({
     gap: 8,
     width: '100%',
     height: 56,
-    borderRadius: radius.control,
+    borderRadius: radius.control, borderCurve: 'continuous',
   },
-  btnSmall: { height: 46, borderRadius: radius.chip },
+  btnSmall: { height: 46, borderRadius: radius.chip, borderCurve: 'continuous' },
   btnText: { height: 44 },
   disabled: { opacity: 0.35 },
   pressed: { transform: [{ scale: 0.98 }] },
-  pill: { height: 26, paddingHorizontal: 10, borderRadius: 13, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
+  pill: { height: 26, paddingHorizontal: 10, borderRadius: 13, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
   fake: {
     fontFamily: fontFamily.semibold,
     fontSize: 11,
     letterSpacing: 0.33,
     color: protoColor.fakeInk,
     backgroundColor: protoColor.fakeBg,
-    borderRadius: 6,
+    borderRadius: 6, borderCurve: 'continuous',
     overflow: 'hidden',
   },
   option: {
@@ -322,18 +322,18 @@ const styles = StyleSheet.create({
     minHeight: 64,
     paddingVertical: 12,
     paddingHorizontal: 18,
-    borderRadius: radius.option,
+    borderRadius: radius.option, borderCurve: 'continuous',
     backgroundColor: color.raise,
   },
   optionOn: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
   optionRadio: { justifyContent: 'flex-start', gap: 14, padding: 16 },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: color.line },
+  radio: { width: 22, height: 22, borderRadius: 11, borderCurve: 'continuous', borderWidth: 2, borderColor: color.line },
   radioOn: { borderWidth: 7, borderColor: color.ink },
   seg: { flexDirection: 'row', gap: 6 },
   segBtn: {
     flex: 1,
     height: 44,
-    borderRadius: radius.chip,
+    borderRadius: radius.chip, borderCurve: 'continuous',
     backgroundColor: color.raise2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: protoColor.dashed,
-    borderRadius: 22,
+    borderRadius: 22, borderCurve: 'continuous',
     padding: 14,
     gap: 10,
     marginTop: 20,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   badge: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 14, borderCurve: 'continuous',
     backgroundColor: color.raise,
     alignItems: 'center',
     justifyContent: 'center',

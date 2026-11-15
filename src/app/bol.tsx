@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   photo: {
     width: '100%',
     aspectRatio: 4 / 3,
-    borderRadius: 24,
+    borderRadius: 24, borderCurve: 'continuous',
     backgroundColor: color.raise,
     alignItems: 'center',
     justifyContent: 'center',

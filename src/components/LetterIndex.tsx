@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     top: '40%',
     width: 72,
     height: 72,
-    borderRadius: 20,
+    borderRadius: 20, borderCurve: 'continuous',
     backgroundColor: color.ink,
     alignItems: 'center',
     justifyContent: 'center',

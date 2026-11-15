@@ -58,11 +58,11 @@ export function Timeline({ events }: { events: TimelineEvent[] }) {
 const styles = StyleSheet.create({
   ev: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   rail: { width: 28, alignSelf: 'stretch', alignItems: 'center', gap: 4, paddingTop: 4 },
-  node: { width: 14, height: 14, borderRadius: 7 },
+  node: { width: 14, height: 14, borderRadius: 7, borderCurve: 'continuous' },
   done: { backgroundColor: color.ink },
   current: { backgroundColor: color.signal, borderWidth: 1.5, borderColor: color.ink },
   upcoming: { borderWidth: 1.5, borderColor: color.faint },
-  segment: { flex: 1, width: 6, borderRadius: 3, minHeight: 12 },
+  segment: { flex: 1, width: 6, borderRadius: 3, borderCurve: 'continuous', minHeight: 12 },
   text: { flex: 1, minWidth: 0, gap: 2, paddingTop: 1, paddingBottom: 22 },
   ink: { color: color.ink },
   sub: { color: color.sub },

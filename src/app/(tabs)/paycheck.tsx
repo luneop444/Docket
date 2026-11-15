@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   weekBtn: {
     width: 44,
     height: 44,
-    borderRadius: radius.chip,
+    borderRadius: radius.chip, borderCurve: 'continuous',
     backgroundColor: color.raise,
     alignItems: 'center',
     justifyContent: 'center',
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     gap: 6,
     height: 48,
     paddingHorizontal: 14,
-    borderRadius: 14,
+    borderRadius: 14, borderCurve: 'continuous',
     backgroundColor: color.bg,
     marginTop: 10,
   },

@@ -154,13 +154,13 @@ function TimeField({ at, onChange, label }: { at: number; onChange: (m: number) 
 }
 
 const styles = StyleSheet.create({
-  stop: { backgroundColor: color.raise, borderRadius: radius.control, padding: 14, gap: 10 },
+  stop: { backgroundColor: color.raise, borderRadius: radius.control, borderCurve: 'continuous', padding: 14, gap: 10 },
   stopHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   input: {
     ...type.body,
     height: 48,
     paddingHorizontal: 14,
-    borderRadius: radius.chip,
+    borderRadius: radius.chip, borderCurve: 'continuous',
     backgroundColor: color.raise,
     color: color.ink,
     ...noFocusRing,
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   step: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 12, borderCurve: 'continuous',
     backgroundColor: color.bg,
     alignItems: 'center',
     justifyContent: 'center',

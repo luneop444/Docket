@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  dash: { height: 3, borderRadius: 2 },
+  dash: { height: 3, borderRadius: 2, borderCurve: 'continuous' },
   topbar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   wordmarkBar: {
     width: 10,
     height: 22,
-    borderRadius: 2,
+    borderRadius: 2, borderCurve: 'continuous',
     backgroundColor: color.signal,
   },
   wordmarkText: {
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   iconBtn: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 22, borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
     height: 44,
     paddingLeft: 6,
     paddingRight: 12,
-    borderRadius: 22,
+    borderRadius: 22, borderCurve: 'continuous',
   },
   backText: { fontFamily: fontFamily.medium, fontSize: 17, color: color.ink },
   pagehead: {
