@@ -65,24 +65,24 @@ export function Wordmark() {
 }
 
 /** Docket wordmark on the left, optional actions on the right. */
-export function TopBar({ trailing }: { trailing?: ReactNode }) {
+export function TopBar({ trailing, title }: { trailing?: ReactNode; title?: string }) {
   return (
     <>
       <TopSafe />
       <View style={styles.topbar}>
-        <Wordmark />
+        {title ? <T v="h2">{title}</T> : <Wordmark />}
         <View style={styles.trailing}>{trailing}</View>
       </View>
     </>
   );
 }
 
-/** Date + profile button (opens Your rules). */
-export function ProfileTrailing() {
+/** Date + profile button (opens Your rules). `noDate` when the date is already the title. */
+export function ProfileTrailing({ noDate }: { noDate?: boolean } = {}) {
   const { s } = useStore();
   return (
     <>
-      <T v="bodyTiny">{headerDate(s.stop, TODAY_LABEL)}</T>
+      {noDate ? null : <T v="bodyTiny">{headerDate(s.stop, TODAY_LABEL)}</T>}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Profile and rules"
