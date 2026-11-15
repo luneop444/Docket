@@ -1,24 +1,29 @@
-import { getSvgPath } from 'figma-squircle';
 import { useEffect } from 'react';
 
-/**
- * Turns every rounded corner in the web build into Apple's continuous corner
- * (a "squircle"): Figma's corner smoothing at 60%, its iOS preset, built from
- * two cubic Béziers per corner by the figma-squircle package.
- *
- * Browsers can't draw this curve natively (CSS `corner-shape: squircle` is a
- * different curve, superellipse(2), and only Chromium has it), so each rounded
- * element is clipped to the exact path for its current size. The smoothed shape
- * sits inside the circular rounded rect of the same radius, so the clip never
- * needs space the element doesn't already paint. Outlines (borders and inset
- * box-shadow rings) are redrawn along the same path so they keep their width
- * through the corners.
- *
- * Skipped: circles (nothing to smooth) and elements with an outer shadow, which
- * a clip would cut off (the prototype's phone bezel, the toggle knob).
- */
-const SMOOTHING = 0.6;
+import { squirclePath, SQUIRCLE_C10, SQUIRCLE_C5 } from '../logic/squircle';
 
+/**
+ * Turns every rounded corner in the web build into the squircle from Scott
+ * Dodge's Squircle plugin for Figma (github.com/scotato/figma-squircle, MIT,
+ * src/squircle.ts), using its exact path:
+ *
+ *   each corner is one cubic Bézier from (0, r2) via (0, r1) and (r1, 0) to
+ *   (r2, 0), joined by straight edges;
+ *   r2 = 0.332 × the shorter side (its default curvature, c = 5),
+ *   r1 = r2 × 0.1765.
+ *
+ * Like resizing the plugin's shape, r2 follows each element's shorter side, so
+ * the corners scale with the element and the straight edges stretch.
+ * Pills (corners already half the height) use the plugin's c = 10 (r2 = 0.5 ×
+ * the shorter side) so they stay pills with the same curve. Circles are left
+ * as circles.
+ *
+ * Browsers can't draw this natively, so each rounded element is clipped to the
+ * path for its current size and its own border-radius is set to 0 underneath
+ * (the clip, not the radius, now makes the shape). Borders and inset
+ * box-shadow rings are redrawn along the path so they keep their width.
+ * Elements with an outer shadow are skipped, since a clip would cut it off.
+ */
 const done = new WeakMap<HTMLElement, string>();
 
 function px(v: string) {
@@ -32,43 +37,47 @@ function ringOf(boxShadow: string) {
   return m ? { color: m[1], width: parseFloat(m[2]) } : null;
 }
 
+function release(el: HTMLElement) {
+  if (!done.has(el)) return;
+  el.style.clipPath = '';
+  el.style.backgroundImage = '';
+  el.style.borderRadius = '';
+  done.delete(el);
+}
+
 function apply(el: HTMLElement) {
+  // Read the element's own radius, not the 0 this script sets underneath the clip.
+  const ours = done.has(el);
+  if (ours) el.style.borderRadius = '';
   const cs = getComputedStyle(el);
   const r = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius].map(px);
   const w = el.offsetWidth;
   const h = el.offsetHeight;
+  const short = Math.min(w, h);
   const rounded = r.some((v) => v > 0) && r.every((v) => !Number.isNaN(v));
   const circle = w > 0 && w === h && r.every((v) => v >= w / 2 - 0.5);
   const outerShadow = cs.boxShadow !== 'none' && !cs.boxShadow.includes('inset');
   if (!rounded || circle || outerShadow || !w || !h) {
-    if (done.has(el)) {
-      el.style.clipPath = '';
-      el.style.backgroundImage = '';
-      done.delete(el);
-    }
+    release(el);
     return;
   }
 
-  const path = getSvgPath({
-    width: w,
-    height: h,
-    topLeftCornerRadius: r[0],
-    topRightCornerRadius: r[1],
-    bottomRightCornerRadius: r[2],
-    bottomLeftCornerRadius: r[3],
-    cornerSmoothing: SMOOTHING,
-    preserveSmoothing: true,
-  });
+  const pill = r.filter((v) => v > 0).every((v) => v >= short / 2 - 0.5);
+  const size = short * (pill ? SQUIRCLE_C10 : SQUIRCLE_C5);
+  const r2 = r.map((v) => (v > 0 ? size : 0)) as [number, number, number, number];
+  const path = squirclePath(w, h, r2);
 
   // Outlines: the stroke is centered on the path and the clip removes the outer half.
   const strokes: string[] = [];
   const ring = ringOf(cs.boxShadow);
   if (ring) strokes.push(`<path d='${path}' fill='none' stroke='${ring.color}' stroke-width='${ring.width * 2}'/>`);
   const bw = px(cs.borderTopWidth);
-  if (bw > 0 && cs.borderTopStyle === 'solid' && cs.borderTopColor !== 'rgba(0, 0, 0, 0)') {
-    strokes.push(`<path d='${path}' fill='none' stroke='${cs.borderTopColor}' stroke-width='${bw * 2}'/>`);
+  if (bw > 0 && cs.borderTopStyle !== 'none' && cs.borderTopColor !== 'rgba(0, 0, 0, 0)') {
+    const dash = cs.borderTopStyle === 'dashed' ? ` stroke-dasharray='${bw * 3} ${bw * 3}'` : '';
+    strokes.push(`<path d='${path}' fill='none' stroke='${cs.borderTopColor}' stroke-width='${bw * 2}'${dash}/>`);
   }
 
+  el.style.borderRadius = '0px';
   const key = `${path}|${strokes.join('')}`;
   if (done.get(el) === key) return;
   done.set(el, key);

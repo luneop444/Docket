@@ -1,7 +1,8 @@
 /**
  * Native: nothing to do here. Every rounded style sets `borderCurve: 'continuous'`,
- * which is Apple's own continuous-corner curve on iOS (Android draws circular corners).
- * The web build clips to the same curve in Squircles.web.tsx.
+ * iOS's own smooth corner, the closest a native view can draw without an SVG mask
+ * (Android draws circular corners). The web build clips to the exact Squircle
+ * plugin path in Squircles.web.tsx.
  */
 export function Squircles() {
   return null;
