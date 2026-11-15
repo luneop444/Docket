@@ -16,7 +16,7 @@ import { squircleExtent, squirclePath } from '../logic/squircle';
  * design radius: r2 = 1.532 × radius (see squircleExtent), so a squircle reads
  * the same size as the corner it replaces and same-kind elements get the same
  * corner at any height. Straight edges stretch to fill the box. Pills cap at
- * half the shorter side (the plugin's c = 10). Circles are left as circles.
+ * half the shorter side (the plugin's c = 10). Circles and pills are left as they are.
  *
  * Browsers can't draw this natively, so each rounded element is clipped to the
  * path for its current size and its own border-radius is set to 0 underneath
@@ -79,7 +79,8 @@ function apply(el: HTMLElement) {
   const w = el.offsetWidth;
   const h = el.offsetHeight;
     const rounded = r.some((v) => v > 0) && r.every((v) => !Number.isNaN(v));
-  const circle = w > 0 && w === h && r.every((v) => v >= w / 2 - 0.5);
+  // Circles and pills (every corner at least half the short side) keep their round ends.
+  const circle = w > 0 && r.every((v) => v >= Math.min(w, h) / 2 - 0.5);
   const outerShadow = cs.boxShadow !== 'none' && !cs.boxShadow.includes('inset');
   if (!rounded || circle || outerShadow || !w || !h) {
     release(el);

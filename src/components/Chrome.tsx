@@ -41,11 +41,9 @@ export function useIslandStage() {
 export function useInsets() {
   const framed = useFramed();
   const insets = useSafeAreaInsets();
-  const live = useIslandStage() > 0;
   if (framed) return { top: 48, footerBottom: 34, tabBottom: 22 };
-  // On a phone our simulated island floats below the real one, so leave room for it.
   return {
-    top: Math.max(12, insets.top) + (live ? 48 : 0),
+    top: Math.max(12, insets.top),
     footerBottom: Math.max(20, insets.bottom),
     tabBottom: insets.bottom,
   };
