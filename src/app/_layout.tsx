@@ -1,12 +1,15 @@
 // Registers the background location task before anything else runs (Expo Router note in the TaskManager docs).
 import '../state/background';
 import { useFonts } from 'expo-font';
-import { router, Stack, usePathname } from 'expo-router';
+import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Squircles } from '../components/Squircles';
+import { TextWrap } from '../components/TextWrap';
 import { Overlays } from '../components/Overlays';
 import { PhoneFrame } from '../components/PhoneFrame';
+import { isDemoState } from '../logic/demo';
 import { AppStoreProvider, useStore } from '../state/AppStore';
 import { BackgroundSync } from '../state/BackgroundSync';
 import { LocationWatcher } from '../state/location';
@@ -18,9 +21,11 @@ const ONBOARDING = ['/welcome', '/company', '/company-rules', '/edit-rules', '/l
 function OnboardingGuard() {
   const { s } = useStore();
   const path = usePathname();
+  // A demo link (/today?state=paid) sets up its own sample driver, so it skips onboarding.
+  const demo = isDemoState(useGlobalSearchParams<{ state?: string }>().state);
   useEffect(() => {
-    if (!s.onboarded && path !== '/' && !ONBOARDING.includes(path)) router.replace('/welcome');
-  }, [s.onboarded, path]);
+    if (!demo && !s.onboarded && path !== '/' && !ONBOARDING.includes(path)) router.replace('/welcome');
+  }, [demo, s.onboarded, path]);
   return null;
 }
 
@@ -47,6 +52,8 @@ export default function RootLayout() {
           <OnboardingGuard />
           <LocationWatcher />
           <BackgroundSync />
+          <Squircles />
+          <TextWrap />
         </PhoneFrame>
       </AppStoreProvider>
     </SafeAreaProvider>

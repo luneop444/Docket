@@ -10,6 +10,7 @@ export default function EditRules() {
   const { s } = useStore();
   return (
     <Screen
+      step={2}
       header={
         <OnboardingBar step={2} onBack={() => router.navigate(s.customCompany ? '/company' : '/company-rules')} />
       }
@@ -22,7 +23,7 @@ export default function EditRules() {
           ? 'Enter the rules from your onboarding paperwork or driver handbook. You can change them later.'
           : 'Set them to match your paperwork. Rules can differ by fleet or division.'}
       </T>
-      <Gap h={8} />
+      <Gap h={24} />
       <RuleEditor />
     </Screen>
   );

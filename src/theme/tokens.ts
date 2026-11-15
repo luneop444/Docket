@@ -19,6 +19,11 @@ export const color = {
   signal: '#D4F54C',
   signalInk: '#000000',
   onSignal: '#000000',
+  /**
+   * Inactive onboarding progress segment. Not a Figma variable: the reference
+   * uses a very light gray, darkened here to 3.06:1 on white (WCAG 1.4.11).
+   */
+  track: '#8E949B',
   /** Bar segment for time inside free time. */
   free: '#B9C2C8',
   /** Bar segment for paid detention time. */
@@ -75,19 +80,8 @@ export const protoColor = {
   knobShadow: 'rgba(0,0,0,0.25)',
 } as const;
 
-/** Figma effects on the Timeline card and its event nodes (screens 08–09). */
-export const elevation = {
-  /** Timeline card. */
-  card: '0px 6px 18px 0px rgba(26,31,41,0.05)',
-  /** Upcoming event node (white circle). */
-  nodeUpcoming: '0px 2px 6px 0px rgba(26,31,41,0.08)',
-  /** Current event node (lime circle). */
-  nodeCurrent: '0px 3px 12px 0px rgba(212,245,77,0.6)',
-} as const;
-
 export const radius = {
-  timeline: 24,
-  card: 28,
+  card: 24,
   control: 16,
   chip: 14,
   option: 20,

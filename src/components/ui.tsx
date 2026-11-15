@@ -16,6 +16,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { color, fontFamily, protoColor, radius, type, type TypeToken } from '../theme/tokens';
+import { noWidow } from '../logic/text';
 import { ChevronRight } from './Icons';
 
 /* ---------- text ---------- */
@@ -29,12 +30,19 @@ export function T({
   ...rest
 }: TextProps & { v?: TypeToken; c?: string; style?: StyleProp<TextStyle>; children?: ReactNode }) {
   const fallback = v === 'bodySmall' || v === 'bodyTiny' ? color.sub : color.ink;
+  const heading = v === 'h1' || v === 'h2';
   return (
-    <Text {...rest} style={[type[v], { color: c ?? fallback }, style]}>
-      {children}
+    <Text
+      accessibilityRole={heading ? 'header' : undefined}
+      {...rest}
+      style={[type[v], { color: c ?? fallback }, style]}
+    >
+      {noWidow(children)}
     </Text>
   );
 }
+
+
 
 /**
  * Hides the browser's focus outline on text inputs that draw their own focus
@@ -131,7 +139,7 @@ export function Button({
       ]}
     >
       {icon}
-      <Text style={[small || variant === 'text' ? type.labelSmall : type.labelButton, { color: fg }]}>
+      <Text style={[small ? type.labelSmall : type.labelButton, { color: fg }]}>
         {label}
       </Text>
     </Pressable>
@@ -182,13 +190,14 @@ export function Option({
     </View>
   );
   if (radio) {
-    // v2 (Figma A3, B1): radio on the left, row stays grey when selected.
+    // Radio on the left. Selected gets the same white row and ink ring as every
+    // other selected option, so the choice reads from across the row, not just the dot.
     return (
       <Pressable
         accessibilityRole="radio"
         accessibilityState={{ checked: !!selected }}
         onPress={onPress}
-        style={[styles.option, styles.optionRadio]}
+        style={[styles.option, styles.optionRadio, selected && styles.optionOn]}
       >
         <View style={[styles.radio, selected && styles.radioOn]} />
         {text}
@@ -240,7 +249,7 @@ export function Seg<K extends string>({
 /** Free time (grey) then detention (black). Heights 6 (cards) or 8 (hero). */
 export function TimeBar({ free, detention, height = 6 }: { free: number; detention: number; height?: number }) {
   return (
-    <View style={[styles.bar, { height, borderRadius: height / 2 }]}>
+    <View style={[styles.bar, { height, borderRadius: height / 2, borderCurve: 'continuous' }]}>
       {free > 0 ? <View style={{ flex: free, backgroundColor: color.free }} /> : null}
       {detention > 0 ? <View style={{ flex: detention, backgroundColor: color.detention }} /> : null}
     </View>
@@ -287,7 +296,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   rowBase: { alignItems: 'baseline' },
   hr: { height: 1, backgroundColor: color.line, marginVertical: 14 },
-  card: { backgroundColor: color.raise, borderRadius: radius.card, padding: 18 },
+  card: { backgroundColor: color.raise, borderRadius: radius.card, borderCurve: 'continuous', padding: 20 },
   cardSignal: { backgroundColor: color.signal },
   cardFlagged: { boxShadow: `inset 0 0 0 1.5px ${color.flag}` },
   btn: {
@@ -297,20 +306,20 @@ const styles = StyleSheet.create({
     gap: 8,
     width: '100%',
     height: 56,
-    borderRadius: radius.control,
+    borderRadius: radius.control, borderCurve: 'continuous',
   },
-  btnSmall: { height: 46, borderRadius: radius.chip },
+  btnSmall: { height: 46, borderRadius: radius.chip, borderCurve: 'continuous' },
   btnText: { height: 44 },
   disabled: { opacity: 0.35 },
   pressed: { transform: [{ scale: 0.98 }] },
-  pill: { height: 26, paddingHorizontal: 10, borderRadius: 13, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
+  pill: { height: 26, paddingHorizontal: 10, borderRadius: 13, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
   fake: {
     fontFamily: fontFamily.semibold,
     fontSize: 11,
     letterSpacing: 0.33,
     color: protoColor.fakeInk,
     backgroundColor: protoColor.fakeBg,
-    borderRadius: 6,
+    borderRadius: 6, borderCurve: 'continuous',
     overflow: 'hidden',
   },
   option: {
@@ -319,21 +328,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
     width: '100%',
-    minHeight: 64,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: radius.option,
+    // Even 20 on every side, equal to the corner radius; 62px tall with one line.
+    padding: 20,
+    borderRadius: radius.option, borderCurve: 'continuous',
     backgroundColor: color.raise,
   },
   optionOn: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
-  optionRadio: { justifyContent: 'flex-start', gap: 14, padding: 16 },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: color.line },
+  optionRadio: { justifyContent: 'flex-start', gap: 14 },
+  radio: { width: 22, height: 22, borderRadius: 11, borderCurve: 'continuous', borderWidth: 2, borderColor: color.track },
   radioOn: { borderWidth: 7, borderColor: color.ink },
   seg: { flexDirection: 'row', gap: 6 },
   segBtn: {
     flex: 1,
     height: 44,
-    borderRadius: radius.chip,
+    borderRadius: radius.chip, borderCurve: 'continuous',
     backgroundColor: color.raise2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -343,7 +351,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: protoColor.dashed,
-    borderRadius: 22,
+    borderRadius: 22, borderCurve: 'continuous',
     padding: 14,
     gap: 10,
     marginTop: 20,
@@ -351,7 +359,7 @@ const styles = StyleSheet.create({
   badge: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 14, borderCurve: 'continuous',
     backgroundColor: color.raise,
     alignItems: 'center',
     justifyContent: 'center',

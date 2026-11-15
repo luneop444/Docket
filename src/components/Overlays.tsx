@@ -183,19 +183,20 @@ function ArrivalSheet() {
   const r = s.rules;
   return (
     <SheetShell onClose={() => {}}>
-      <T v="h2">You’re at {placeOf(s.load).name}</T>
-      <Gap h={6} />
-      <T v="bodySmall">Pulled in at {clock(arrive)}. Start the clock?</T>
-      <Gap h={14} />
+      <T v="h2">Loading or unloading at {placeOf(s.load).name}?</T>
+      <Gap h={8} />
+      <T v="body" c={color.sub}>
+        You’ve been parked here 30 min. If yes, your wait counts from {clock(arrive)}, when you pulled in.
+      </T>
+      <Gap h={16} />
       <View style={styles.details}>
         <T v="body">
-          Arrived {clock(arrive)}
-          {r.start === 'appt' ? ` · appointment ${clock(apptOf(s.stop))}` : ''} · {durShort(r.free)} free time, then{' '}
-          {rateShort(r.rate)}.
+          {r.start === 'appt' ? `Appointment ${clock(apptOf(s.stop))} · ` : ''}
+          {durShort(r.free)} free time, then {rateShort(r.rate)}
         </T>
       </View>
-      <Gap h={16} />
-      <Button label="Yes, start the clock" onPress={a.confirmArrival} />
+      <Gap h={24} />
+      <Button label="Yes, count it" onPress={a.confirmArrival} />
       <Button label="Not a stop" variant="text" onPress={a.cancelArrival} />
     </SheetShell>
   );
@@ -323,7 +324,7 @@ function Island() {
   const width = !framed && mode === 'expanded' ? '94%' : w;
 
   return (
-    <Animated.View style={[styles.island, { top, width, height: h, borderRadius: r }]}>
+    <Animated.View style={[styles.island, { top, width, height: h, borderRadius: r, borderCurve: 'continuous' }]}>
       <Pressable style={styles.islandPress} onPress={onPress} accessibilityLabel="Live Activity">
         {content ? (
           <>
@@ -542,14 +543,14 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingHorizontal: 20,
   },
-  grab: { width: 36, height: 5, borderRadius: 3, backgroundColor: color.line, alignSelf: 'center', marginBottom: 14 },
+  grab: { width: 36, height: 5, borderRadius: 3, borderCurve: 'continuous', backgroundColor: color.line, alignSelf: 'center', marginBottom: 14 },
   textarea: {
     ...type.bodySmall,
     fontSize: 15,
     lineHeight: 22,
     color: color.ink,
     minHeight: 260,
-    borderRadius: 18,
+    borderRadius: 18, borderCurve: 'continuous',
     backgroundColor: color.raise,
     padding: 14,
   },
@@ -567,7 +568,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepValue: { minWidth: 80, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  details: { backgroundColor: color.raise, borderRadius: radius.control, borderCurve: 'continuous', padding: 14 },
+  details: { backgroundColor: color.raise, borderRadius: 14, borderCurve: 'continuous', padding: 14 },
   undo: {
     position: 'absolute',
     left: 16,
@@ -598,7 +599,7 @@ const styles = StyleSheet.create({
     right: 20,
     bottom: 96,
     backgroundColor: protoColor.toast,
-    borderRadius: 16,
+    borderRadius: 16, borderCurve: 'continuous',
     paddingVertical: 14,
     paddingHorizontal: 16,
     zIndex: 60,
@@ -622,12 +623,12 @@ const styles = StyleSheet.create({
   lead: {
     width: 26,
     height: 26,
-    borderRadius: 13,
+    borderRadius: 13, borderCurve: 'continuous',
     backgroundColor: color.signal,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  leadL: { width: 44, height: 44, borderRadius: 22 },
+  leadL: { width: 44, height: 44, borderRadius: 22, borderCurve: 'continuous' },
   islandVal: {
     fontFamily: fontFamily.medium,
     fontSize: 17,
@@ -638,7 +639,7 @@ const styles = StyleSheet.create({
   expText: { flex: 1, minWidth: 0, marginLeft: 12 },
   islandSub: { fontFamily: fontFamily.regular, fontSize: 13, color: protoColor.islandSub },
   ibar: { flexDirection: 'row', gap: 4, marginTop: 'auto' },
-  ibarSeg: { flex: 1, height: 4, borderRadius: 2 },
+  ibarSeg: { flex: 1, height: 4, borderRadius: 2, borderCurve: 'continuous' },
   lock: { flex: 1, alignItems: 'center', paddingTop: 70, paddingHorizontal: 16, zIndex: 55 },
   lockDate: { fontFamily: fontFamily.semibold, fontSize: 21, color: color.bg },
   lockClock: {
@@ -654,7 +655,7 @@ const styles = StyleSheet.create({
     marginBottom: 120,
     width: '100%',
     backgroundColor: color.bg,
-    borderRadius: 24,
+    borderRadius: 24, borderCurve: 'continuous',
     paddingVertical: 16,
     paddingHorizontal: 18,
   },

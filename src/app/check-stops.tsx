@@ -101,12 +101,12 @@ export default function CheckStops() {
         <T v="body" c={color.sub}>
           The facility names and appointment times from your rate con. Docket watches the last drop.
         </T>
-        <Gap h={20} />
+        <Gap h={24} />
         <StopsEditor number={number} onNumber={setNumber} stops={stops} onStops={setStops} />
         {weeklySwitch}
         {!ready ? (
           <>
-            <Gap h={12} />
+            <Gap h={8} />
             <T v="bodyTiny">Name every stop to start watching.</T>
           </>
         ) : null}
@@ -133,7 +133,7 @@ export default function CheckStops() {
             ? 'Your saved weekly stops. Docket watches these on every run. Fix anything that’s changed.'
             : `Read from your rate con${number ? ` for load ${number}` : ''}.${weekly ? ' Docket watches these stops on every run.' : ''} Fix anything that looks off.`}
         </T>
-        <Gap h={20} />
+        <Gap h={24} />
         <Card>
           {rows.map(([label, value], i) => (
             <Fragment key={i}>

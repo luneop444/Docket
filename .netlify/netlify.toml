@@ -1,0 +1,42 @@
+functionsDirectory = "/home/claude/docket/netlify/functions"
+functionsDirectoryOrigin = "default"
+redirectsOrigin = "config"
+plugins = []
+headers = []
+
+[build]
+publish = "/home/claude/docket/dist"
+publishOrigin = "config"
+commandOrigin = "config"
+command = "npm run build:web"
+functions = "/home/claude/docket/netlify/functions"
+
+[build.environment]
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[functions]
+
+[functions."*"]
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]

@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   phone: {
     width: device.width,
     height: device.height,
-    borderRadius: 54,
+    borderRadius: 54, borderCurve: 'continuous',
     overflow: 'hidden',
     backgroundColor: color.bg,
     boxShadow: `0 0 0 10px ${protoColor.bezel}, 0 0 0 11px ${protoColor.bezelEdge}, 0 30px 80px ${protoColor.frameShadow}`,
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: color.ink,
     backgroundColor: color.signal,
-    borderRadius: 4,
+    borderRadius: 4, borderCurve: 'continuous',
     overflow: 'hidden',
   },
   asideText: { fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 21, color: protoColor.asideInk },

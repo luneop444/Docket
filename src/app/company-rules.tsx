@@ -27,6 +27,7 @@ export default function CompanyRules() {
 
   return (
     <Screen
+      step={2}
       header={<OnboardingBar step={2} onBack={() => router.navigate('/company')} />}
       footer={
         <>
@@ -41,13 +42,13 @@ export default function CompanyRules() {
       <T v="body" c={color.sub}>
         Reported by {c ? c.reported : 0} drivers. Check it against your paperwork. Rules can differ by fleet or division.
       </T>
-      <Gap h={20} />
+      <Gap h={24} />
       <Card>
         {rows.map(([label, value], i) => (
           <Fragment key={label}>
-            {i > 0 ? <Hr style={{ marginVertical: 8 }} /> : null}
-            <Row style={{ minHeight: 40 }}>
-              <T v="bodySmall">{label}</T>
+            {i > 0 ? <Hr style={{ marginVertical: 17 }} /> : null}
+            <Row>
+              <T v="body" c={color.sub}>{label}</T>
               <T v="bodyStrong">{value}</T>
             </Row>
           </Fragment>
@@ -55,7 +56,7 @@ export default function CompanyRules() {
       </Card>
       {TEST_SETUP?.company !== s.company ? (
         <>
-          <Gap h={12} />
+          <Gap h={8} />
           <T v="bodyTiny">
             <Fake label="Sample data" /> These rules are made up for this prototype, not {s.company}’s real policy.
           </T>
