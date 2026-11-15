@@ -51,6 +51,19 @@ export function useInsets() {
   };
 }
 
+/** Height of the floating tab pill. */
+export const TAB_PILL = 64;
+
+/**
+ * Where the floating tab pill sits (12 above the home indicator's area) and how
+ * much bottom padding a tab screen needs so its last row can scroll clear of it.
+ */
+export function useTabSpace() {
+  const { tabBottom } = useInsets();
+  const pillBottom = Math.max(12, tabBottom - 12);
+  return { pillBottom, space: pillBottom + TAB_PILL + 24 };
+}
+
 export function TopSafe() {
   return <View style={{ height: useInsets().top }} />;
 }
@@ -255,6 +268,7 @@ export function Screen({
   onScrollY,
   overlay,
   step,
+  tabs,
 }: {
   header: ReactNode;
   footer?: ReactNode;
@@ -267,8 +281,11 @@ export function Screen({
   overlay?: ReactNode;
   /** Onboarding step: the content (not the header) pushes in from the side. */
   step?: number;
+  /** A tab screen: leave room under the content for the floating tab pill. */
+  tabs?: boolean;
 }) {
   const { footerBottom } = useInsets();
+  const { space } = useTabSpace();
   return (
     <View style={styles.screen}>
       {header}
@@ -276,7 +293,7 @@ export function Screen({
         <ScrollView
           ref={scrollRef}
           style={styles.flex}
-          contentContainerStyle={[styles.scroll, step ? styles.stepTop : null, contentStyle]}
+          contentContainerStyle={[styles.scroll, step ? styles.stepTop : null, tabs ? { paddingBottom: space } : null, contentStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           onScroll={onScrollY ? (e) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}

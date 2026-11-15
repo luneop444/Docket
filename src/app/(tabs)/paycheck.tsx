@@ -26,7 +26,7 @@ export default function Paycheck() {
   const inFree = loads.filter((x) => x.c.owed <= 0);
 
   return (
-    <Screen header={<PageHead title="Paycheck check" right={weeks.length > 1 ? undefined : week.label} />}>
+    <Screen tabs header={<PageHead title="Paycheck check" right={weeks.length > 1 ? undefined : week.label} />}>
       {weeks.length > 1 ? (
         <>
           <View style={styles.weekNav}>

@@ -104,8 +104,8 @@ export function DemoDrawer() {
 const styles = StyleSheet.create({
   tab: {
     position: 'absolute',
-    right: 16,
-    bottom: 16,
+    right: 20,
+    bottom: 112,
     height: 36,
     paddingHorizontal: 14,
     borderRadius: 18,

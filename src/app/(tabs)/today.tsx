@@ -33,6 +33,7 @@ export default function Today() {
 
   return (
     <Screen
+      tabs
       header={<TopBar title={TITLE} trailing={<ProfileTrailing noDate />} />}
       overlay={linked ? null : <DemoDrawer />}
     >
