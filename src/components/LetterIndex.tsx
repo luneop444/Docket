@@ -2,7 +2,8 @@ import { useRef, useState } from 'react';
 import { StyleSheet, Text, View, type GestureResponderEvent, type HostInstance } from 'react-native';
 import { color, fontFamily } from '../theme/tokens';
 
-export const INDEX_LETTERS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '#'];
+/** A–Z only: none of the companies starts with a number or symbol, so a # would jump nowhere. */
+export const INDEX_LETTERS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
 
 /**
  * The A–Z strip from iOS Contacts. Slide a finger along it (or tap) to jump.
