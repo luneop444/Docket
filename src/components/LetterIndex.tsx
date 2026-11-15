@@ -9,7 +9,7 @@ export const INDEX_LETTERS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
 /**
  * The A–Z strip from iOS Contacts. Slide a finger along it (or tap) to jump.
  * The letters are small, so the touch area is much wider than they look, and a
- * big bubble shows the letter under your finger. VoiceOver/TalkBack treat it as
+ * bubble beside your thumb shows the letter under it. VoiceOver/TalkBack treat it as
  * one adjustable control: swipe up or down to step through the letters.
  */
 export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) => void; visible: boolean }) {
@@ -28,6 +28,20 @@ export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) 
   const strip = useRef<HostInstance>(null);
   const box = useRef({ top: 0, height: 1 });
   const [active, setActive] = useState<string | null>(null);
+  // The bubble beside your thumb: its letter, its height on the strip, and its fade.
+  const [bubble, setBubble] = useState({ letter: '', y: 0 });
+  const [bubbleOn] = useState(() => new Animated.Value(0));
+  function showBubble(on: boolean) {
+    bubbleOn.stopAnimation();
+    Animated.timing(bubbleOn, {
+      toValue: on ? 1 : 0,
+      duration: reduce ? 0 : on ? 120 : 200,
+      // After you lift, it stays half a second so you can see where you landed.
+      delay: on ? 0 : 500,
+      easing: on ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }
   const [a11y, setA11y] = useState(0);
 
   function letterAt(pageY: number) {
@@ -35,7 +49,10 @@ export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) 
     return INDEX_LETTERS[Math.max(0, Math.min(INDEX_LETTERS.length - 1, i))];
   }
   function go(e: GestureResponderEvent) {
-    const l = letterAt(e.nativeEvent.pageY);
+    const { pageY } = e.nativeEvent;
+    const l = letterAt(pageY);
+    const y = Math.max(0, Math.min(box.current.height, pageY - box.current.top));
+    setBubble({ letter: l, y });
     if (l !== active) {
       setActive(l);
       onLetter(l);
@@ -74,10 +91,17 @@ export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) 
               box.current = { top: y, height: h || 1 };
             });
             go(e);
+            showBubble(true);
           }}
           onResponderMove={go}
-          onResponderRelease={() => setActive(null)}
-          onResponderTerminate={() => setActive(null)}
+          onResponderRelease={() => {
+            setActive(null);
+            showBubble(false);
+          }}
+          onResponderTerminate={() => {
+            setActive(null);
+            showBubble(false);
+          }}
           accessible
           accessibilityRole="adjustable"
           accessibilityLabel="Jump to letter"
@@ -90,16 +114,26 @@ export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) 
               {l}
             </Text>
           ))}
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.bubble,
+              {
+                top: bubble.y - BUBBLE / 2,
+                opacity: bubbleOn,
+                transform: [{ scale: bubbleOn.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }],
+              },
+            ]}
+          >
+            <Text style={styles.bubbleText}>{bubble.letter}</Text>
+          </Animated.View>
         </View>
       </Animated.View>
-      {active ? (
-        <View style={styles.bubble} pointerEvents="none">
-          <Text style={styles.bubbleText}>{active}</Text>
-        </View>
-      ) : null}
     </>
   );
 }
+
+const BUBBLE = 56;
 
 const styles = StyleSheet.create({
   // Centered and compact like iOS Contacts, so it never runs into the rounded screen corners.
@@ -111,6 +145,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   hit: {
+    // A drag along the letters must never turn into a text selection.
+    userSelect: 'none',
     width: 32,
     alignItems: 'flex-end',
     paddingRight: 4,
@@ -125,20 +161,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   letterOn: { color: color.sub },
+  // Just left of the thumb, clear of it, following it up and down.
   bubble: {
     position: 'absolute',
-    alignSelf: 'center',
-    top: '40%',
-    width: 72,
-    height: 72,
-    borderRadius: 20, borderCurve: 'continuous',
+    right: 48,
+    width: BUBBLE,
+    height: BUBBLE,
+    borderRadius: 16,
+    borderCurve: 'continuous',
     backgroundColor: color.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   bubbleText: {
     fontFamily: fontFamily.semibold,
-    fontSize: 36,
+    fontSize: 28,
     color: color.bg,
   },
 });
