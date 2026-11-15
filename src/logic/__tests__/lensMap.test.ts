@@ -20,6 +20,13 @@ describe('lensMap', () => {
     expect(lx).toBe(0);
   });
 
+  it('magnifies with zoom: points sample toward the middle', () => {
+    const z = lensMap(w, h, 28, 12, 40, 10, 0.12);
+    expect(at(z, w, 60, 28)).toEqual([0, 0]);
+    expect(at(z, w, 40, 28)[0]).toBeGreaterThan(0);
+    expect(at(z, w, 80, 28)[0]).toBeLessThan(0);
+  });
+
   it('bends more at the edge than further in', () => {
     expect(at(map, w, 60, 0)[1]).toBeGreaterThan(at(map, w, 60, 8)[1]);
   });

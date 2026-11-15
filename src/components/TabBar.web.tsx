@@ -13,11 +13,13 @@ const TABS = [
 
 const PAD = 4;
 const LENS_H = TAB_PILL - PAD * 2;
-/** Rim depth and bend strength of the lens, in px. */
-const DEPTH = 12;
-const BEND = 14;
+/** Lens: rim band depth and rim bend in px, magnification, and the filter's max shift (px). */
+const DEPTH = 16;
+const RIM = 12;
+const ZOOM = 0.14;
+const BEND = 40;
 /** Faint color fringe at the rim: red and blue bend a little more and less than green. */
-const CHROMA = 0.2;
+const CHROMA = 0.08;
 
 /**
  * Web tab bar in Liquid Glass, built the way Aave describes in "Building glass
@@ -117,7 +119,7 @@ function mapUrl(w: number, h: number): string {
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
   const img = ctx.createImageData(cw, ch);
-  img.data.set(lensMap(cw, ch, ch / 2, DEPTH));
+  img.data.set(lensMap(cw, ch, ch / 2, DEPTH, BEND, RIM, ZOOM));
   ctx.putImageData(img, 0, 0);
   return canvas.toDataURL();
 }
@@ -130,7 +132,7 @@ const S: Record<string, CSSProperties> = {
     height: TAB_PILL,
     borderRadius: TAB_PILL / 2,
     pointerEvents: 'auto',
-    background: 'rgba(255,255,255,0.72)',
+    background: 'rgba(255,255,255,0.85)',
     backdropFilter: 'blur(20px) saturate(180%)',
     WebkitBackdropFilter: 'blur(20px) saturate(180%)',
     boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06)',
@@ -160,17 +162,19 @@ const S: Record<string, CSSProperties> = {
     borderRadius: LENS_H / 2,
     overflow: 'hidden',
     pointerEvents: 'none',
-    background: 'rgba(0,0,0,0.04)',
-    transition: 'transform 420ms cubic-bezier(0.34, 1.3, 0.64, 1)',
+    background: 'rgba(255,255,255,0.55)',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.10), 0 0 0 0.5px rgba(0,0,0,0.06)',
+    transition: 'transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1)',
   },
-  glass: { position: 'absolute', top: 0, left: 0, height: LENS_H, overflow: 'hidden' },
-  copy: { position: 'absolute', top: 0, left: 0, height: LENS_H, transition: 'transform 420ms cubic-bezier(0.34, 1.3, 0.64, 1)' },
+  // Solid inside, so the plain row under the lens doesn't ghost through the magnified copy.
+  glass: { position: 'absolute', top: 0, left: 0, height: LENS_H, overflow: 'hidden', background: '#F4F5F7' },
+  copy: { position: 'absolute', top: 0, left: 0, height: LENS_H, transition: 'transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1)' },
   // Specular rim: light from the top left, as on glass.
   specular: {
     position: 'absolute',
     inset: 0,
     borderRadius: LENS_H / 2,
-    boxShadow: 'inset 1.5px 1.5px 0 rgba(255,255,255,0.85), inset -1px -1px 0 rgba(255,255,255,0.35), inset 0 0 12px rgba(255,255,255,0.35)',
+    boxShadow: 'inset 1.5px 1.5px 0 rgba(255,255,255,1), inset -1px -1px 0 rgba(255,255,255,0.6), inset 0 0 10px rgba(255,255,255,0.6)',
     pointerEvents: 'none',
   },
 };
