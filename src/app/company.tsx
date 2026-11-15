@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, TextInput, View, type HostInstance, type ScrollV
 import { OnboardingBar, Screen } from '../components/Chrome';
 import { SearchIcon } from '../components/Icons';
 import { INDEX_LETTERS, LetterIndex } from '../components/LetterIndex';
-import { Fake, Gap, noFocusRing, Option, T } from '../components/ui';
+import { Gap, noFocusRing, Option, T } from '../components/ui';
 import { COMPANIES, SUGGESTED } from '../logic/sampleData';
 import { useStore } from '../state/AppStore';
 import { color, radius, type } from '../theme/tokens';
@@ -130,10 +130,6 @@ export default function PickCompany() {
           <Option label={`Add “${q}”`} sub="Not listed yet. You’ll enter your company’s rules." onPress={() => pick(q, true)} />
         ) : null}
       </View>
-      <Gap h={16} />
-      <T v="bodyTiny">
-        <Fake label="Sample data" /> Real company names. Driver counts and rules are made up for this prototype. Not listed? Type it to add it.
-      </T>
       {!q ? (
         <>
           <Gap h={32} />
