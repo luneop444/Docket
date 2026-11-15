@@ -39,10 +39,14 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Docket notices when you pull into and leave the stops on your load, so it can time your detention. Location stays on your phone and is never shared with your company."
+          "locationWhenInUsePermission": "Docket notices when you pull into and leave the stops on your load, so it can time your detention. Location stays on your phone and is never shared with your company.",
+          "locationAlwaysAndWhenInUsePermission": "Choose Always Allow so Docket can start and stop your detention clock at the stops on your load, even when the app is closed. Location stays on your phone and is never shared with your company.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
       ],
-      "expo-image"
+      "expo-image",
+      "expo-notifications"
     ],
     "scheme": "docket",
     "experiments": {

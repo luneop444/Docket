@@ -98,7 +98,7 @@ function Aside() {
       </View>
       <Bullets
         items={[
-          'Background location (the web only sees location while the app is open)',
+          'Background location on the web (the iPhone build watches with the app closed)',
           'Time runs 60× faster (prototype controls only)',
           'Sharing a rate con into Docket and forwarding it by email (choose the file instead)',
           'Company list, wait data and the first paycheck week (made-up)',

@@ -1,6 +1,6 @@
 /**
- * Real location, while the app is open (the web and Expo Go can't track in the
- * background). The first "I'm here" at a facility saves where it is; after
+ * Real location while the app is open. On a phone build, background.ts also
+ * fences these places so it works with Docket closed (not on the web or Expo Go). The first "I'm here" at a facility saves where it is; after
  * that Docket starts the clock on its own when you pull in, and asks when
  * location sees you drive away.
  */
@@ -9,6 +9,7 @@ import { useEffect, useRef } from 'react';
 import { fenceEvent, MAX_ACCURACY_M, type LatLon } from '../logic/geo';
 import { placeOf } from '../logic/state';
 import { useStore } from './AppStore';
+import { askBackground, askNotifications } from './background';
 
 type Actions = ReturnType<typeof useStore>['a'];
 
@@ -20,6 +21,9 @@ export async function rememberSpot(a: Actions, name: string): Promise<void> {
       a.toast('Location is off. Docket will keep timing stops by hand.');
       return;
     }
+    // On a phone: also ask to keep watching with Docket closed, and to send reminders.
+    await askNotifications();
+    await askBackground();
     const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
     const acc = pos.coords.accuracy;
     if (acc != null && acc > MAX_ACCURACY_M) return;

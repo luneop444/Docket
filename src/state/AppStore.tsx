@@ -139,10 +139,11 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
        * Real: the driver taps "I'm here" (or location sees them pull in, `auto`)
        * and the stop is timed with the phone's clock. An automatic start shows Undo (Figma E1).
        */
-      arriveNow: (auto = false) => {
+      arriveNow: (auto = false, atMs?: number) => {
         // Location can report twice before the stop shows as started.
         if (auto && sRef.current.stop.phase !== 'idle') return;
-        const ms = Date.now();
+        // Background location passes when it saw the driver pull in.
+        const ms = atMs ?? Date.now();
         const place = placeOf(sRef.current.load);
         setS((s) => {
           const stop = startLiveStop(ms, loadAppt(s.load));

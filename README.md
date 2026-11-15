@@ -38,8 +38,15 @@ them as text or downloads a CSV, as a record if a settlement comes up short.
 
 With location allowed, the first "I'm here" at a facility saves where it is;
 after that Docket starts the clock on its own when you pull in and asks when
-you drive away (only while the app is open; background tracking needs the
-iPhone build).
+you drive away. In the browser this only works while the app is open.
+
+On a phone build (not Expo Go), `src/state/background.ts` also fences up to 20
+saved facilities with expo-location geofencing, so it works with Docket
+closed. A crossing is saved with its time and shown as a notification; the app
+applies it when opened, so the clock starts at the moment you pulled in. Local
+notifications also say 15 minutes before free time ends and when detention
+starts. Needs "Always" location and notification permission, asked the first
+time you tap "I'm here".
 
 Claude reads three documents, each through its own Netlify Function (shared
 code in `netlify/lib/readDocument.mts`). Nothing sent is stored.
@@ -78,7 +85,8 @@ permission text is set in `app.json`. To try it on a phone today:
 npx expo start           # then scan the QR code with the Expo Go app
 ```
 
-Still to do for the App Store build: an Apple Developer account, EAS Build
-(`npx eas-cli@latest build -p ios`), real background location (expo-location
-with geofencing) and a native Live Activity / Dynamic Island widget, which
-needs a development build rather than Expo Go.
+Expo Go can't run background location. To test it, make a development build:
+`npx eas-cli@latest build --profile development -p ios` (needs an Apple
+Developer account to install on a phone) or `npx expo run:ios` on a Mac with
+Xcode. Still to do: a native Live Activity / Dynamic Island widget and
+receiving a shared rate con (a share extension).

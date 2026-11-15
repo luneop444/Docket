@@ -49,7 +49,7 @@ export default function LocationPermission() {
       <Gap h={20} />
       <T v="bodyTiny">
         <Fake label="Web" /> In the browser Docket only sees location while the app is open. It learns each stop the
-        first time you tap “I’m here” there. Background tracking comes with the iPhone app.
+        first time you tap “I’m here” there. The iPhone app keeps watching with Docket closed.
       </T>
     </Screen>
   );
