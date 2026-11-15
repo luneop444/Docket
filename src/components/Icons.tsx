@@ -1,12 +1,21 @@
 /**
- * Icons drawn to match the Figma icon set (ported from the v1 prototype SVGs).
+ * Every icon is an SF Symbol. On iPhone, expo-symbols draws Apple's real symbol.
+ * Apple licenses SF Symbols only for apps on Apple platforms, so the web
+ * prototype and Android draw the matching SVG below instead (ported from the
+ * v1 prototype). The status bar pieces at the bottom are not icons.
  */
+import { SymbolView, type SFSymbol, type SymbolWeight } from 'expo-symbols';
+import type { ReactElement } from 'react';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import { color } from '../theme/tokens';
 
+function sf(name: SFSymbol, weight: SymbolWeight, c: string, size: number, fallback: ReactElement) {
+  return <SymbolView name={name} weight={weight} tintColor={c} size={size} fallback={fallback} />;
+}
+
 type P = { c?: string; size?: number };
 
-export const PersonIcon = ({ c = color.ink, size = 24 }: P) => (
+const PersonIconSvg = ({ c = color.ink, size = 24 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Circle cx={12} cy={12} r={10} stroke={c} strokeWidth={1.8} />
     <Circle cx={12} cy={10} r={3.4} fill={c} />
@@ -14,44 +23,44 @@ export const PersonIcon = ({ c = color.ink, size = 24 }: P) => (
   </Svg>
 );
 
-export const ChevronLeft = ({ c = color.ink, size = 22 }: P) => (
+const ChevronLeftSvg = ({ c = color.ink, size = 22 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M15 5l-7 7 7 7" stroke={c} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
-export const ChevronRight = ({ c = color.sub, size = 18 }: P) => (
+const ChevronRightSvg = ({ c = color.sub, size = 18 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M9 5l7 7-7 7" stroke={c} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
-export const PinIcon = ({ c = color.bg, size = 15 }: P) => (
+const PinIconSvg = ({ c = color.bg, size = 15 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={c}>
     <Path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.6A2.6 2.6 0 1 1 12 6.4a2.6 2.6 0 0 1 0 5.2z" />
   </Svg>
 );
 
-export const ClockIcon = ({ c = color.bg, size = 15 }: P) => (
+const ClockIconSvg = ({ c = color.bg, size = 15 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Circle cx={12} cy={12} r={9} stroke={c} strokeWidth={2.6} />
     <Path d="M12 7v5l3 2" stroke={c} strokeWidth={2.6} strokeLinecap="round" />
   </Svg>
 );
 
-export const CheckIcon = ({ c = color.bg, size = 15 }: P) => (
+const CheckIconSvg = ({ c = color.bg, size = 15 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M5 12.5l4.5 4.5L19 7.5" stroke={c} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
-export const HourglassIcon = ({ c = color.bg, size = 15 }: P) => (
+const HourglassIconSvg = ({ c = color.bg, size = 15 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={c}>
     <Path d="M6 2h12v2h-1v3.2c0 1.5-.8 2.8-2 3.6L13.6 12l1.4 1.2c1.2.8 2 2.1 2 3.6V20h1v2H6v-2h1v-3.2c0-1.5.8-2.8 2-3.6L10.4 12 9 10.8c-1.2-.8-2-2.1-2-3.6V4H6V2z" />
   </Svg>
 );
 
-export const DollarIcon = ({ c = color.ink, size = 15 }: P) => (
+const DollarIconSvg = ({ c = color.ink, size = 15 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path
       d="M12 3v18M16.5 7.5c-.8-1.4-2.5-2.2-4.5-2.2-2.6 0-4.4 1.3-4.4 3.2 0 4.5 9.2 2.3 9.2 7 0 2-2 3.4-4.8 3.4-2.2 0-4-.9-4.8-2.4"
@@ -62,60 +71,60 @@ export const DollarIcon = ({ c = color.ink, size = 15 }: P) => (
   </Svg>
 );
 
-export const TruckIcon = ({ c = color.ink, size = 15 }: P) => (
+const TruckIconSvg = ({ c = color.ink, size = 15 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={c}>
     <Path d="M2 6.5A1.5 1.5 0 0 1 3.5 5h10A1.5 1.5 0 0 1 15 6.5V8h3.2c.5 0 .9.2 1.2.6l2.3 3c.2.3.3.6.3.9V16a1 1 0 0 1-1 1h-1.1a2.9 2.9 0 0 1-5.8 0H9.9a2.9 2.9 0 0 1-5.8 0H3a1 1 0 0 1-1-1V6.5zM7 18.3a1.3 1.3 0 1 0 0-2.6 1.3 1.3 0 0 0 0 2.6zm10 0a1.3 1.3 0 1 0 0-2.6 1.3 1.3 0 0 0 0 2.6zM15 9.6V12h4.9l-1.8-2.4H15z" />
   </Svg>
 );
 
-export const CameraIcon = ({ c = color.sub, size = 22 }: P) => (
+const CameraIconSvg = ({ c = color.sub, size = 22 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.3l1.4-2h5.6l1.4 2h1.3A2.5 2.5 0 0 1 20 8.5v9A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-9z" stroke={c} strokeWidth={2} />
     <Circle cx={12} cy={12.5} r={3.5} stroke={c} strokeWidth={2} />
   </Svg>
 );
 
-export const DocIcon = ({ c = color.ink, size = 22 }: P) => (
+const DocIconSvg = ({ c = color.ink, size = 22 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M6 3h8l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke={c} strokeWidth={2} />
     <Path d="M14 3v5h5M8.5 13h7M8.5 17h5" stroke={c} strokeWidth={2} strokeLinecap="round" />
   </Svg>
 );
 
-export const MinusIcon = ({ c = color.ink, size = 18 }: P) => (
+const MinusIconSvg = ({ c = color.ink, size = 18 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path d="M5 12h14" stroke={c} strokeWidth={2.6} strokeLinecap="round" />
   </Svg>
 );
 
-export const PlusIcon = ({ c = color.ink, size = 18 }: P) => (
+const PlusIconSvg = ({ c = color.ink, size = 18 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path d="M12 5v14M5 12h14" stroke={c} strokeWidth={2.6} strokeLinecap="round" />
   </Svg>
 );
 
-export const SearchIcon = ({ c = color.sub, size = 20 }: P) => (
+const SearchIconSvg = ({ c = color.sub, size = 20 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Circle cx={11} cy={11} r={6.5} stroke={c} strokeWidth={2} />
     <Path d="M16 16l4 4" stroke={c} strokeWidth={2} strokeLinecap="round" />
   </Svg>
 );
 
-export const ShieldIcon = ({ c = color.ink, size = 20 }: P) => (
+const ShieldIconSvg = ({ c = color.ink, size = 20 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M12 3l7 3v5.5c0 4.4-3 8.2-7 9.5-4-1.3-7-5.1-7-9.5V6l7-3z" stroke={c} strokeWidth={2} strokeLinejoin="round" />
     <Path d="M9 12l2 2 4-4" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
-export const TabTodayIcon = ({ on }: { on: boolean }) => (
+const TabTodayIconSvg = ({ on }: { on: boolean }) => (
   <Svg width={24} height={24} viewBox="0 0 24 24">
     <Circle cx={12} cy={12} r={10} fill={on ? color.ink : color.faint} />
     <Path d="M12 6.5V12l-3.5 2.2" stroke={color.bg} strokeWidth={2.2} strokeLinecap="round" fill="none" />
   </Svg>
 );
 
-export const TabPaycheckIcon = ({ on }: { on: boolean }) => (
+const TabPaycheckIconSvg = ({ on }: { on: boolean }) => (
   <Svg width={24} height={24} viewBox="0 0 24 24">
     <Path d="M6 2h7.5L19 7.5V21a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" fill={on ? color.ink : color.faint} />
     <Path d="M13 2v6h6" fill={color.bg} opacity={0.45} />
@@ -123,7 +132,7 @@ export const TabPaycheckIcon = ({ on }: { on: boolean }) => (
   </Svg>
 );
 
-export const TabCompaniesIcon = ({ on }: { on: boolean }) => (
+const TabCompaniesIconSvg = ({ on }: { on: boolean }) => (
   <Svg width={24} height={24} viewBox="0 0 24 24" fill={on ? color.ink : color.faint}>
     <Path d="M3 4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v17H3V4zm11 6h6a1 1 0 0 1 1 1v10h-7V10z" />
     <G fill={color.bg}>
@@ -151,3 +160,57 @@ export const Battery = () => (
     <Rect x={24} y={4} width={1.6} height={4} rx={0.8} fill={color.ink} opacity={0.4} />
   </Svg>
 );
+
+export const PersonIcon = ({ c = color.ink, size = 24 }: P) =>
+  sf('person.crop.circle', 'regular', c, size, <PersonIconSvg c={c} size={size} />);
+
+export const ChevronLeft = ({ c = color.ink, size = 22 }: P) =>
+  sf('chevron.left', 'semibold', c, size, <ChevronLeftSvg c={c} size={size} />);
+
+export const ChevronRight = ({ c = color.sub, size = 18 }: P) =>
+  sf('chevron.right', 'semibold', c, size, <ChevronRightSvg c={c} size={size} />);
+
+export const PinIcon = ({ c = color.bg, size = 15 }: P) =>
+  sf('mappin', 'semibold', c, size, <PinIconSvg c={c} size={size} />);
+
+export const ClockIcon = ({ c = color.bg, size = 15 }: P) =>
+  sf('clock', 'bold', c, size, <ClockIconSvg c={c} size={size} />);
+
+export const CheckIcon = ({ c = color.bg, size = 15 }: P) =>
+  sf('checkmark', 'bold', c, size, <CheckIconSvg c={c} size={size} />);
+
+export const HourglassIcon = ({ c = color.bg, size = 15 }: P) =>
+  sf('hourglass', 'bold', c, size, <HourglassIconSvg c={c} size={size} />);
+
+export const DollarIcon = ({ c = color.ink, size = 15 }: P) =>
+  sf('dollarsign', 'bold', c, size, <DollarIconSvg c={c} size={size} />);
+
+export const TruckIcon = ({ c = color.ink, size = 15 }: P) =>
+  sf('truck.box.fill', 'regular', c, size, <TruckIconSvg c={c} size={size} />);
+
+export const CameraIcon = ({ c = color.sub, size = 22 }: P) =>
+  sf('camera', 'medium', c, size, <CameraIconSvg c={c} size={size} />);
+
+export const DocIcon = ({ c = color.ink, size = 22 }: P) =>
+  sf('doc.text', 'medium', c, size, <DocIconSvg c={c} size={size} />);
+
+export const MinusIcon = ({ c = color.ink, size = 18 }: P) =>
+  sf('minus', 'bold', c, size, <MinusIconSvg c={c} size={size} />);
+
+export const PlusIcon = ({ c = color.ink, size = 18 }: P) =>
+  sf('plus', 'bold', c, size, <PlusIconSvg c={c} size={size} />);
+
+export const SearchIcon = ({ c = color.sub, size = 20 }: P) =>
+  sf('magnifyingglass', 'medium', c, size, <SearchIconSvg c={c} size={size} />);
+
+export const ShieldIcon = ({ c = color.ink, size = 20 }: P) =>
+  sf('checkmark.shield', 'medium', c, size, <ShieldIconSvg c={c} size={size} />);
+
+export const TabTodayIcon = ({ on }: { on: boolean }) =>
+  sf('clock.fill', 'regular', on ? color.ink : color.faint, 24, <TabTodayIconSvg on={on} />);
+
+export const TabPaycheckIcon = ({ on }: { on: boolean }) =>
+  sf('doc.text.fill', 'regular', on ? color.ink : color.faint, 24, <TabPaycheckIconSvg on={on} />);
+
+export const TabCompaniesIcon = ({ on }: { on: boolean }) =>
+  sf('building.2.fill', 'regular', on ? color.ink : color.faint, 24, <TabCompaniesIconSvg on={on} />);
