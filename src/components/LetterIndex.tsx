@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react';
-import { StyleSheet, Text, View, type GestureResponderEvent, type HostInstance } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, StyleSheet, Text, View, type GestureResponderEvent, type HostInstance } from 'react-native';
+import { useReduceMotion } from './stepMotion';
 import { color, fontFamily } from '../theme/tokens';
 
 /** A–Z only: none of the companies starts with a number or symbol, so a # would jump nowhere. */
@@ -11,7 +12,19 @@ export const INDEX_LETTERS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
  * big bubble shows the letter under your finger. VoiceOver/TalkBack treat it as
  * one adjustable control: swipe up or down to step through the letters.
  */
-export function LetterIndex({ onLetter }: { onLetter: (letter: string) => void }) {
+export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) => void; visible: boolean }) {
+  // Fades and slides in from the edge when the A–Z list reaches the screen, and back out.
+  const reduce = useReduceMotion();
+  const [shown] = useState(() => new Animated.Value(visible ? 1 : 0));
+  useEffect(() => {
+    Animated.timing(shown, {
+      toValue: visible ? 1 : 0,
+      duration: reduce ? 0 : visible ? 200 : 150,
+      easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [visible, reduce, shown]);
+
   const strip = useRef<HostInstance>(null);
   const box = useRef({ top: 0, height: 1 });
   const [active, setActive] = useState<string | null>(null);
@@ -36,7 +49,15 @@ export function LetterIndex({ onLetter }: { onLetter: (letter: string) => void }
 
   return (
     <>
-      <View style={styles.column} pointerEvents="box-none">
+      <Animated.View
+        style={[
+          styles.column,
+          { opacity: shown, transform: [{ translateX: shown.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] },
+        ]}
+        pointerEvents={visible ? 'box-none' : 'none'}
+        accessibilityElementsHidden={!visible}
+        importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
+      >
         <View
           ref={strip}
           style={styles.hit}
@@ -70,7 +91,7 @@ export function LetterIndex({ onLetter }: { onLetter: (letter: string) => void }
             </Text>
           ))}
         </View>
-      </View>
+      </Animated.View>
       {active ? (
         <View style={styles.bubble} pointerEvents="none">
           <Text style={styles.bubbleText}>{active}</Text>

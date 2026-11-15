@@ -77,7 +77,7 @@ export default function PickCompany() {
       header={<OnboardingBar step={1} onBack={() => router.navigate('/welcome')} />}
       scrollRef={scroll}
       onScrollY={onScrollY}
-      overlay={showIndex && !q ? <LetterIndex onLetter={jump} /> : null}
+      overlay={<LetterIndex onLetter={jump} visible={showIndex && !q} />}
     >
       <T v="h2">Who do you drive for?</T>
       <Gap h={8} />
