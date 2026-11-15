@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   footer: {
     paddingTop: 24,
     paddingHorizontal: 20,
-    gap: 8,
+    gap: 12,
     backgroundColor: color.bg,
   },
   // Centered on the whole bar, not on the space beside the back button.

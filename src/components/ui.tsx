@@ -139,7 +139,7 @@ export function Button({
       ]}
     >
       {icon}
-      <Text style={[small || variant === 'text' ? type.labelSmall : type.labelButton, { color: fg }]}>
+      <Text style={[small ? type.labelSmall : type.labelButton, { color: fg }]}>
         {label}
       </Text>
     </Pressable>
