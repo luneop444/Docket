@@ -10,7 +10,8 @@ export const SIM_MINUTES_PER_SECOND = 1;
 export const APPT = 14 * 60;
 /** Simulated clock before pulling in: 1:47 PM. */
 export const START_NOW = 13 * 60 + 47;
-export const TODAY_LABEL = 'Tue, Nov 3';
+/** Today's real date, e.g. "Sun, Nov 15". */
+export const TODAY_LABEL = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 export const WEEK_LABEL = 'Week of Oct 26';
 
 export const TODAY_STOP = {

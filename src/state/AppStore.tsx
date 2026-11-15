@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { ASK_AFTER_MIN, demoState, type DemoState } from '../logic/demo';
 import type { Rules } from '../logic/detention';
 import type { LatLon } from '../logic/geo';
 import { toLogged, upsert, type PayWeek } from '../logic/history';
@@ -116,15 +117,17 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
 
       /* today's stop */
       /** Prototype control standing in for the geofence seeing you pull in. */
-      pullIn: () => {
+      pullIn: (asKnown?: boolean) => {
         const s = sRef.current;
-        const arrive = START_NOW + 1;
         const place = placeOf(s.load);
-        const known = s.knownPlaces.includes(place.name);
+        const known = asKnown ?? s.knownPlaces.includes(place.name);
+        // Somewhere new, Docket asks after 30 min parked; the clock still counts from pulling in.
+        const arrive = known ? START_NOW + 1 : START_NOW + 1 - ASK_AFTER_MIN;
         setS((x) => ({
           ...x,
+          knownPlaces: known ? remember(x.knownPlaces, place.name) : x.knownPlaces.filter((n) => n !== place.name),
           stop: { ...freshStop(), phase: known ? 'dock' : 'arriving', arrive, appt: loadAppt(s.load) },
-          now: arrive,
+          now: START_NOW + 1,
           islandAlerted: false,
         }));
         if (known) {
@@ -216,6 +219,11 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
       logStop: (bol: boolean, bolTimes?: BolTimes) => {
         setS((s) => saveToHistory({ ...s, stop: { ...s.stop, bol, bolTimes, phase: 'logged' } }));
         flashIsland();
+      },
+      /** Prototype: jump straight to one Home state, for links and screenshots (?state=). */
+      demo: (state: DemoState) => {
+        setS((x) => demoState(x, state));
+        setUi(() => freshUi());
       },
       restartStop: () => {
         setS((s) => ({ ...s, stop: freshStop(), now: START_NOW }));

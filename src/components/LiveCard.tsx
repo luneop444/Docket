@@ -84,7 +84,7 @@ export function LiveCard({
   );
 }
 
-function PulseDot({ live }: { live: boolean }) {
+export function PulseDot({ live }: { live: boolean }) {
   const [v] = useState(() => new Animated.Value(1));
   useEffect(() => {
     if (!live) return;

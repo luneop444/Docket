@@ -183,19 +183,20 @@ function ArrivalSheet() {
   const r = s.rules;
   return (
     <SheetShell onClose={() => {}}>
-      <T v="h2">You’re at {placeOf(s.load).name}</T>
-      <Gap h={6} />
-      <T v="bodySmall">Pulled in at {clock(arrive)}. Start the clock?</T>
-      <Gap h={14} />
+      <T v="h2">Loading or unloading at {placeOf(s.load).name}?</T>
+      <Gap h={8} />
+      <T v="body" c={color.sub}>
+        You’ve been parked here 30 min. If yes, your wait counts from {clock(arrive)}, when you pulled in.
+      </T>
+      <Gap h={16} />
       <View style={styles.details}>
         <T v="body">
-          Arrived {clock(arrive)}
-          {r.start === 'appt' ? ` · appointment ${clock(apptOf(s.stop))}` : ''} · {durShort(r.free)} free time, then{' '}
-          {rateShort(r.rate)}.
+          {r.start === 'appt' ? `Appointment ${clock(apptOf(s.stop))} · ` : ''}
+          {durShort(r.free)} free time, then {rateShort(r.rate)}
         </T>
       </View>
-      <Gap h={16} />
-      <Button label="Yes, start the clock" onPress={a.confirmArrival} />
+      <Gap h={24} />
+      <Button label="Yes, count it" onPress={a.confirmArrival} />
       <Button label="Not a stop" variant="text" onPress={a.cancelArrival} />
     </SheetShell>
   );
