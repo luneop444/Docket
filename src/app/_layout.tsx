@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Squircles } from '../components/Squircles';
+import { TextWrap } from '../components/TextWrap';
 import { Overlays } from '../components/Overlays';
 import { PhoneFrame } from '../components/PhoneFrame';
 import { AppStoreProvider, useStore } from '../state/AppStore';
@@ -45,6 +46,7 @@ export default function RootLayout() {
           <OnboardingGuard />
           <LocationWatcher />
           <Squircles />
+          <TextWrap />
         </PhoneFrame>
       </AppStoreProvider>
     </SafeAreaProvider>

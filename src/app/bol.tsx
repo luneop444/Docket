@@ -96,7 +96,7 @@ export default function SnapBol() {
         Docket reads the in and out times the facility wrote on it and checks them against your location times. Two
         records that agree are hard to argue with.
       </T>
-      <Gap h={16} />
+      <Gap h={24} />
       <Pressable accessibilityRole="button" accessibilityLabel="Take a photo of your BOL" onPress={pick} style={styles.photo}>
         {ui.photoUri ? (
           <>

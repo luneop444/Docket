@@ -26,7 +26,7 @@ export default function HowLoadsComeIn() {
       footer={<Button label="Continue" disabled={!s.loadStyle} onPress={() => router.push('/location')} />}
     >
       <T v="h2">How do your loads come in?</T>
-      <Gap h={20} />
+      <Gap h={24} />
       <View style={{ gap: 8 }}>
         {STYLES.map(([k, label]) => (
           <Option key={k} radio label={label} selected={s.loadStyle === k} onPress={() => a.setLoadStyle(k)} />

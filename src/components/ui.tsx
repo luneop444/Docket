@@ -16,6 +16,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { color, fontFamily, protoColor, radius, type, type TypeToken } from '../theme/tokens';
+import { noWidow } from '../logic/text';
 import { ChevronRight } from './Icons';
 
 /* ---------- text ---------- */
@@ -29,12 +30,19 @@ export function T({
   ...rest
 }: TextProps & { v?: TypeToken; c?: string; style?: StyleProp<TextStyle>; children?: ReactNode }) {
   const fallback = v === 'bodySmall' || v === 'bodyTiny' ? color.sub : color.ink;
+  const heading = v === 'h1' || v === 'h2';
   return (
-    <Text {...rest} style={[type[v], { color: c ?? fallback }, style]}>
-      {children}
+    <Text
+      accessibilityRole={heading ? 'header' : undefined}
+      {...rest}
+      style={[type[v], { color: c ?? fallback }, style]}
+    >
+      {noWidow(children)}
     </Text>
   );
 }
+
+
 
 /**
  * Hides the browser's focus outline on text inputs that draw their own focus

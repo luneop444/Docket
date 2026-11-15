@@ -32,7 +32,7 @@ export default function AddLoad() {
           ? 'Share one rate con from your route. Docket keeps the stops and watches them on every run, so you won’t add loads again.'
           : 'Share it the way dispatch sent it. Docket reads the stops for you.'}
       </T>
-      <Gap h={20} />
+      <Gap h={24} />
       <View style={{ gap: 8 }}>
         <Option
           radio

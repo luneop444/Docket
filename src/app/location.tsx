@@ -38,7 +38,7 @@ export default function LocationPermission() {
       <T v="body" c={color.sub}>
         Choose “Always” so Docket can notice when you pull in, even with the app closed.
       </T>
-      <Gap h={20} />
+      <Gap h={24} />
       <Card style={styles.promises}>
         {PROMISES.map((p) => (
           <View key={p} style={styles.row}>

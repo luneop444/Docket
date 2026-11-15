@@ -54,7 +54,7 @@ export default function StopSummary() {
       <T v="bodySmall">Stop logged{placeOf(s.load).load ? ` for load ${placeOf(s.load).load}` : ''}</T>
       <Gap h={8} />
       <T v="h2">{placeOf(s.load).name}</T>
-      <Gap h={16} />
+      <Gap h={24} />
       <Card>
         <View style={styles.thead}>
           <Text style={[styles.th, styles.first]} />
