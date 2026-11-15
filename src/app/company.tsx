@@ -174,8 +174,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     height: 56,
-    paddingHorizontal: 16,
-    borderRadius: radius.control,
+    // Pill: radius is half the height; 20 inset keeps the icon clear of the round end.
+    paddingHorizontal: 20,
+    borderRadius: 28,
     backgroundColor: color.raise,
   },
   fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
