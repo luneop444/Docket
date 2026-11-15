@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { squirclePath, SQUIRCLE_C10, SQUIRCLE_C5 } from '../logic/squircle';
+import { squircleExtent, squirclePath } from '../logic/squircle';
 
 /**
  * Turns every rounded corner in the web build into the squircle from Scott
@@ -9,14 +9,14 @@ import { squirclePath, SQUIRCLE_C10, SQUIRCLE_C5 } from '../logic/squircle';
  *
  *   each corner is one cubic Bézier from (0, r2) via (0, r1) and (r1, 0) to
  *   (r2, 0), joined by straight edges;
- *   r2 = 0.332 × the shorter side (its default curvature, c = 5),
  *   r1 = r2 × 0.1765.
  *
- * Like resizing the plugin's shape, r2 follows each element's shorter side, so
- * the corners scale with the element and the straight edges stretch.
- * Pills (corners already half the height) use the plugin's c = 10 (r2 = 0.5 ×
- * the shorter side) so they stay pills with the same curve. Circles are left
- * as circles.
+ * Nested shapes follow Apple's concentric rule (see concentric below).
+ * Corner size uses the plugin's fixed (pixel) mode, keyed to each element's
+ * design radius: r2 = 1.532 × radius (see squircleExtent), so a squircle reads
+ * the same size as the corner it replaces and same-kind elements get the same
+ * corner at any height. Straight edges stretch to fill the box. Pills cap at
+ * half the shorter side (the plugin's c = 10). Circles are left as circles.
  *
  * Browsers can't draw this natively, so each rounded element is clipped to the
  * path for its current size and its own border-radius is set to 0 underneath
@@ -25,6 +25,30 @@ import { squirclePath, SQUIRCLE_C10, SQUIRCLE_C5 } from '../logic/squircle';
  * Elements with an outer shadow are skipped, since a clip would cut it off.
  */
 const done = new WeakMap<HTMLElement, string>();
+/** Radius each clipped element ended up with, per corner (tl, tr, br, bl), for its children. */
+const radii = new WeakMap<HTMLElement, number[]>();
+
+/**
+ * Apple's concentric rule for nested shapes: when a rounded element's corner
+ * sits inside its rounded parent's corner, inner radius = outer radius − gap,
+ * so both curves share a center. Corners that sit further in than the
+ * parent's radius keep their own radius.
+ */
+function concentric(el: HTMLElement, own: number[]) {
+  let parent = el.parentElement;
+  while (parent && !radii.has(parent)) parent = parent.parentElement;
+  if (!parent) return own;
+  const pr = radii.get(parent)!;
+  const a = parent.getBoundingClientRect();
+  const b = el.getBoundingClientRect();
+  const gaps = [
+    Math.max(b.left - a.left, b.top - a.top),
+    Math.max(a.right - b.right, b.top - a.top),
+    Math.max(a.right - b.right, a.bottom - b.bottom),
+    Math.max(b.left - a.left, a.bottom - b.bottom),
+  ];
+  return own.map((v, i) => (v > 0 && gaps[i] >= 0 && gaps[i] < pr[i] ? Math.max(pr[i] - gaps[i], 0) : v));
+}
 
 function px(v: string) {
   return v.endsWith('px') ? parseFloat(v) : NaN;
@@ -43,6 +67,7 @@ function release(el: HTMLElement) {
   el.style.backgroundImage = '';
   el.style.borderRadius = '';
   done.delete(el);
+  radii.delete(el);
 }
 
 function apply(el: HTMLElement) {
@@ -53,8 +78,7 @@ function apply(el: HTMLElement) {
   const r = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius].map(px);
   const w = el.offsetWidth;
   const h = el.offsetHeight;
-  const short = Math.min(w, h);
-  const rounded = r.some((v) => v > 0) && r.every((v) => !Number.isNaN(v));
+    const rounded = r.some((v) => v > 0) && r.every((v) => !Number.isNaN(v));
   const circle = w > 0 && w === h && r.every((v) => v >= w / 2 - 0.5);
   const outerShadow = cs.boxShadow !== 'none' && !cs.boxShadow.includes('inset');
   if (!rounded || circle || outerShadow || !w || !h) {
@@ -62,9 +86,9 @@ function apply(el: HTMLElement) {
     return;
   }
 
-  const pill = r.filter((v) => v > 0).every((v) => v >= short / 2 - 0.5);
-  const size = short * (pill ? SQUIRCLE_C10 : SQUIRCLE_C5);
-  const r2 = r.map((v) => (v > 0 ? size : 0)) as [number, number, number, number];
+  const nested = concentric(el, r);
+  radii.set(el, nested);
+  const r2 = nested.map((v) => (v > 0 ? squircleExtent(v, w, h) : 0)) as [number, number, number, number];
   const path = squirclePath(w, h, r2);
 
   // Outlines: the stroke is centered on the path and the clip removes the outer half.

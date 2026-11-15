@@ -46,8 +46,8 @@ export default function CompanyRules() {
       <Card>
         {rows.map(([label, value], i) => (
           <Fragment key={label}>
-            {i > 0 ? <Hr style={{ marginVertical: 8 }} /> : null}
-            <Row style={{ minHeight: 40 }}>
+            {i > 0 ? <Hr style={{ marginVertical: 17 }} /> : null}
+            <Row>
               <T v="bodySmall">{label}</T>
               <T v="bodyStrong">{value}</T>
             </Row>

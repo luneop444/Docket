@@ -69,7 +69,7 @@ function Stat({ value, label }: { value: string; label: string }) {
 
 const styles = StyleSheet.create({
   stats: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  stat: { flex: 1, backgroundColor: color.bg, borderRadius: 16, borderCurve: 'continuous', padding: 10 },
+  stat: { flex: 1, backgroundColor: color.bg, borderRadius: 10, borderCurve: 'continuous', padding: 10 },
   statValue: { fontSize: 17 },
   statLabel: { fontSize: 12, lineHeight: 15.6, marginTop: 2 },
 });

@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepValue: { minWidth: 80, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  details: { backgroundColor: color.raise, borderRadius: radius.control, borderCurve: 'continuous', padding: 14 },
+  details: { backgroundColor: color.raise, borderRadius: 14, borderCurve: 'continuous', padding: 14 },
   undo: {
     position: 'absolute',
     left: 16,

@@ -154,7 +154,7 @@ function TimeField({ at, onChange, label }: { at: number; onChange: (m: number) 
 }
 
 const styles = StyleSheet.create({
-  stop: { backgroundColor: color.raise, borderRadius: radius.control, borderCurve: 'continuous', padding: 14, gap: 10 },
+  stop: { backgroundColor: color.raise, borderRadius: 14, borderCurve: 'continuous', padding: 14, gap: 10 },
   stopHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   input: {
     ...type.body,

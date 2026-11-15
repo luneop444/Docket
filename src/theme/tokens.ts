@@ -81,7 +81,7 @@ export const protoColor = {
 } as const;
 
 export const radius = {
-  card: 28,
+  card: 24,
   control: 16,
   chip: 14,
   option: 20,

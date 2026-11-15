@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { squirclePath, SQUIRCLE_C5 } from '../squircle';
+import { squircleExtent, squirclePath, SQUIRCLE_C5 } from '../squircle';
 
 describe('squircle path (Squircle plugin for Figma)', () => {
   it('matches the plugin at its default 100 × 100 squircle', () => {
@@ -20,5 +20,16 @@ describe('squircle path (Squircle plugin for Figma)', () => {
     const d = squirclePath(200, 100, [24, 24, 0, 0]);
     expect(d).toContain('L 200 100');
     expect(d).toContain('L 0 100');
+  });
+
+  it('maps a design radius to the same diagonal cut-in', () => {
+    // 0.2929 R == (0.375 × 0.1765 + 0.125) r2
+    const r2 = squircleExtent(20, 300, 300);
+    expect(r2).toBeCloseTo(30.64, 1);
+    expect((0.375 * 0.1765 + 0.125) * r2).toBeCloseTo(0.2929 * 20, 3);
+  });
+
+  it('caps at half the shorter side, so pills stay pills', () => {
+    expect(squircleExtent(28, 353, 56)).toBe(28);
   });
 });
