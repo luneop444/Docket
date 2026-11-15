@@ -276,7 +276,7 @@ export function Screen({
         <ScrollView
           ref={scrollRef}
           style={styles.flex}
-          contentContainerStyle={[styles.scroll, contentStyle]}
+          contentContainerStyle={[styles.scroll, step ? styles.stepTop : null, contentStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           onScroll={onScrollY ? (e) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}
@@ -295,6 +295,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   screen: { flex: 1, backgroundColor: color.bg, overflow: 'hidden' },
   scroll: { paddingHorizontal: 20, paddingBottom: 28 },
+  // Onboarding: 16 from the dashes to the title (6 from the bar's own padding + 10).
+  stepTop: { paddingTop: 10 },
   footer: {
     paddingTop: 24,
     paddingHorizontal: 20,

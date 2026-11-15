@@ -82,7 +82,7 @@ export default function PickCompany() {
       <T v="h2">Who do you drive for?</T>
       <Gap h={8} />
       <T v="body" c={color.sub}>Every company pays detention its own way. Pick yours and you’ll check its rules next.</T>
-      <Gap h={20} />
+      <Gap h={24} />
       <View style={[styles.field, focused && styles.fieldFocus]}>
         <SearchIcon />
         <TextInput
@@ -98,10 +98,10 @@ export default function PickCompany() {
           accessibilityLabel="Company name"
         />
       </View>
-      <Gap h={16} />
+      <Gap h={24} />
       {!q ? (
         <>
-          <T v="bodyTiny" c={color.sub}>Popular with drivers</T>
+          <T v="labelPill">Popular with drivers</T>
           <Gap h={8} />
           {/* Six visible before scrolling: Plaid found more visible choices meant fewer people had to search. */}
           <View style={styles.grid}>
@@ -114,9 +114,9 @@ export default function PickCompany() {
                 style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
               >
                 <View style={styles.mono}>
-                  <T v="bodyTiny" c={color.bg}>{initials(c.name)}</T>
+                  <T v="labelPill">{initials(c.name)}</T>
                 </View>
-                <T v="bodyStrong" numberOfLines={2}>{c.name}</T>
+                <T v="labelSmall" numberOfLines={2}>{c.name}</T>
               </Pressable>
             ))}
           </View>
@@ -136,18 +136,20 @@ export default function PickCompany() {
       </T>
       {!q ? (
         <>
-          <Gap h={28} />
+          <Gap h={32} />
           <View ref={list}>
-            <T v="bodyTiny" c={color.sub}>All companies</T>
-            {byLetter.map(([letter, list]) => (
+            <T v="labelPill">All companies</T>
+            {byLetter.map(([letter, list], i) => (
               <View
                 key={letter}
                 ref={(n) => {
                   sections.current[letter] = n;
                 }}
-                style={{ paddingTop: 18 }}
+                style={{ paddingTop: i === 0 ? 16 : 24 }}
               >
-                <T v="bodyStrong" accessibilityRole="header">{letter}</T>
+                <T v="labelPill" c={color.sub} accessibilityRole="header">
+                  {letter}
+                </T>
                 <View style={styles.rule} />
                 {list.map((c) => (
                   <Pressable
@@ -186,13 +188,13 @@ const styles = StyleSheet.create({
     width: '48.5%',
     flexGrow: 1,
     minHeight: 92,
-    padding: 12,
+    padding: 16,
     gap: 10,
     borderRadius: radius.control,
     backgroundColor: color.raise,
   },
   tilePressed: { backgroundColor: color.line },
-  mono: { width: 32, height: 32, borderRadius: 8, backgroundColor: color.ink, alignItems: 'center', justifyContent: 'center' },
+  mono: { width: 32, height: 32, borderRadius: 8, backgroundColor: color.raise2, alignItems: 'center', justifyContent: 'center' },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line, marginTop: 8, marginRight: 24 },
   // Compact like Contacts; right padding leaves room for the A–Z strip.
   row: {
