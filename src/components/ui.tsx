@@ -190,13 +190,14 @@ export function Option({
     </View>
   );
   if (radio) {
-    // v2 (Figma A3, B1): radio on the left, row stays grey when selected.
+    // Radio on the left. Selected gets the same white row and ink ring as every
+    // other selected option, so the choice reads from across the row, not just the dot.
     return (
       <Pressable
         accessibilityRole="radio"
         accessibilityState={{ checked: !!selected }}
         onPress={onPress}
-        style={[styles.option, styles.optionRadio]}
+        style={[styles.option, styles.optionRadio, selected && styles.optionOn]}
       >
         <View style={[styles.radio, selected && styles.radioOn]} />
         {text}
@@ -334,7 +335,7 @@ const styles = StyleSheet.create({
   },
   optionOn: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
   optionRadio: { justifyContent: 'flex-start', gap: 14 },
-  radio: { width: 22, height: 22, borderRadius: 11, borderCurve: 'continuous', borderWidth: 2, borderColor: color.line },
+  radio: { width: 22, height: 22, borderRadius: 11, borderCurve: 'continuous', borderWidth: 2, borderColor: color.track },
   radioOn: { borderWidth: 7, borderColor: color.ink },
   seg: { flexDirection: 'row', gap: 6 },
   segBtn: {
