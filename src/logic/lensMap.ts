@@ -48,8 +48,10 @@ export function lensMap(
         dist = py;
         ny = 1;
       }
-      // Inside the rim band the bend follows a circular profile, strongest at the edge.
-      const t = dist <= 0 ? 1 : dist >= depth ? 0 : 1 - Math.sqrt(1 - (1 - dist / depth) ** 2);
+      // Inside the rim band the bend eases in, strongest at the edge: (1 - d/depth)².
+      // Its steepest slope is 2 × rim / depth; kept under 1 (with zoom) the
+      // content never folds over itself, which is what smears it into streaks.
+      const t = dist <= 0 ? 1 : dist >= depth ? 0 : (1 - dist / depth) ** 2;
       // Shift in px: sample toward the middle (magnifies), plus the rim bend.
       const sx = (W / 2 - px) * zoom + nx * t * rim;
       const sy = (H / 2 - py) * zoom + ny * t * rim;
