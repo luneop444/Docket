@@ -35,7 +35,21 @@ export function TabBar() {
   const { pillBottom } = useTabSpace();
   const barRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
-  const index = Math.max(0, TABS.findIndex((t) => t.href === path));
+  const routeIndex = Math.max(0, TABS.findIndex((t) => t.href === path));
+  // The lens follows a tap at once, before the next screen starts rendering.
+  const [tapped, setTapped] = useState<number | null>(null);
+  const index = tapped ?? routeIndex;
+  // While it slides the lens is a plain moving layer, so the slide runs on the
+  // compositor and a busy screen render can't stall it; the bend comes back when it lands.
+  const [moving, setMoving] = useState(false);
+  const go = (i: number, href: string) => {
+    if (i !== index) {
+      setMoving(true);
+      setTapped(i);
+    }
+    // Let the slide start on the next frame, then switch screens.
+    requestAnimationFrame(() => requestAnimationFrame(() => router.navigate(href)));
+  };
 
   useEffect(() => {
     const el = barRef.current;
@@ -53,7 +67,7 @@ export function TabBar() {
   return (
     <div style={{ ...S.wrap, bottom: pillBottom }}>
       <nav ref={barRef} style={S.bar} aria-label="Tabs">
-        <Row active={-1} selected={index} />
+        <Row active={-1} selected={index} onTab={go} />
         {tabW ? (
           <>
             <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden>
@@ -69,11 +83,18 @@ export function TabBar() {
                 <feBlend in="rg" in2="bb" mode="screen" />
               </filter>
             </svg>
-            <div aria-hidden style={{ ...S.lens, width: tabW, transform: `translateX(${PAD + index * tabW}px)` }}>
+            <div
+              aria-hidden
+              style={{ ...S.lens, width: tabW, transform: `translate3d(${PAD + index * tabW}px, 0, 0)` }}
+              onTransitionEnd={() => {
+                setMoving(false);
+                setTapped(null);
+              }}
+            >
               {/* The lens bends what is inside it, in its own coordinates, so the map always sits under it. */}
-              <div style={{ ...S.glass, width: tabW, filter: `url(#${id})` }}>
+              <div style={{ ...S.glass, width: tabW, filter: moving ? 'none' : `url(#${id})` }}>
                 {/* A selected-style copy of the row, slid opposite to the lens so it lines up with the real one. */}
-                <div style={{ ...S.copy, width: width, transform: `translateX(${-(PAD + index * tabW)}px)` }}>
+                <div style={{ ...S.copy, width: width, transform: `translate3d(${-(PAD + index * tabW)}px, 0, 0)` }}>
                   <Row active={index} copy />
                 </div>
               </div>
@@ -86,7 +107,17 @@ export function TabBar() {
   );
 }
 
-function Row({ active, copy, selected }: { active: number; copy?: boolean; selected?: number }) {
+function Row({
+  active,
+  copy,
+  selected,
+  onTab,
+}: {
+  active: number;
+  copy?: boolean;
+  selected?: number;
+  onTab?: (i: number, href: string) => void;
+}) {
   return (
     <div style={{ ...S.row, ...(copy ? S.rowCopy : null) }}>
       {TABS.map(({ href, label, Icon }, i) => {
@@ -98,7 +129,7 @@ function Row({ active, copy, selected }: { active: number; copy?: boolean; selec
             role="tab"
             aria-selected={copy ? undefined : i === selected}
             tabIndex={copy ? -1 : 0}
-            onClick={copy ? undefined : () => router.navigate(href)}
+            onClick={copy || !onTab ? undefined : () => onTab(i, href)}
             style={S.tab}
           >
             <Icon on={on} />
@@ -164,11 +195,12 @@ const S: Record<string, CSSProperties> = {
     pointerEvents: 'none',
     background: 'rgba(255,255,255,0.55)',
     boxShadow: '0 2px 10px rgba(0,0,0,0.10), 0 0 0 0.5px rgba(0,0,0,0.06)',
-    transition: 'transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+    transition: 'transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+    willChange: 'transform',
   },
   // Solid inside, so the plain row under the lens doesn't ghost through the magnified copy.
   glass: { position: 'absolute', top: 0, left: 0, height: LENS_H, overflow: 'hidden', background: '#F4F5F7' },
-  copy: { position: 'absolute', top: 0, left: 0, height: LENS_H, transition: 'transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1)' },
+  copy: { position: 'absolute', top: 0, left: 0, height: LENS_H, transition: 'transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1)', willChange: 'transform' },
   // Specular rim: light from the top left, as on glass.
   specular: {
     position: 'absolute',
