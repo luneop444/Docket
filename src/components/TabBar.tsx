@@ -35,7 +35,7 @@ export function TabBar() {
               onPress={() => router.navigate(href)}
               style={[styles.tab, on && styles.tabOn]}
             >
-              <Icon on={on} c={on ? color.signal : undefined} cut={on ? color.ink : undefined} />
+              <Icon on={on} c={on ? color.signal : undefined} />
               <Text style={[type.labelTab, { color: on ? color.ink : color.sub }]}>{label}</Text>
             </Pressable>
           );
