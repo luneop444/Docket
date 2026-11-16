@@ -1,6 +1,6 @@
 import { router, usePathname } from 'expo-router';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { color, type } from '../theme/tokens';
+import { color, colorDark, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
 import { GLASS_MAP } from './glassMap';
 import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
@@ -18,13 +18,15 @@ const TABS = [
 /** Aave: 1px border + 2px padding around 40px items in a 46px bar. 3/46 of 64. */
 const PAD = 4;
 const LENS_H = TAB_PILL - PAD * 2;
-/** Aave's hairline: rgba(46,15,15,0.08). The bar itself is glass, so it has no fill. */
-const HAIRLINE = 'rgba(46,15,15,0.08)';
-/** Tabs outside the lens: Aave's grey label (#727274) and lighter grey icon (#BCBBBB). */
-const OFF_LABEL = '#727274';
-const OFF_ICON = '#BCBBBB';
-/** What the icons' cut-outs sit on: the white page under 4% black. */
-const UNDER = '#F5F5F5';
+/**
+ * Dark glass, so the selected icon can be Docket's lime (color.signal): black at
+ * 88% lands on #1F1F1F over the white page, where lime is 13:1 and the grey tabs
+ * (colorDark.sub) 6:1, and dark page text under it stays faint. A light rim instead of Aave's dark hairline, as glass
+ * edges catch light on a dark pane.
+ */
+const TINT = 'rgba(0,0,0,0.88)';
+const UNDER = '#1F1F1F';
+const HAIRLINE = 'rgba(255,255,255,0.14)';
 /** Aave darkens its glass with black at 4%; the bar and the lens both get it. */
 const LENS_SHADE = 'rgba(0,0,0,0.04)';
 /**
@@ -40,7 +42,7 @@ const SLIDE_MS = 320;
 
 /**
  * Web tab bar built from Aave's glass ("Building glass for the web"): a glass bar
- * holding a glass lens, both with Aave's bend, rim shading and 4% black shade.
+ * holding a glass lens, both with Aave's bend and rim shading, the bar dark.
  * - The bar bends the page under it at its rim. Aave's map is drawn for its
  *   88x40 lens, so the bar uses it 9-sliced: its two ends at the size they'd have
  *   on a lens as tall as the bar, its middle column stretched between them. Safari
@@ -187,8 +189,8 @@ function Row({ onTab, index, lit }: { onTab?: (i: number, href: string) => void;
       {TABS.map(({ href, label, Icon }, i) =>
         lit ? (
           <div key={href} style={S.tab}>
-            <Icon on c={color.ink} cut={UNDER} />
-            <span style={{ ...S.label, color: color.ink }}>{label}</span>
+            <Icon on c={color.signal} cut={UNDER} />
+            <span style={{ ...S.label, color: colorDark.ink }}>{label}</span>
           </div>
         ) : (
           <button
@@ -199,8 +201,8 @@ function Row({ onTab, index, lit }: { onTab?: (i: number, href: string) => void;
             onClick={() => onTab?.(i, href)}
             style={S.tab}
           >
-            <Icon on={false} c={OFF_ICON} cut={UNDER} />
-            <span style={{ ...S.label, color: OFF_LABEL }}>{label}</span>
+            <Icon on={false} c={colorDark.sub} cut={UNDER} />
+            <span style={{ ...S.label, color: colorDark.sub }}>{label}</span>
           </button>
         ),
       )}
@@ -301,7 +303,7 @@ const S: Record<string, CSSProperties> = {
   // M larger on every side so the bend near the edge samples the page there, not
   // nothing; the bar's rounded clip shows only the bar.
   base: { position: 'absolute', inset: -M, pointerEvents: 'none' },
-  glassShade: { ...barBox, pointerEvents: 'none', background: LENS_SHADE, boxShadow: `inset 0 0 0 1px ${HAIRLINE}` },
+  glassShade: { ...barBox, pointerEvents: 'none', background: TINT, boxShadow: `inset 0 0 0 1px ${HAIRLINE}` },
   win: { position: 'absolute', top: 0, left: 0, overflow: 'hidden', pointerEvents: 'none', background: color.bg, willChange: 'transform' },
   copy: { position: 'absolute', top: 0, left: 0, height: TAB_PILL, willChange: 'transform' },
   // What the lens bends: the white page, under the bar's shade and hairline.
