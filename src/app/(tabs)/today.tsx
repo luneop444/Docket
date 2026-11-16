@@ -39,7 +39,7 @@ export default function Today() {
     >
       <Gap h={16} />
       <Current />
-      <Gap h={48} />
+      <Gap h={40} />
       <Stops />
     </Screen>
   );
@@ -87,8 +87,8 @@ function Head({ name, since }: { name: string; since: number }) {
       <T v="bodyStrong" style={styles.flex}>
         {name}
       </T>
-      <T v="bodySmall" c={color.sub} style={styles.tabular}>
-        since {clock(since)}
+      <T v="bodySmall" c={color.sub}>
+        {`since ${clock(since)}`}
       </T>
     </View>
   );
@@ -117,12 +117,12 @@ function AtStop() {
   return (
     <View>
       <Head name={placeOf(s.load).name} since={st.arrive ?? s.now} />
-      <Gap h={24} />
+      <Gap h={12} />
       <T v="bodySmall" c={color.sub}>
         {label}
       </T>
       <Gap h={8} />
-      <T v="displayTimer" style={styles.tabular}>
+      <T v="displayTimer" style={[styles.tabular, styles.optical]}>
         {figure}
       </T>
       <Gap h={8} />
@@ -133,10 +133,10 @@ function AtStop() {
       <FreeBar start={c.start} freeEnd={c.freeEnd} now={done ? (st.leave ?? s.now) : s.now} />
       <Gap h={8} />
       <View style={styles.head}>
-        <T v="bodySmall" c={color.sub} style={styles.tabular}>
-          {durShort(s.rules.free)} free from {clock(c.start)}
+        <T v="bodySmall" c={color.sub}>
+          {`${durShort(s.rules.free)} free from ${clock(c.start)}`}
         </T>
-        <T v="bodySmall" c={paid ? color.ink : color.sub} style={styles.tabular}>
+        <T v="bodySmall" c={paid ? color.ink : color.sub}>
           {paid ? `Paid from ${clock(c.freeEnd)}` : clock(c.freeEnd)}
         </T>
       </View>
@@ -178,7 +178,9 @@ function FreeBar({ start, freeEnd, now }: { start: number; freeEnd: number; now:
 function Link({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" onPress={onPress} hitSlop={12}>
-      <T v="labelSmall">{label}</T>
+      <T v="bodySmall" c={color.sub} style={styles.link}>
+        {label}
+      </T>
     </Pressable>
   );
 }
@@ -190,7 +192,6 @@ function Stops() {
   const stops = s.load?.stops ?? [];
   const current = watchedStop(s.load);
   const st = s.stop;
-  const c = stopCalc(st, s.now, s.rules);
 
   if (!stops.length) {
     return (
@@ -205,12 +206,16 @@ function Stops() {
   }
 
   const at = st.phase !== 'idle';
-  const rowOf = (isCurrent: boolean, at0: number, kind: string) => {
-    if (!isCurrent) return { sub: `${kind}, appointment ${clock(at0)}`, right: '' };
-    if (st.phase === 'dock') return { sub: `${kind}, waiting ${dur(s.now - (st.arrive ?? s.now))}`, right: money(c.owed) };
-    if (st.phase === 'left' || st.phase === 'logged') return { sub: `${kind}, waited ${dur(c.wait)}`, right: money(c.owed) };
-    if (st.phase === 'arriving') return { sub: `${kind}, parked`, right: '' };
-    return { sub: `${kind}, appointment ${clock(at0)}`, right: 'Next' };
+  const currentIndex = current ? stops.indexOf(current) : -1;
+  // The current stop is the hero above, so its row only marks where it is, not repeat it.
+  const rowOf = (i: number, at0: number, kind: string) => {
+    if (i === currentIndex) {
+      if (st.phase === 'left' || st.phase === 'logged') return { sub: `${kind}, left ${clock(st.leave ?? s.now)}`, right: '' };
+      if (at) return { sub: kind, right: 'Now' };
+      return { sub: `${kind}, appointment ${clock(at0)}`, right: 'Next' };
+    }
+    if (at && currentIndex >= 0 && i < currentIndex) return { sub: `${kind}, done`, right: '' };
+    return { sub: `${kind}, appointment ${clock(at0)}`, right: '' };
   };
 
   return (
@@ -218,9 +223,8 @@ function Stops() {
       <T v="bodyStrong">Today’s stops</T>
       <Gap h={4} />
       {stops.map((stop, i) => {
-        const isCurrent = stop === current;
-        const r = rowOf(isCurrent, stop.at, stop.kind);
-        const quiet = !isCurrent && at;
+        const r = rowOf(i, stop.at, stop.kind);
+        const quiet = at && currentIndex >= 0 && i < currentIndex;
         return (
           <Fragment key={`${stop.name}-${i}`}>
             {i > 0 ? <View style={styles.divider} /> : null}
@@ -249,9 +253,13 @@ function Stops() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   tabular: { fontVariant: ['tabular-nums'] },
+  // At 84px the first glyph's built-in left space shows: pull it back to the text edge.
+  optical: { marginLeft: -5 },
   head: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
   bar: { height: 8, borderRadius: 4, backgroundColor: color.raise2, flexDirection: 'row', overflow: 'hidden' },
   links: { flexDirection: 'row', gap: 24 },
+  // Secondary actions: quieter than the figure and the section title, underlined so they read as tappable.
+  link: { textDecorationLine: 'underline' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: color.raise2 },
 });
