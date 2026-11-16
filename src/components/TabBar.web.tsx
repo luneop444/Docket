@@ -288,8 +288,8 @@ function Row({
       {TABS.map(({ href, label, Icon }, i) =>
         lit ? (
           <div key={href} style={S.tab}>
-            {/* Aave colors the icons inside its lens; ours take Docket's lime, details cut through. */}
-            <Icon on c={color.signal} />
+            {/* Inside the lens every tab is drawn selected: black, details cut through. */}
+            <Icon on c={color.ink} />
             <span style={{ ...S.label, color: color.ink }}>{label}</span>
           </div>
         ) : (
