@@ -13,18 +13,13 @@ const TABS = [
 
 const PAD = 4;
 const LENS_H = TAB_PILL - PAD * 2;
-/**
- * Lens. DEPTH is the splay: how far in from the rim the bend reaches (px; the
- * lens is 56 tall, so 28 bends right to the middle). RIM is the refraction at
- * the very edge (px). ZOOM magnifies the whole lens. 2 × RIM / DEPTH + ZOOM
- * stays under 1 so nothing folds into streaks. BEND is the filter's max shift.
- */
-const DEPTH = 28;
-const RIM = 11;
-const ZOOM = 0.12;
+/** Lens: rim band depth and rim bend in px, magnification, and the filter's max shift (px). */
+const DEPTH = 16;
+const RIM = 12;
+const ZOOM = 0.14;
 const BEND = 40;
-/** Dispersion: red bends this much more than green, blue this much less, so edges split into color. */
-const CHROMA = 0.18;
+/** Faint color fringe at the rim: red and blue bend a little more and less than green. */
+const CHROMA = 0.08;
 
 /**
  * Web tab bar in Liquid Glass, built the way Aave describes in "Building glass
