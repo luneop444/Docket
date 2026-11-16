@@ -49,6 +49,7 @@ export function TabBar() {
   }, []);
 
   const go = (i: number, href: string) => {
+    if (i === index) return;
     setTapped(i);
     // Let the slide start on the next frame, then switch screens.
     requestAnimationFrame(() => requestAnimationFrame(() => router.navigate(href)));
@@ -59,6 +60,8 @@ export function TabBar() {
   return (
     <div style={{ ...S.wrap, bottom: pillBottom }}>
       <nav ref={barRef} style={S.bar} aria-label="Tabs">
+        <div aria-hidden style={S.blur} />
+        <div aria-hidden style={S.tint} />
         {tabW ? (
           <div
             aria-hidden
@@ -66,18 +69,35 @@ export function TabBar() {
             onTransitionEnd={() => setTapped(null)}
           />
         ) : null}
-        <div style={S.row}>
-          {TABS.map(({ href, label, Icon }, i) => {
-            const on = i === index;
-            return (
-              <button key={href} type="button" role="tab" aria-selected={on} onClick={() => go(i, href)} style={S.tab}>
-                <Icon on={on} c={on ? '#FFFFFF' : color.ink} cut={on ? ON_PILL : ON_BAR} />
-                <span style={{ ...S.label, color: on ? '#FFFFFF' : color.ink }}>{label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Above the pill. A tab turns white once the pill has landed on it: the web
+            can't keep a cut-out in step with a sliding pill (Safari runs the two on
+            different threads), so mid-slide every label stays ink. */}
+        <Row onTab={go} index={index} lit={tapped === null ? index : -1} />
       </nav>
+    </div>
+  );
+}
+
+function Row({ onTab, index, lit }: { onTab: (i: number, href: string) => void; index: number; lit: number }) {
+  return (
+    <div style={S.row}>
+      {TABS.map(({ href, label, Icon }, i) => {
+        const on = i === lit;
+        const fg = on ? '#FFFFFF' : color.ink;
+        return (
+          <button
+            key={href}
+            type="button"
+            role="tab"
+            aria-selected={i === index}
+            onClick={() => onTab(i, href)}
+            style={S.tab}
+          >
+            <Icon on={false} c={fg} cut={on ? ON_PILL : ON_BAR} />
+            <span style={{ ...S.label, color: fg }}>{label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -89,11 +109,30 @@ const S: Record<string, CSSProperties> = {
     height: TAB_PILL,
     borderRadius: TAB_PILL / 2,
     pointerEvents: 'auto',
-    background: 'rgba(110,110,110,0.30)',
+    overflow: 'hidden',
+    boxShadow: '0 14px 40px rgba(0,0,0,0.20)',
+  },
+  // Browsers mirror the page at a blur's edges, so a 64px box blurred 28px is all
+  // edge and the text under it stays readable. The blur samples a box 48px larger
+  // on every side; the bar's rounded clip shows only its middle.
+  blur: {
+    position: 'absolute',
+    inset: -48,
+    pointerEvents: 'none',
     backdropFilter: 'blur(28px)',
     WebkitBackdropFilter: 'blur(28px)',
+  },
+  // The reference's grey 110 at 30% lands on 209 over white. Browsers mirror the
+  // screen's bottom edge into the blur, so text under a bar this low stays sharp;
+  // the same 209 made with grey 178 at 60% hides that text twice as well.
+  tint: {
+    position: 'absolute',
+    inset: 0,
+    borderRadius: TAB_PILL / 2,
+    pointerEvents: 'none',
+    background: 'rgba(178,178,178,0.60)',
     boxShadow:
-      'inset 0 1.5px 0 rgba(255,255,255,0.32), inset 0 -1.5px 0 rgba(255,255,255,0.14), inset 1px 0 0 rgba(255,255,255,0.12), inset -1px 0 0 rgba(255,255,255,0.12), 0 14px 40px rgba(0,0,0,0.20)',
+      'inset 0 1.5px 0 rgba(255,255,255,0.32), inset 0 -1.5px 0 rgba(255,255,255,0.14), inset 1px 0 0 rgba(255,255,255,0.12), inset -1px 0 0 rgba(255,255,255,0.12)',
   },
   // Darker than the reference's inner pill (that one sat on a black photo) so
   // white labels on it keep 4.5:1 over Docket's white page.
@@ -104,6 +143,7 @@ const S: Record<string, CSSProperties> = {
     height: LENS_H,
     borderRadius: LENS_H / 2,
     pointerEvents: 'none',
+    overflow: 'hidden',
     background: 'linear-gradient(180deg, rgba(0,0,0,0.62), rgba(0,0,0,0.50))',
     boxShadow:
       'inset 0 0 0 1px rgba(255,255,255,0.28), inset 0 -1.5px 0 rgba(255,255,255,0.55), inset 0 3px 5px rgba(0,0,0,0.35), inset -6px 0 7px -3px rgba(70,110,210,0.65), inset -2px -1px 3px -1px rgba(150,170,255,0.55), inset -3px 3px 4px -3px rgba(255,210,150,0.25)',
