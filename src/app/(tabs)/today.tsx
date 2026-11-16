@@ -3,9 +3,10 @@ import { Fragment, useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
 import { DemoDrawer } from '../../components/DemoDrawer';
+import { FreeBars, isBarVariant } from '../../components/FreeBars';
 import { Button, Gap, T } from '../../components/ui';
 import { isDemoState } from '../../logic/demo';
-import { clock, dur, durShort, money, rateShort } from '../../logic/format';
+import { clock, dur, money, rateShort } from '../../logic/format';
 import { placeOf, watchedStop } from '../../logic/state';
 import { dockTimeline, stopCalc } from '../../logic/stop';
 import { useStore } from '../../state/AppStore';
@@ -97,6 +98,8 @@ function Head({ name, since }: { name: string; since: number }) {
 /** At the dock, or just left: one figure, what it means, the bar, and the one fix. */
 function AtStop() {
   const { s, a } = useStore();
+  // Prototype: ?bar=a..e picks which free-time bar to show.
+  const { bar } = useLocalSearchParams<{ bar?: string }>();
   const st = s.stop;
   const c = stopCalc(st, s.now, s.rules);
   const done = st.phase === 'left' || st.phase === 'logged';
@@ -130,16 +133,19 @@ function AtStop() {
         {line}
       </T>
       <Gap h={24} />
-      <FreeBar start={c.start} freeEnd={c.freeEnd} now={done ? (st.leave ?? s.now) : s.now} />
-      <Gap h={8} />
-      <View style={styles.head}>
-        <T v="bodySmall" c={color.sub}>
-          {`${durShort(s.rules.free)} free from ${clock(c.start)}`}
-        </T>
-        <T v="bodySmall" c={paid ? color.ink : color.sub}>
-          {paid ? `Paid from ${clock(c.freeEnd)}` : clock(c.freeEnd)}
-        </T>
-      </View>
+      <FreeBars
+        v={isBarVariant(bar) ? bar : 'a'}
+        d={{
+          arrive: st.arrive ?? s.now,
+          start: c.start,
+          freeEnd: c.freeEnd,
+          now: done ? (st.leave ?? s.now) : s.now,
+          free: s.rules.free,
+          rate: s.rules.rate,
+          owed: c.owed,
+          paid,
+        }}
+      />
       <Gap h={24} />
       {st.phase === 'left' ? (
         <>
@@ -157,20 +163,6 @@ function AtStop() {
         <Link label="Edit arrival time" onPress={a.openFix} />
         {checkIn ? <Link label="I checked in" onPress={a.checkIn} /> : null}
       </View>
-    </View>
-  );
-}
-
-/** Grey is free time used, black is paid detention. Free time not used yet is the track. */
-function FreeBar({ start, freeEnd, now }: { start: number; freeEnd: number; now: number }) {
-  const free = Math.max(1, freeEnd - start);
-  const used = Math.max(0, Math.min(now, freeEnd) - start);
-  const paid = Math.max(0, now - freeEnd);
-  return (
-    <View style={styles.bar}>
-      {used > 0 ? <View style={{ flex: used, backgroundColor: color.free }} /> : null}
-      {now < freeEnd ? <View style={{ flex: free - used }} /> : null}
-      {paid > 0 ? <View style={{ flex: paid, backgroundColor: color.detention }} /> : null}
     </View>
   );
 }
