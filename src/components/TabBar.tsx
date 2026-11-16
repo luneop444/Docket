@@ -35,8 +35,8 @@ export function TabBar() {
               onPress={() => router.navigate(href)}
               style={[styles.tab, on && styles.tabOn]}
             >
-              <Icon on={on} />
-              <Text style={[type.labelTab, { color: on ? color.ink : color.sub }]}>{label}</Text>
+              <Icon on={on} c={on ? color.signal : color.ink} />
+              <Text style={[type.labelTab, { color: on ? color.signal : color.ink }]}>{label}</Text>
             </Pressable>
           );
         })}
@@ -74,5 +74,5 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   // The selected tab sits on a slightly darker capsule, like the system tab bar.
-  tabOn: { backgroundColor: 'rgba(0,0,0,0.06)' },
+  tabOn: { backgroundColor: 'rgba(0,0,0,0.08)' },
 });
