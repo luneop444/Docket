@@ -1,6 +1,5 @@
 import { router, usePathname } from 'expo-router';
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { lensMap } from '../logic/lensMap';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { color, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
 import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
@@ -11,24 +10,25 @@ const TABS = [
   { href: '/companies', label: 'Companies', Icon: TabCompaniesIcon },
 ] as const;
 
-const PAD = 4;
+/** Inner pill inset: the reference's 18 on a 250-tall bar, scaled to 64. Concentric with the bar. */
+const PAD = 5;
 const LENS_H = TAB_PILL - PAD * 2;
-/** Lens: rim band depth and rim bend in px, magnification, and the filter's max shift (px). */
-const DEPTH = 16;
-const RIM = 12;
-const ZOOM = 0.14;
-const BEND = 40;
-/** Faint color fringe at the rim: red and blue bend a little more and less than green. */
-const CHROMA = 0.08;
+const SLIDE = 'transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1)';
+/** What each kind of tab sits on, so the icons' cut-outs match it. */
+const ON_PILL = '#4B4B4B';
+const ON_BAR = '#D3D3D3';
 
 /**
- * Web tab bar in Liquid Glass, built the way Aave describes in "Building glass
- * for the web": the glass is the selection indicator. It is a lens holding a
- * copy of the tabs drawn in their selected style, bent at its rim by an SVG
- * feDisplacementMap from a generated map (src/logic/lensMap.ts), with a faint
- * color fringe and a specular rim on top. It refracts its own content, not the
- * page under it, so it works in Safari and Firefox too. Moving between tabs
- * slides the lens; the map is only rebuilt when the lens changes size.
+ * Web tab bar as a glass pill holding a smaller glass pill, matched to Edward's
+ * reference (a glass volume slider) by sampling its colors:
+ * - bar: grey 110 at 30% over the page blurred 28px, a light rim brightest along
+ *   the top, and a soft drop shadow;
+ * - selected pill: inset concentrically, darker toward its top (inner shadow), a
+ *   bright rim line strongest along its bottom, and blue dispersion inside its
+ *   trailing end with a warm touch at the top corner.
+ * The reference's inner pill also shows sky bent in from beyond the bar's edge;
+ * the web can only refract what is directly under an element, so that part is
+ * left out. iOS 26 uses Apple's own glass (TabBar.tsx).
  */
 export function TabBar() {
   const path = usePathname();
@@ -36,20 +36,9 @@ export function TabBar() {
   const barRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const routeIndex = Math.max(0, TABS.findIndex((t) => t.href === path));
-  // The lens follows a tap at once, before the next screen starts rendering.
+  // The pill follows a tap at once, before the next screen starts rendering.
   const [tapped, setTapped] = useState<number | null>(null);
   const index = tapped ?? routeIndex;
-  // While it slides the lens is a plain moving layer, so the slide runs on the
-  // compositor and a busy screen render can't stall it; the bend comes back when it lands.
-  const [moving, setMoving] = useState(false);
-  const go = (i: number, href: string) => {
-    if (i !== index) {
-      setMoving(true);
-      setTapped(i);
-    }
-    // Let the slide start on the next frame, then switch screens.
-    requestAnimationFrame(() => requestAnimationFrame(() => router.navigate(href)));
-  };
 
   useEffect(() => {
     const el = barRef.current;
@@ -59,117 +48,69 @@ export function TabBar() {
     return () => ro.disconnect();
   }, []);
 
+  const go = (i: number, href: string) => {
+    setTapped(i);
+    // Let the slide start on the next frame, then switch screens.
+    requestAnimationFrame(() => requestAnimationFrame(() => router.navigate(href)));
+  };
+
   const tabW = width ? (width - PAD * 2) / TABS.length : 0;
-  const map = useMemo(() => (tabW ? mapUrl(tabW, LENS_H) : ''), [tabW]);
-  // Safari caches filter output by id, so a new map gets a new id.
-  const id = useMemo(() => `lens-${Math.round(tabW)}`, [tabW]);
 
   return (
     <div style={{ ...S.wrap, bottom: pillBottom }}>
       <nav ref={barRef} style={S.bar} aria-label="Tabs">
-        <Row active={-1} selected={index} onTab={go} />
         {tabW ? (
-          <>
-            <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden>
-              <filter id={id} x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
-                <feImage href={map} x="0" y="0" width={tabW} height={LENS_H} result="map" preserveAspectRatio="none" />
-                <feDisplacementMap in="SourceGraphic" in2="map" scale={BEND * (1 + CHROMA)} xChannelSelector="R" yChannelSelector="G" result="r" />
-                <feDisplacementMap in="SourceGraphic" in2="map" scale={BEND} xChannelSelector="R" yChannelSelector="G" result="g" />
-                <feDisplacementMap in="SourceGraphic" in2="map" scale={BEND * (1 - CHROMA)} xChannelSelector="R" yChannelSelector="G" result="b" />
-                <feColorMatrix in="r" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="rr" />
-                <feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="gg" />
-                <feColorMatrix in="b" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="bb" />
-                <feBlend in="rr" in2="gg" mode="screen" result="rg" />
-                <feBlend in="rg" in2="bb" mode="screen" />
-              </filter>
-            </svg>
-            <div
-              aria-hidden
-              style={{ ...S.lens, width: tabW, transform: `translate3d(${PAD + index * tabW}px, 0, 0)` }}
-              onTransitionEnd={() => {
-                setMoving(false);
-                setTapped(null);
-              }}
-            >
-              {/* The lens bends what is inside it, in its own coordinates, so the map always sits under it. */}
-              <div style={{ ...S.glass, width: tabW, filter: moving ? 'none' : `url(#${id})` }}>
-                {/* A selected-style copy of the row, slid opposite to the lens so it lines up with the real one. */}
-                <div style={{ ...S.copy, width: width, transform: `translate3d(${-(PAD + index * tabW)}px, 0, 0)` }}>
-                  <Row active={index} copy />
-                </div>
-              </div>
-              <div style={S.specular} />
-            </div>
-          </>
+          <div
+            aria-hidden
+            style={{ ...S.pill, width: tabW, transform: `translate3d(${PAD + index * tabW}px, 0, 0)` }}
+            onTransitionEnd={() => setTapped(null)}
+          />
         ) : null}
+        <div style={S.row}>
+          {TABS.map(({ href, label, Icon }, i) => {
+            const on = i === index;
+            return (
+              <button key={href} type="button" role="tab" aria-selected={on} onClick={() => go(i, href)} style={S.tab}>
+                <Icon on={on} c={on ? '#FFFFFF' : color.ink} cut={on ? ON_PILL : ON_BAR} />
+                <span style={{ ...S.label, color: on ? '#FFFFFF' : color.ink }}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
       </nav>
     </div>
   );
 }
 
-function Row({
-  active,
-  copy,
-  selected,
-  onTab,
-}: {
-  active: number;
-  copy?: boolean;
-  selected?: number;
-  onTab?: (i: number, href: string) => void;
-}) {
-  return (
-    <div style={{ ...S.row, ...(copy ? S.rowCopy : null) }}>
-      {TABS.map(({ href, label, Icon }, i) => {
-        const on = i === active;
-        return (
-          <button
-            key={href}
-            type="button"
-            role="tab"
-            aria-selected={copy ? undefined : i === selected}
-            tabIndex={copy ? -1 : 0}
-            onClick={copy || !onTab ? undefined : () => onTab(i, href)}
-            style={S.tab}
-          >
-            <Icon on={on} />
-            <span style={{ ...S.label, color: on ? color.ink : color.sub }}>{label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Lens map as a PNG data URL, drawn once per lens size. */
-function mapUrl(w: number, h: number): string {
-  const cw = Math.round(w), ch = Math.round(h);
-  const canvas = document.createElement('canvas');
-  canvas.width = cw;
-  canvas.height = ch;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return '';
-  const img = ctx.createImageData(cw, ch);
-  img.data.set(lensMap(cw, ch, ch / 2, DEPTH, BEND, RIM, ZOOM));
-  ctx.putImageData(img, 0, 0);
-  return canvas.toDataURL();
-}
-
 const S: Record<string, CSSProperties> = {
   wrap: { position: 'absolute', left: 20, right: 20, pointerEvents: 'none' },
-  // The bar: frosted, with a light rim. The lens on it is the liquid part.
   bar: {
     position: 'relative',
     height: TAB_PILL,
     borderRadius: TAB_PILL / 2,
     pointerEvents: 'auto',
-    background: 'rgba(255,255,255,0.85)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06)',
+    background: 'rgba(110,110,110,0.30)',
+    backdropFilter: 'blur(28px)',
+    WebkitBackdropFilter: 'blur(28px)',
+    boxShadow:
+      'inset 0 1.5px 0 rgba(255,255,255,0.32), inset 0 -1.5px 0 rgba(255,255,255,0.14), inset 1px 0 0 rgba(255,255,255,0.12), inset -1px 0 0 rgba(255,255,255,0.12), 0 14px 40px rgba(0,0,0,0.20)',
+  },
+  // Darker than the reference's inner pill (that one sat on a black photo) so
+  // white labels on it keep 4.5:1 over Docket's white page.
+  pill: {
+    position: 'absolute',
+    top: PAD,
+    left: 0,
+    height: LENS_H,
+    borderRadius: LENS_H / 2,
+    pointerEvents: 'none',
+    background: 'linear-gradient(180deg, rgba(0,0,0,0.62), rgba(0,0,0,0.50))',
+    boxShadow:
+      'inset 0 0 0 1px rgba(255,255,255,0.28), inset 0 -1.5px 0 rgba(255,255,255,0.55), inset 0 3px 5px rgba(0,0,0,0.35), inset -6px 0 7px -3px rgba(70,110,210,0.65), inset -2px -1px 3px -1px rgba(150,170,255,0.55), inset -3px 3px 4px -3px rgba(255,210,150,0.25)',
+    transition: SLIDE,
+    willChange: 'transform',
   },
   row: { position: 'absolute', inset: 0, display: 'flex', padding: PAD },
-  rowCopy: { position: 'relative', height: TAB_PILL, top: -PAD },
   tab: {
     flex: 1,
     height: LENS_H,
@@ -185,28 +126,4 @@ const S: Record<string, CSSProperties> = {
   },
   // RN line heights are px; in CSS a bare number would be a multiplier.
   label: { ...(type.labelTab as CSSProperties), lineHeight: `${type.labelTab.lineHeight}px` },
-  lens: {
-    position: 'absolute',
-    top: PAD,
-    left: 0,
-    height: LENS_H,
-    borderRadius: LENS_H / 2,
-    overflow: 'hidden',
-    pointerEvents: 'none',
-    background: 'rgba(255,255,255,0.55)',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.10), 0 0 0 0.5px rgba(0,0,0,0.06)',
-    transition: 'transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-    willChange: 'transform',
-  },
-  // Solid inside, so the plain row under the lens doesn't ghost through the magnified copy.
-  glass: { position: 'absolute', top: 0, left: 0, height: LENS_H, overflow: 'hidden', background: '#F4F5F7' },
-  copy: { position: 'absolute', top: 0, left: 0, height: LENS_H, transition: 'transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1)', willChange: 'transform' },
-  // Specular rim: light from the top left, as on glass.
-  specular: {
-    position: 'absolute',
-    inset: 0,
-    borderRadius: LENS_H / 2,
-    boxShadow: 'inset 1.5px 1.5px 0 rgba(255,255,255,1), inset -1px -1px 0 rgba(255,255,255,0.6), inset 0 0 10px rgba(255,255,255,0.6)',
-    pointerEvents: 'none',
-  },
 };
