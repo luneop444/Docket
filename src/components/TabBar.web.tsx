@@ -25,7 +25,7 @@ const BEND = 40;
 const CHROMA = 0.08;
 const SLIDE_MS = 320;
 /** What the tabs sit on, so the icons' cut-outs match it: the frost, and the clear lens over white. */
-const ON_FROST = '#D1D1D1';
+const ON_FROST = '#F7F7F7';
 const ON_LENS = color.bg;
 
 /**
@@ -233,15 +233,16 @@ const S: Record<string, CSSProperties> = {
   },
   // Browsers mirror the page at a blur's edges, so a 64px box blurred 28px is all
   // edge. The frost samples a box BLEED larger on every side; the bar's rounded
-  // clip shows only its middle. The reference's grey 110 at 30% lands on 209 over
-  // white; grey 178 at 60% lands on the same 209 and hides text under it better.
+  // clip shows only its middle. Frost has no color of its own: it is whatever is
+  // behind it, blurred and lifted by a white haze. (The reference reads grey only
+  // because it sits on a dark photo.) Saturation keeps colors under it alive.
   frost: {
     position: 'absolute',
     inset: -BLEED,
     pointerEvents: 'none',
-    background: 'rgba(178,178,178,0.60)',
-    backdropFilter: 'blur(28px)',
-    WebkitBackdropFilter: 'blur(28px)',
+    background: 'rgba(255,255,255,0.62)',
+    backdropFilter: 'blur(28px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(28px) saturate(180%)',
   },
   rim: {
     position: 'absolute',
