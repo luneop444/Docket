@@ -3,7 +3,7 @@ import { Fragment, useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
 import { DemoDrawer } from '../../components/DemoDrawer';
-import { FreeBars, isBarVariant } from '../../components/FreeBars';
+import { FreeBar } from '../../components/FreeBar';
 import { Button, Gap, T } from '../../components/ui';
 import { isDemoState } from '../../logic/demo';
 import { clock, dur, money, rateShort } from '../../logic/format';
@@ -98,8 +98,6 @@ function Head({ name, since }: { name: string; since: number }) {
 /** At the dock, or just left: one figure, what it means, the bar, and the one fix. */
 function AtStop() {
   const { s, a } = useStore();
-  // Prototype: ?bar=a..e picks which free-time bar to show.
-  const { bar } = useLocalSearchParams<{ bar?: string }>();
   const st = s.stop;
   const c = stopCalc(st, s.now, s.rules);
   const done = st.phase === 'left' || st.phase === 'logged';
@@ -133,19 +131,7 @@ function AtStop() {
         {line}
       </T>
       <Gap h={24} />
-      <FreeBars
-        v={isBarVariant(bar) ? bar : 'a'}
-        d={{
-          arrive: st.arrive ?? s.now,
-          start: c.start,
-          freeEnd: c.freeEnd,
-          now: done ? (st.leave ?? s.now) : s.now,
-          free: s.rules.free,
-          rate: s.rules.rate,
-          owed: c.owed,
-          paid,
-        }}
-      />
+      <FreeBar d={{ arrive: st.arrive ?? s.now, start: c.start, freeEnd: c.freeEnd, now: done ? (st.leave ?? s.now) : s.now }} />
       <Gap h={24} />
       {st.phase === 'left' ? (
         <>
