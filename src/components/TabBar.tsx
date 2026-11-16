@@ -1,12 +1,9 @@
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { router, usePathname } from 'expo-router';
 import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { color, colorDark, type } from '../theme/tokens';
+import { color, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
 import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
-
-/** What the icons' cut-outs sit on: black at 88% over the white page. */
-const UNDER = '#1F1F1F';
 
 const TABS = [
   { href: '/today', label: 'Today', Icon: TabTodayIcon },
@@ -15,9 +12,10 @@ const TABS = [
 ] as const;
 
 /**
- * Floating pill tab bar in dark Liquid Glass, the selected icon in Docket's lime.
- * On iOS 26 it is Apple's real glass (expo-glass-effect) in its dark scheme.
- * Elsewhere it is the same pill in translucent black.
+ * Floating pill tab bar in Liquid Glass. On iOS 26 it is Apple's real glass
+ * (expo-glass-effect). Elsewhere it is the same pill as frosted glass: a
+ * translucent white with the content blurred behind it on the web, and plain
+ * translucent white where blur isn't available.
  */
 export function TabBar() {
   const path = usePathname();
@@ -26,7 +24,7 @@ export function TabBar() {
   const Shell = native ? GlassView : View;
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: pillBottom }]}>
-      <Shell style={[styles.pill, native ? null : FROSTED]} {...(native ? { glassEffectStyle: 'regular' as const, colorScheme: 'dark' as const, isInteractive: true } : {})}>
+      <Shell style={[styles.pill, native ? null : FROSTED]} {...(native ? { glassEffectStyle: 'regular' as const, isInteractive: true } : {})}>
         {TABS.map(({ href, label, Icon }) => {
           const on = path === href;
           return (
@@ -37,8 +35,8 @@ export function TabBar() {
               onPress={() => router.navigate(href)}
               style={[styles.tab, on && styles.tabOn]}
             >
-              <Icon on={on} c={on ? color.signal : colorDark.sub} cut={UNDER} />
-              <Text style={[type.labelTab, { color: on ? colorDark.ink : colorDark.sub }]}>{label}</Text>
+              <Icon on={on} c={on ? color.signal : undefined} cut={on ? color.ink : undefined} />
+              <Text style={[type.labelTab, { color: on ? color.ink : color.sub }]}>{label}</Text>
             </Pressable>
           );
         })}
@@ -47,9 +45,9 @@ export function TabBar() {
   );
 }
 
-/** Android stand-in for dark Liquid Glass: black at 88%, as on the web. */
+/** Web and Android stand-in for Liquid Glass: translucent white, the page blurred behind it. */
 const FROSTED = {
-  backgroundColor: 'rgba(0,0,0,0.88)',
+  backgroundColor: 'rgba(255,255,255,0.72)',
   // Web only; native platforms ignore these keys.
   backdropFilter: 'blur(20px) saturate(180%)',
   WebkitBackdropFilter: 'blur(20px) saturate(180%)',
@@ -75,6 +73,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
   },
-  // The selected tab sits on a slightly lighter capsule, like the system tab bar in dark mode.
-  tabOn: { backgroundColor: 'rgba(255,255,255,0.12)' },
+  // The selected tab sits on a slightly darker capsule, like the system tab bar.
+  tabOn: { backgroundColor: 'rgba(0,0,0,0.06)' },
 });
