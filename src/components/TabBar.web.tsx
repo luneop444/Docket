@@ -24,14 +24,29 @@ const FROST = 1;
 const PILL_TINT = 'rgba(229,232,236,0.55)';
 /**
  * Aave's glass ("Building glass for the web"): their lens map, drawn for an 88x40 lens.
- * Bend: 2.2 times their 27.3px across and 9.46px down, so the page under the glass reads
- * as bent and not just frosted. Colour split 1.5 times their strongest demo (the switch):
- * red 30% and green 15% further than blue. Rim highlight strength 1.5, from their demos.
+ * Their map only bends the outer rim (the middle is flat, as in their demos), so the bend
+ * shows as warping at the ends and edges, not across the middle.
+ * Bend: BEND times their 27.3px across and 9.46px down. Prototype switch: open any page
+ * with ?bend=8 (or ?bend=max for 12, ?bend=reset) to try another strength; it sticks for
+ * the tab.
  */
-const AAVE = { w: 88, h: 40, x: 27.3 * 5, y: 9.46 * 5 };
-// Colour fringe = bend × (split − 1), so the split drops as the bend rises to keep
-// the fringe the same width (5 × 0.176 = 4.2 × 0.209).
-const CHROMA = [1.176, 1.086, 1];
+const BEND_DEFAULT = 5;
+function bendSetting() {
+  try {
+    const q = new URLSearchParams(window.location.search).get('bend');
+    if (q === 'reset') sessionStorage.removeItem('bend');
+    else if (q) sessionStorage.setItem('bend', q === 'max' ? '12' : q);
+    const v = parseFloat(sessionStorage.getItem('bend') ?? '');
+    return v > 0 && v <= 20 ? v : BEND_DEFAULT;
+  } catch {
+    return BEND_DEFAULT;
+  }
+}
+const BEND = typeof window === 'undefined' ? BEND_DEFAULT : bendSetting();
+const AAVE = { w: 88, h: 40, x: 27.3 * BEND, y: 9.46 * BEND };
+// Colour fringe = bend × (split − 1). The fringe stays the same width at any bend: red
+// 0.88 and green 0.43 of Aave's offset past blue (at 5x, a split of 1.176 / 1.086).
+const CHROMA = [1 + 0.88 / BEND, 1 + 0.43 / BEND, 1];
 const SPEC = 1.5;
 /** Room above and below the bar that the picture must also cover, for the bend to read. */
 const M = 28;
@@ -318,7 +333,7 @@ export function TabBar() {
   const x = PAD + index * tabW;
   return (
     <div style={{ ...S.wrap, bottom: pillBottom }}>
-      {debug ? <div style={S.debug}>{`Glass: ${note}`}</div> : null}
+      {debug ? <div style={S.debug}>{`Glass: ${note} · bend ${BEND}x`}</div> : null}
       <nav ref={barRef} style={S.bar} aria-label="Tabs">
         <canvas ref={barCv} aria-hidden style={{ ...S.cv, opacity: live ? 1 : 0 }} />
         <div
