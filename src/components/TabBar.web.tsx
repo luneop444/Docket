@@ -15,8 +15,13 @@ const TABS = [
  * Read off Edward's screen recording of Figma's iOS tab bar (dark mode), mirrored
  * for Docket's light app:
  * - pill inset 10 of a 182 bar: 4 of 64;
- * - resting pill 28 levels lighter than the base in dark mode (67 on 39), so here
- *   black at 8% on the white tint;
+ * - the bar is nearly clear: page grey 39 reads 42 through it and white text 255
+ *   reads 226, softly blurred, so a tint of about 15% and a small blur;
+ * - the resting pill is white at about 14% (70 on 39); here black at 12%, the same
+ *   31 levels the other way;
+ * - the bar's edge is an even line all round, 37 levels off the bar (79 on 42);
+ *   here black at 14%;
+ * - no drop shadow;
  * - while it moves, the lens stands about a fifth taller than the pill, magnifies,
  *   squashes along its motion, and the bar swells slightly and clears;
  * - the lens takes about 320ms to cross, then shrinks and fades as the pill fades back.
@@ -29,7 +34,7 @@ const SETTLE_MS = 200;
 const LIFT = 1.2;
 const SQUASH = 0.12;
 /** How far the tint's blur samples past the bar, so it isn't mirrored at the bar's edge. */
-const BLEED = 48;
+const BLEED = 8;
 /** Room around the lens for its bend to pull in what lies past its edge. */
 const M = 16;
 /** Aave's bend ("Building glass for the web"), scaled from its 88x40 lens. */
@@ -246,31 +251,30 @@ const S: Record<string, CSSProperties> = {
     borderRadius: TAB_PILL / 2,
     overflow: 'hidden',
     pointerEvents: 'auto',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.10), 0 0 0 0.5px rgba(0,0,0,0.08)',
   },
-  // Tinted glass: the page blurred under a white tint. It samples a box BLEED larger
-  // than the bar so the blur isn't mirrored at the edge; the bar's clip shows the bar.
+  // Tinted glass, nearly clear: the page softly blurred. The reference's tint lifts its
+  // page 3 levels (39 to 42); here it lowers it 3. It samples a
+  // box BLEED larger than the bar so the blur isn't mirrored at the edge.
   tint: {
     position: 'absolute',
     inset: -BLEED,
     pointerEvents: 'none',
-    background: 'rgba(255,255,255,0.80)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+    background: 'rgba(0,0,0,0.012)',
+    backdropFilter: 'blur(3px)',
+    WebkitBackdropFilter: 'blur(3px)',
   },
-  // The reference's bright edge, strongest along the top.
+  // The reference's edge: an even line all round.
   rim: {
     position: 'absolute',
     inset: 0,
     borderRadius: TAB_PILL / 2,
     pointerEvents: 'none',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,1), inset 0 0 0 1px rgba(255,255,255,0.7)',
+    boxShadow: 'inset 0 0 0 1.5px rgba(0,0,0,0.14)',
   },
   // The resting pill: a soft wash under the selected tab.
-  pill: { position: 'absolute', top: 0, left: 0, height: LENS_H, borderRadius: LENS_H / 2, background: 'rgba(0,0,0,0.08)', pointerEvents: 'none' },
-  // The lens: clear glass carrying a copy of the tabs. White behind the copy, as the
-  // tinted bar over the white page is.
-  win: { position: 'absolute', top: 0, left: 0, overflow: 'hidden', pointerEvents: 'none', background: color.bg, visibility: 'hidden', willChange: 'transform, opacity', transformOrigin: 'center' },
+  pill: { position: 'absolute', top: 0, left: 0, height: LENS_H, borderRadius: LENS_H / 2, background: 'rgba(0,0,0,0.12)', pointerEvents: 'none' },
+  // The lens: clear glass carrying a copy of the tabs; the page shows through it.
+  win: { position: 'absolute', top: 0, left: 0, overflow: 'hidden', pointerEvents: 'none', visibility: 'hidden', willChange: 'transform, opacity', transformOrigin: 'center' },
   copy: { position: 'absolute', top: 0, left: 0, height: TAB_PILL },
   // The lens's edge: a bright specular top, a darker bottom and a hairline.
   lensRim: {
