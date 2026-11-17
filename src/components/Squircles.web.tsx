@@ -25,6 +25,11 @@ import { squircleExtent, squirclePath } from '../logic/squircle';
  * Elements with an outer shadow are skipped, since a clip would cut it off.
  */
 const done = new WeakMap<HTMLElement, string>();
+/**
+ * The radius an element had inline before this script set 0 under the clip. React Native Web
+ * writes per-element radii (like an icon tile's) inline, so clearing to '' would erase them.
+ */
+const inlineRadius = new WeakMap<HTMLElement, string>();
 /** Radius each clipped element ended up with, per corner (tl, tr, br, bl), for its children. */
 const radii = new WeakMap<HTMLElement, number[]>();
 
@@ -68,7 +73,7 @@ function release(el: HTMLElement) {
   if (!done.has(el)) return;
   el.style.clipPath = '';
   el.style.backgroundImage = '';
-  el.style.borderRadius = '';
+  el.style.borderRadius = inlineRadius.get(el) ?? '';
   done.delete(el);
   radii.delete(el);
 }
@@ -76,7 +81,7 @@ function release(el: HTMLElement) {
 function apply(el: HTMLElement) {
   // Read the element's own radius, not the 0 this script sets underneath the clip.
   const ours = done.has(el);
-  if (ours) el.style.borderRadius = '';
+  if (ours) el.style.borderRadius = inlineRadius.get(el) ?? '';
   const cs = getComputedStyle(el);
   const r = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius].map(px);
   const w = el.offsetWidth;
@@ -107,6 +112,7 @@ function apply(el: HTMLElement) {
     strokes.push(`<path d='${path}' fill='none' stroke='${cs.borderTopColor}' stroke-width='${bw * 2}'${dash}/>`);
   }
 
+  if (!ours) inlineRadius.set(el, el.style.borderRadius);
   el.style.borderRadius = '0px';
   const key = `${path}|${strokes.join('')}`;
   if (done.get(el) === key) return;

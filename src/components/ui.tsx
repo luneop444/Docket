@@ -175,12 +175,15 @@ export function Option({
   sub,
   selected,
   radio,
+  icon,
   onPress,
 }: {
   label: string;
   sub?: string;
   selected?: boolean;
   radio?: boolean;
+  /** Figma Onboarding v3 option: a white 40 icon tile on the left, 14 inset. */
+  icon?: IconFn;
   onPress: () => void;
 }) {
   const text = (
@@ -205,7 +208,13 @@ export function Option({
     );
   }
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.option, selected && styles.optionOn]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={sub ? `${label}. ${sub}` : label}
+      onPress={onPress}
+      style={[styles.option, icon && styles.optionIcon, selected && styles.optionOn]}
+    >
+      {icon ? <IconTile icon={icon} tone="white" size={40} /> : null}
       {text}
       <ChevronRight />
     </Pressable>
@@ -437,6 +446,8 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     backgroundColor: color.raise,
   },
+  // Figma E1 Pick company: 14 around a 40 tile, 20 corners (14 + 40/2 keeps it concentric with the tile's 11).
+  optionIcon: { padding: 14, borderRadius: 20, justifyContent: 'flex-start' },
   choiceOn: { backgroundColor: color.signal },
   choiceRing: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: color.track },
   choiceCheck: {
