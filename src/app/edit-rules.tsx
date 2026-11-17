@@ -16,7 +16,7 @@ export default function EditRules() {
       }
       footer={<Button label="Save rules" onPress={() => router.push('/loads')} />}
     >
-      <T v="h2">{s.company}’s detention rules</T>
+      <T v="h2">{s.company ? `${s.company}’s detention rules` : 'Your detention rules'}</T>
       <Gap h={8} />
       <T v="body" c={color.sub}>
         {s.customCompany

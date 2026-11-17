@@ -212,27 +212,33 @@ export function Option({
   );
 }
 
-/** Row of equal buttons, one selected (v1 `.seg` / `.chips`). */
+/**
+ * Row of equal buttons, one selected (v1 `.seg` / `.chips`). Screen readers get
+ * a radio group: "Free time, 2h, selected, 2 of 3". Pass `label` with the
+ * question the row answers, since the visible heading sits outside it.
+ */
 export function Seg<K extends string>({
   options,
   value,
   onChange,
   style,
+  label,
 }: {
   options: { key: K; label: string; flag?: boolean }[];
   value: K | null | undefined;
   onChange: (k: K) => void;
   style?: StyleProp<ViewStyle>;
+  label?: string;
 }) {
   return (
-    <View style={[styles.seg, style]}>
+    <View style={[styles.seg, style]} accessibilityRole="radiogroup" accessibilityLabel={label}>
       {options.map((o) => {
         const on = o.key === value;
         return (
           <Pressable
             key={o.key}
-            accessibilityRole="button"
-            accessibilityState={{ selected: on }}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: on }}
             onPress={() => onChange(o.key)}
             style={[styles.segBtn, on && { backgroundColor: o.flag ? color.flag : color.ink }]}
           >

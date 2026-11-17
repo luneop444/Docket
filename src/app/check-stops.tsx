@@ -34,7 +34,7 @@ export default function CheckStops() {
   // Mixed drivers choose per load whether these are their weekly stops.
   const [saveWeekly, setSaveWeekly] = useState(() => mix && !!s.load?.recurring);
   const weekly = setsStopsOnce(s.loadStyle) || (mix && saveWeekly);
-  const company = s.company?.split(' ')[0] ?? 'Your company';
+  const company = s.company ? s.company.split(' ')[0] : 'Your company';
   // Changing weekly stops starts from the saved ones; a new load from the rate con, or blank when typed in.
   const editingSaved = !!(s.load?.recurring && s.load.stops);
   const [number, setNumber] = useState(() => (editingSaved ? s.load!.number : manual ? '' : base.number));
@@ -79,7 +79,7 @@ export default function CheckStops() {
             <T v="bodyStrong">Same stops every week</T>
             <T v="bodyTiny">Save these as your weekly route so you don’t add them again.</T>
           </View>
-          <Switch on={saveWeekly} onChange={setSaveWeekly} />
+          <Switch label="Same stops every week" on={saveWeekly} onChange={setSaveWeekly} />
         </Row>
       </Card>
     </>

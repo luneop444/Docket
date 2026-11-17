@@ -10,28 +10,32 @@ export function Stepper({
   value,
   onMinus,
   onPlus,
+  label = 'value',
 }: {
   value: string;
   onMinus: () => void;
   onPlus: () => void;
+  /** What the number is ("pay rate"), so the buttons say "Lower pay rate", not just "Less". */
+  label?: string;
 }) {
   return (
     <View style={styles.stepper}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Less" onPress={onMinus} style={styles.stepBtn}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Lower ${label}`} accessibilityHint={value} onPress={onMinus} style={styles.stepBtn}>
         <MinusIcon />
       </Pressable>
-      <Text style={[type.numberS, styles.stepValue]}>{value}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="More" onPress={onPlus} style={styles.stepBtn}>
+      <Text style={[type.numberS, styles.stepValue]} accessibilityLiveRegion="polite">{value}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Raise ${label}`} accessibilityHint={value} onPress={onPlus} style={styles.stepBtn}>
         <PlusIcon />
       </Pressable>
     </View>
   );
 }
 
-export function Switch({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+export function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <Pressable
       accessibilityRole="switch"
+      accessibilityLabel={label}
       accessibilityState={{ checked: on }}
       onPress={() => onChange(!on)}
       style={[styles.switch, on && styles.switchOn]}
@@ -58,6 +62,7 @@ export function RuleEditor() {
         </Row>
         <Seg
           style={styles.chips}
+          label="Free time"
           options={[60, 120, 180].map((v) => ({ key: String(v), label: `${v / 60}h` }))}
           value={String(r.free)}
           onChange={(k) => a.setRule('free', Number(k))}
@@ -70,6 +75,7 @@ export function RuleEditor() {
         </Row>
         <Seg
           style={styles.chips}
+          label="Clock starts at"
           options={[
             { key: 'arrival' as const, label: 'Arrival' },
             { key: 'appt' as const, label: 'Appt time' },
@@ -83,6 +89,7 @@ export function RuleEditor() {
           <T v="bodyStrong">Pay after free time</T>
         </Row>
         <Stepper
+          label="pay rate"
           value={`${money(r.rate)}/hr`}
           onMinus={() => a.setRule('rate', Math.max(0, r.rate - 1))}
           onPlus={() => a.setRule('rate', r.rate + 1)}
@@ -96,7 +103,7 @@ export function RuleEditor() {
               {r.breaksCount ? 'Breaks at the dock are paid as detention.' : 'Your company subtracts breaks from detention.'}
             </T>
           </View>
-          <Switch on={r.breaksCount} onChange={(v) => a.setRule('breaksCount', v)} />
+          <Switch label="Off-duty breaks still count" on={r.breaksCount} onChange={(v) => a.setRule('breaksCount', v)} />
         </Row>
       </RuleSection>
     </View>
@@ -118,7 +125,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepValue: { flex: 1, textAlign: 'center', color: color.ink, fontVariant: ['tabular-nums'] },
-  switch: { width: 52, height: 32, borderRadius: 16, borderCurve: 'continuous', backgroundColor: color.raise2 },
+  // Off track uses `track` (3.06:1 on white) so the off switch is visible (WCAG 1.4.11); raise2 was 1.2:1.
+  switch: { width: 52, height: 32, borderRadius: 16, borderCurve: 'continuous', backgroundColor: color.track },
   switchOn: { backgroundColor: color.ink },
   knob: {
     position: 'absolute',

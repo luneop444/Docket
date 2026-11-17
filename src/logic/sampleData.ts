@@ -326,6 +326,29 @@ for (const [name, group, rank] of RANKED) {
 }
 
 /**
+ * Audit #5: the Companies tab shows made-up numbers, so it uses made-up company names. Real carrier names
+ * stay in the onboarding picker (that's where a driver names their own employer) but never sit next to
+ * invented stats. One small fleet shows the "not enough reports yet" state.
+ */
+export const MIN_REPORTS = 20;
+export const SAMPLE_BOARD: Company[] = [
+  ['Ridgeline Freight', 412, 99, 120, 'appt', 20, '1h 44m', 21, 64],
+  ['Copperleaf Carriers', 268, 64, 120, 'arrival', 18, '1h 15m', 21, 74],
+  ['Bluewater Transport', 530, 127, 90, 'appt', 22, '2h 05m', 34, 51],
+  ['Prairie Line Logistics', 190, 46, 60, 'arrival', 25, '1h 52m', 29, 58],
+  ['Northgate Haulers', 344, 83, 120, 'appt', 20, '2h 31m', 41, 38],
+  ['Small Fleet Co.', 31, 7, 120, 'arrival', 18, '1h 20m', 25, 60],
+].map(([name, drivers, reported, free, start, rate, avg, past, paid]) => ({
+  name: name as string,
+  drivers: drivers as number,
+  reported: reported as number,
+  rules: { free: free as number, start: start as Rules['start'], rate: rate as number, breaksCount: false },
+  avg: avg as string,
+  past: past as number,
+  paid: paid as number,
+}));
+
+/**
  * Researcher setup for a user test (Wizard of Oz). Open the prototype with
  *   ?company=Estes%20Express%20Lines&free=60&rate=25&start=arrival&breaks=1
  * and that company appears first with the participant's real rules.

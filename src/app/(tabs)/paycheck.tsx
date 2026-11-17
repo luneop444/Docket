@@ -190,6 +190,7 @@ function LoadCard({
       <T v="bodyTiny">{dur(paidMin)} past free time</T>
       <Gap h={12} />
       <Seg
+        label={`What your settlement shows for ${l.name}${loadNo(l) ? `, load ${loadNo(l)}` : ''}`}
         options={[
           { key: 'paid' as const, label: 'Paid' },
           { key: 'less' as const, label: 'Less', flag: true },
@@ -205,7 +206,7 @@ function LoadCard({
             value={m.amt ?? ''}
             onChangeText={(v) => a.setAmt(l.id, v)}
             placeholder="0.00"
-            placeholderTextColor={color.faint}
+            placeholderTextColor={color.sub}
             inputMode="decimal"
             keyboardType="decimal-pad"
             style={styles.amountInput}
@@ -238,10 +239,11 @@ function Summary({ week }: { week: PayWeek }) {
           <T v="bodyStrong">Was your detention paid this week?</T>
           <Gap h={8} />
           <T v="bodySmall">
-            One tap, shared anonymously under {s.company || 'your company'}. No pay documents leave your phone.
+            One tap, shared anonymously under {s.company || 'your company'}. No pay documents are shared.
           </T>
           <Gap h={12} />
           <Seg<AnonAnswer>
+            label="Was your detention paid this week?"
             options={(['Paid', 'Partly', 'Not paid'] as const).map((x) => ({ key: x, label: x }))}
             value={s.anon}
             onChange={a.setAnon}

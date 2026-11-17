@@ -143,7 +143,7 @@ function StepDashes({ step }: { step: number }) {
   const { from } = useStepMotion(step);
   const reduce = useReduceMotion();
   const animate = from != null && from !== step;
-  const [t] = useState(() => new Animated.Value(animate ? 0 : 1));
+  const [t] = useState(() => new Animated.Value(animate && !reduce ? 0 : 1));
 
   useEffect(() => {
     if (!animate) return;
@@ -227,7 +227,7 @@ function PushIn({ step, children }: { step: number; children: ReactNode }) {
   const reduce = useReduceMotion();
   const { width } = useWindowDimensions();
   const distance = Math.min(width, 430) * dir;
-  const [x] = useState(() => new Animated.Value(distance));
+  const [x] = useState(() => new Animated.Value(reduce ? 0 : distance));
   useEffect(() => {
     if (reduce) {
       x.setValue(0);

@@ -42,15 +42,33 @@ export function resetStepMotion() {
   lastStep = null;
 }
 
+/**
+ * Last known Reduce Motion setting, read once at startup, so components that
+ * mount later (sheets, toasts) know it on their first frame instead of
+ * animating once while the async check is still running.
+ */
+let reduceCached = false;
+AccessibilityInfo.isReduceMotionEnabled()
+  .then((r) => {
+    reduceCached = r;
+  })
+  .catch(() => {});
+
 /** People who turn on Reduce Motion get the end state with no movement. */
 export function useReduceMotion() {
-  const [reduce, setReduce] = useState(false);
+  const [reduce, setReduce] = useState(reduceCached);
   useEffect(() => {
     let alive = true;
     AccessibilityInfo.isReduceMotionEnabled()
-      .then((r) => alive && setReduce(r))
+      .then((r) => {
+        reduceCached = r;
+        if (alive) setReduce(r);
+      })
       .catch(() => {});
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduce);
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (r) => {
+      reduceCached = r;
+      setReduce(r);
+    });
     return () => {
       alive = false;
       sub.remove();

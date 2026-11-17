@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, usePathname } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
   Easing,
   KeyboardAvoidingView,
@@ -31,22 +32,32 @@ import { useStore } from '../state/AppStore';
 import { color, fontFamily, protoColor, radius, type } from '../theme/tokens';
 import { useFramed, useInsets, useIslandStage } from './Chrome';
 import { MinusIcon, PlusIcon, TruckIcon } from './Icons';
+import { useReduceMotion } from './stepMotion';
 import { Button, Gap, Row, T } from './ui';
 
 /* =========================================================
    Sheets
    ========================================================= */
 
+/**
+ * 0 → 1 entrance for sheets and toasts. With Reduce Motion on it starts at 1:
+ * the sheet or toast simply appears, with no slide and no fade.
+ */
 function useEnter(duration: number) {
-  const [v] = useState(() => new Animated.Value(0));
+  const reduce = useReduceMotion();
+  const [v] = useState(() => new Animated.Value(reduce ? 1 : 0));
   useEffect(() => {
+    if (reduce) {
+      v.setValue(1);
+      return;
+    }
     Animated.timing(v, {
       toValue: 1,
       duration,
       easing: Easing.bezier(0.2, 0.8, 0.2, 1),
       useNativeDriver: Platform.OS !== 'web',
     }).start();
-  }, [v, duration]);
+  }, [v, duration, reduce]);
   return v;
 }
 
@@ -224,12 +235,25 @@ function LeftSheet({ at }: { at: number }) {
   );
 }
 
+/**
+ * Toasts appear without focus moving to them, so screen reader users would miss
+ * them. Say the text once when it appears. (iOS ignores live regions; Android
+ * and web get one too.)
+ */
+function useAnnounce(text: string) {
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibility(text);
+  }, [text]);
+}
+
 /** Figma E1 Undo toast: after an automatic start at a known place. */
 function UndoToast({ text }: { text: string }) {
   const { a } = useStore();
   const up = useEnter(200);
+  useAnnounce(`${text}. Fix or Undo available.`);
   return (
     <Animated.View
+      accessibilityLiveRegion="polite"
       style={[
         styles.undo,
         {
@@ -239,10 +263,10 @@ function UndoToast({ text }: { text: string }) {
       ]}
     >
       <Text style={[type.bodyStrong, styles.undoText]}>{text}</Text>
-      <Pressable accessibilityRole="button" onPress={a.openFix} hitSlop={10}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Fix the arrival time" onPress={a.openFix} hitSlop={10}>
         <Text style={[type.labelSmall, { color: protoColor.toastAction }]}>Fix</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" onPress={a.cancelArrival} hitSlop={10}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Undo, this isn't a stop" onPress={a.cancelArrival} hitSlop={10}>
         <Text style={[type.labelSmall, { color: color.signal }]}>Undo</Text>
       </Pressable>
     </Animated.View>
@@ -252,8 +276,10 @@ function UndoToast({ text }: { text: string }) {
 /** Bottom of the screen, or the top while a sheet is open so it never covers the sheet's buttons. */
 function Toast({ text, atTop }: { text: string; atTop?: boolean }) {
   const up = useEnter(200);
+  useAnnounce(text);
   return (
     <Animated.View
+      accessibilityLiveRegion="polite"
       pointerEvents="none"
       style={[
         styles.toast,
@@ -298,8 +324,17 @@ function Island() {
   const [h] = useState(() => new Animated.Value(ISLAND.idle.h));
   const [r] = useState(() => new Animated.Value(ISLAND.idle.r));
   const [showExp] = useState(() => new Animated.Value(0));
+  const reduce = useReduceMotion();
   useEffect(() => {
     const t = ISLAND[mode];
+    // Reduce Motion: jump straight to the new island shape, no grow or bounce.
+    if (reduce) {
+      w.setValue(t.w);
+      h.setValue(t.h);
+      r.setValue(t.r);
+      showExp.setValue(mode === 'expanded' ? 1 : 0);
+      return;
+    }
     const cfg = { duration: 350, easing: Easing.bezier(0.2, 0.9, 0.25, 1.1), useNativeDriver: false };
     Animated.parallel([
       Animated.timing(w, { toValue: t.w, ...cfg }),
@@ -307,7 +342,7 @@ function Island() {
       Animated.timing(r, { toValue: t.r, ...cfg }),
       Animated.timing(showExp, { toValue: mode === 'expanded' ? 1 : 0, duration: 200, delay: mode === 'expanded' ? 120 : 0, useNativeDriver: false }),
     ]).start();
-  }, [mode, w, h, r, showExp]);
+  }, [mode, w, h, r, showExp, reduce]);
 
   // On a real phone the hardware island is already there: hide ours when idle.
   if (!framed && mode === 'idle') return null;
@@ -325,7 +360,12 @@ function Island() {
 
   return (
     <Animated.View style={[styles.island, { top, width, height: h, borderRadius: r, borderCurve: 'continuous' }]}>
-      <Pressable style={styles.islandPress} onPress={onPress} accessibilityLabel="Live Activity">
+      <Pressable
+        style={styles.islandPress}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={content ? `Docket Live Activity: ${content.title}, ${content.value}. ${content.line}` : 'Live Activity'}
+      >
         {content ? (
           <>
             <Animated.View
@@ -452,7 +492,8 @@ function LockScreen() {
     <Pressable
       style={[StyleSheet.absoluteFill, styles.lockRoot]}
       onPress={() => a.setLock(false)}
-      accessibilityLabel="Unlock"
+      accessibilityRole="button"
+      accessibilityLabel="Simulated lock screen. Unlock"
     >
       <LinearGradient colors={[protoColor.lockTop, protoColor.lockBottom]} style={styles.lock}>
         <Text style={styles.lockDate}>{headerDate(s.stop, TODAY_LABEL)}</Text>
@@ -659,5 +700,5 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 18,
   },
-  lockHint: { position: 'absolute', bottom: 40, fontFamily: fontFamily.regular, fontSize: 14, color: color.bg, opacity: 0.8 },
+  lockHint: { position: 'absolute', bottom: 40, fontFamily: fontFamily.regular, fontSize: 14, color: color.bg },
 });

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
 import { clock, hm, money, rateShort } from '../logic/format';
 import { colorDark, radius, type } from '../theme/tokens';
+import { useReduceMotion } from './stepMotion';
 
 /**
  * Figma C3 "Live card": the same black card as the Dynamic Island, so the app
@@ -86,8 +87,13 @@ export function LiveCard({
 
 export function PulseDot({ live }: { live: boolean }) {
   const [v] = useState(() => new Animated.Value(1));
+  // Reduce Motion: a steady dot, no pulsing.
+  const reduce = useReduceMotion();
   useEffect(() => {
-    if (!live) return;
+    if (!live || reduce) {
+      v.setValue(1);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(v, { toValue: 0.35, duration: 700, useNativeDriver: Platform.OS !== 'web' }),
@@ -96,7 +102,7 @@ export function PulseDot({ live }: { live: boolean }) {
     );
     loop.start();
     return () => loop.stop();
-  }, [live, v]);
+  }, [live, reduce, v]);
   return (
     <Animated.View
       style={[styles.dot, { backgroundColor: live ? colorDark.signal : colorDark.free }, live && { opacity: v }]}

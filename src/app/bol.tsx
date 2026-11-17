@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
 import { CameraIcon } from '../components/Icons';
-import { Button, Gap, T } from '../components/ui';
+import { Button, Card, Gap, T } from '../components/ui';
 import { clock } from '../logic/format';
 import { placeOf } from '../logic/state';
 import { bolFromReading } from '../logic/stop';
@@ -83,7 +83,7 @@ export default function SnapBol() {
         ) : (
           <>
             <Button label="Take photo" onPress={pick} />
-            <Button label="No times on the BOL, skip" variant="text" onPress={() => done(false)} />
+            <Button label="Skip, use my location times" variant="quiet" onPress={() => done(false)} />
           </>
         )
       }
@@ -115,9 +115,13 @@ export default function SnapBol() {
         )}
       </Pressable>
       <Gap h={12} />
-      <T v="bodyTiny">
-        Claude reads the times off the photo. The photo isn’t saved anywhere, and only the times stay on your phone.
-      </T>
+      {/* Audit #1: say where the photo goes before the driver sends it, with an equal way out. */}
+      <Card>
+        <T v="bodySmall" c={color.ink}>
+          This photo is sent once to an AI (Claude) to read the times. It isn’t stored, and your company never sees it.
+          Rather not? Skip, and Docket uses your location times.
+        </T>
+      </Card>
     </Screen>
   );
 }

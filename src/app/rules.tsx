@@ -28,6 +28,7 @@ export default function YourRules() {
       <T v="bodyStrong">How your loads come in</T>
       <Gap h={10} />
       <Seg<LoadStyle>
+        label="How your loads come in"
         options={[
           { key: 'same', label: 'Same stops' },
           { key: 'different', label: 'Different' },
@@ -59,6 +60,7 @@ export default function YourRules() {
       <T v="bodyStrong">Noticing your stops</T>
       <Gap h={10} />
       <Seg<LocationMode>
+        label="Noticing your stops"
         options={[
           { key: 'always', label: 'Use location' },
           { key: 'manual', label: 'By hand' },

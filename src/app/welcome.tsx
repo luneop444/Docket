@@ -31,7 +31,11 @@ export default function Welcome() {
         <StepItem badge="3">Shows you which loads to look for on your settlement, and how much.</StepItem>
       </View>
       <Gap h={24} />
-      <T v="bodyTiny">Your pay information stays on your phone. Your company never sees it.</T>
+      {/* Audit #1: the old line ("stays on your phone") wasn't true once BOL and settlement scans went to the AI reader. */}
+      <T v="bodyTiny">
+        The times and pay you enter stay on your phone. Photos you choose to scan are sent once to be read by AI, not
+        stored, and never shared with your company.
+      </T>
     </Screen>
   );
 }

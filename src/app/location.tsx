@@ -28,15 +28,18 @@ export default function LocationPermission() {
       header={<OnboardingBar step={4} onBack={() => router.navigate('/loads')} />}
       footer={
         <>
-          <Button label="Allow location" onPress={() => finish('always')} />
-          <Button label="I’ll log stops by hand" variant="text" onPress={() => finish('manual')} />
+          {/* Audit #2: two equal choices. Before, "Allow location" was the filled button and the manual path a small text link. */}
+          <Button label="Notice my stops for me" variant="quiet" onPress={() => finish('always')} />
+          <Button label="I’ll tap “I’m here” myself" variant="quiet" onPress={() => finish('manual')} />
         </>
       }
     >
       <T v="h2">Let Docket notice your stops</T>
       <Gap h={8} />
       <T v="body" c={color.sub}>
-        Choose “Always” so Docket can notice when you pull in, even with the app closed.
+        Docket can notice when you pull in and leave, even with the app closed. That needs “Always” location. Or tap
+        “I’m here” at each stop and Docket never uses location. Both time your stops the same way, and you can switch
+        anytime in Your rules.
       </T>
       <Gap h={24} />
       <Card style={styles.promises}>

@@ -92,33 +92,49 @@ function Counting() {
       ? `Free time starts at your ${clock(c.start)} appointment`
       : `Paid detention starts in ${dur(c.freeEnd - s.now)}, at ${clock(c.freeEnd)}`;
 
+  const status = paid ? 'Paid detention' : early ? 'Waiting for your appointment' : 'Free time';
+  // One spoken summary for the whole card, so VoiceOver reads "Paid detention.
+  // At Harbor Foods DC since 1:48 PM. Waited 2h 44m. $11.00 owed so far. ..."
+  // instead of a bare "2:44" and a lone dollar amount.
+  const spoken = [
+    status,
+    `At ${placeOf(s.load).name} since ${clock(arrive)}`,
+    `Waited ${dur(s.now - arrive)}`,
+    paid ? `${money(c.owed)} owed so far` : null,
+    line,
+  ]
+    .filter(Boolean)
+    .join('. ');
+
   return (
     <View style={styles.live}>
-      <View style={styles.liveStatus}>
-        <PulseDot live={paid} />
-        <T v="labelSmall" c={paid ? colorDark.signal : colorDark.ink}>
-          {paid ? 'Paid detention' : early ? 'Waiting for your appointment' : 'Free time'}
-        </T>
-      </View>
-      <Gap h={16} />
-      <T v="body" c={colorDark.sub}>
-        At {placeOf(s.load).name} since {clock(arrive)}
-      </T>
-      <Gap h={8} />
-      <View style={styles.liveNumbers}>
-        <T v="displayTimer" c={colorDark.ink} style={styles.tabular} accessibilityLabel={`Waited ${dur(s.now - arrive)}`}>
-          {hm(s.now - arrive)}
-        </T>
-        {paid ? (
-          <T v="numberM" c={colorDark.signal} style={styles.tabular}>
-            {money(c.owed)}
+      <View accessible accessibilityRole="timer" accessibilityLabel={spoken}>
+        <View style={styles.liveStatus}>
+          <PulseDot live={paid} />
+          <T v="labelSmall" c={paid ? colorDark.signal : colorDark.ink}>
+            {status}
           </T>
-        ) : null}
+        </View>
+        <Gap h={16} />
+        <T v="body" c={colorDark.sub}>
+          At {placeOf(s.load).name} since {clock(arrive)}
+        </T>
+        <Gap h={8} />
+        <View style={styles.liveNumbers}>
+          <T v="displayTimer" c={colorDark.ink} style={styles.tabular}>
+            {hm(s.now - arrive)}
+          </T>
+          {paid ? (
+            <T v="numberM" c={colorDark.signal} style={styles.tabular}>
+              {money(c.owed)}
+            </T>
+          ) : null}
+        </View>
+        <Gap h={12} />
+        <T v="body" c={colorDark.ink}>
+          {line}
+        </T>
       </View>
-      <Gap h={12} />
-      <T v="body" c={colorDark.ink}>
-        {line}
-      </T>
       <Gap h={16} />
       <WaitBar arrive={arrive} freeEnd={c.freeEnd} now={s.now} />
       <Gap h={16} />
@@ -139,8 +155,9 @@ function WaitBar({ arrive, freeEnd, now }: { arrive: number; freeEnd: number; no
   const span = Math.max(1, freeEnd - arrive);
   const used = Math.min(now, freeEnd) - arrive;
   const paid = Math.max(0, now - freeEnd);
+  // The spoken summary on the card above already says this, so the bar is hidden from screen readers.
   return (
-    <View style={styles.bar}>
+    <View style={styles.bar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden>
       {used > 0 ? <View style={{ flex: used, backgroundColor: colorDark.free }} /> : null}
       {now < freeEnd ? <View style={{ flex: span - used }} /> : null}
       {paid > 0 ? <View style={{ flex: paid, backgroundColor: colorDark.detention }} /> : null}

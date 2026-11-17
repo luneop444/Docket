@@ -14,7 +14,10 @@ export const color = {
   line: '#D7DBE0',
   ink: '#000000',
   sub: '#5C6168',
-  /** Non-text only (icons, dividers, inactive bars). */
+  /**
+   * Non-text only (icons, dividers, inactive bars). 4.26:1 on white, below the
+   * 4.5:1 text minimum, so never use it for text or placeholders: use `sub`.
+   */
   faint: '#767B82',
   signal: '#D4F54C',
   signalInk: '#000000',
@@ -24,8 +27,12 @@ export const color = {
    * uses a very light gray, darkened here to 3.06:1 on white (WCAG 1.4.11).
    */
   track: '#8E949B',
-  /** Bar segment for time inside free time. */
-  free: '#B9C2C8',
+  /**
+   * Bar segment for time inside free time. Darkened from the Figma #B9C2C8
+   * (1.64:1 on raise) to pass WCAG 1.4.11: 3.09:1 on raise, 3.33:1 on white,
+   * 6.17:1 against the black detention segment.
+   */
+  free: '#858C93',
   /** Bar segment for paid detention time. */
   detention: '#000000',
   flag: '#C9311F',
@@ -43,7 +50,8 @@ export const colorDark = {
   ink: '#FFFFFF',
   sub: '#9B9B9F',
   line: '#2B2B2B',
-  free: '#4A545B',
+  /** Darkened from #4A545B (2.71:1) to 4.16:1 on black, 4.07:1 against lime. */
+  free: '#66707A',
   detention: '#D4F54C',
   signal: '#D4F54C',
   signalInk: '#D4F54C',
@@ -60,7 +68,7 @@ export const protoColor = {
   bezelEdge: '#333333',
   asideInk: '#3A3F45',
   /** Dashed border around "Prototype controls". */
-  dashed: '#8A9097',
+  dashed: '#7A8087',
   /** Yellow "Faked" / "Sample data" tag. */
   fakeBg: '#F6F9D6',
   fakeInk: '#6B5A00',
@@ -74,8 +82,10 @@ export const protoColor = {
   /** Dynamic Island is always black; these are its secondary text and empty bar. */
   island: '#000000',
   islandSub: '#AAAAAA',
-  islandOff: '#3A3A3A',
-  lockTop: '#9AA8BF',
+  /** Empty island bar segment. Lightened from #3A3A3A (1.85:1) to 3.66:1 on black. */
+  islandOff: '#666666',
+  /** Darkened from #9AA8BF (2.41:1 under white text) to 4.5:1. */
+  lockTop: '#6B7790',
   lockBottom: '#4C5568',
   knobShadow: 'rgba(0,0,0,0.25)',
 } as const;

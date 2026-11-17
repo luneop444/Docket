@@ -52,6 +52,7 @@ export function StopsEditor({
             onBg
           />
           <Seg
+            label={`Stop ${i + 1}: pickup or drop`}
             options={[
               { key: 'Pickup' as const, label: 'Pickup' },
               { key: 'Drop' as const, label: 'Drop' },
@@ -116,7 +117,7 @@ function Field({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={color.faint}
+        placeholderTextColor={color.sub}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         autoCorrect={false}

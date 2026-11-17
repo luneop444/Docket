@@ -91,7 +91,7 @@ export default function PickCompany() {
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder="Search or add your company"
-          placeholderTextColor={color.faint}
+          placeholderTextColor={color.sub}
           autoCorrect={false}
           autoComplete="off"
           style={styles.input}
@@ -119,6 +119,24 @@ export default function PickCompany() {
                 <T v="labelSmall" numberOfLines={2}>{c.name}</T>
               </Pressable>
             ))}
+          </View>
+        </>
+      ) : null}
+      {!q ? (
+        <>
+          {/* Audit #3: not every driver has a company to name. These go straight to entering your own rules. */}
+          <Gap h={16} />
+          <View style={{ gap: 8 }}>
+            <Option
+              label="I’m an owner-operator"
+              sub="I book my own loads. You’ll enter your own rules."
+              onPress={() => pick('', true)}
+            />
+            <Option
+              label="I’d rather not say"
+              sub="You’ll enter your rules. Nothing is counted under a company."
+              onPress={() => pick('', true)}
+            />
           </View>
         </>
       ) : null}
