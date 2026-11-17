@@ -16,9 +16,13 @@ const PILL_H = TAB_PILL - PAD * 2;
 const SLIDE_MS = 320;
 const SLIDE = `transform ${SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
 
-/** Clear glass: white at 25% over the page, frosted 1px, near Aave's own (their glass barely blurs). */
-const BAR_TINT = 'rgba(255,255,255,0.25)';
-const FROST = 1;
+/**
+ * The bar's glass: white at 62% over the page, frosted 4px. At 25% and 1px (Aave's own
+ * near-clear glass) list text read straight through the labels on Edward's phone; this
+ * keeps the page visible behind the glass while the labels stay readable.
+ */
+const BAR_TINT = 'rgba(255,255,255,0.62)';
+const FROST = 4;
 /** The selected pill: Docket's lime as a subtle tint in the glass, black on it. */
 const PILL_TINT = 'rgba(212,245,76,0.38)';
 /**
@@ -175,16 +179,45 @@ export function TabBar() {
   );
 }
 
-/** The page frosted: drawn through a 1px blur where the browser can, as is elsewhere. */
+/**
+ * The page frosted, on pixels (a box blur run three times, close to a Gaussian), so it
+ * looks the same in Safari, whose canvas has no blur filter.
+ */
 function frosted(src: HTMLCanvasElement, scale: number): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = src.width;
   c.height = src.height;
   const ctx = c.getContext('2d')!;
-  if ('filter' in ctx) ctx.filter = `blur(${FROST * scale}px)`;
   ctx.drawImage(src, 0, 0);
-  if ('filter' in ctx) ctx.filter = 'none';
+  const img = ctx.getImageData(0, 0, c.width, c.height);
+  const r = Math.max(1, Math.round(FROST * scale * 0.8));
+  for (let k = 0; k < 3; k++) {
+    boxBlur(img.data, c.width, c.height, r, true);
+    boxBlur(img.data, c.width, c.height, r, false);
+  }
+  ctx.putImageData(img, 0, 0);
   return c;
+}
+
+function boxBlur(d: Uint8ClampedArray, w: number, h: number, r: number, across: boolean) {
+  const n = across ? w : h, lines = across ? h : w, line = new Float32Array(n * 3), win = r * 2 + 1;
+  for (let l = 0; l < lines; l++) {
+    for (let i = 0; i < n; i++) {
+      const p = (across ? l * w + i : i * w + l) * 4;
+      line[i * 3] = d[p];
+      line[i * 3 + 1] = d[p + 1];
+      line[i * 3 + 2] = d[p + 2];
+    }
+    for (let ch = 0; ch < 3; ch++) {
+      let sum = 0;
+      for (let i = -r; i <= r; i++) sum += line[Math.min(n - 1, Math.max(0, i)) * 3 + ch];
+      for (let i = 0; i < n; i++) {
+        const p = (across ? l * w + i : i * w + l) * 4;
+        d[p + ch] = sum / win;
+        sum += line[Math.min(n - 1, i + r + 1) * 3 + ch] - line[Math.max(0, i - r) * 3 + ch];
+      }
+    }
+  }
 }
 
 /** Copy the glass's own area out of a window that has M of room around it. */
