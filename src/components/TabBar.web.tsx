@@ -1,7 +1,8 @@
 import { router, usePathname } from 'expo-router';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { color, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
+import { GLASS_MAP } from './glassMap';
 import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
 
 const TABS = [
@@ -12,59 +13,49 @@ const TABS = [
 
 const PAD = 4;
 const PILL_H = TAB_PILL - PAD * 2;
-const SLIDE = 'transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1)';
-const LIFT = '0 6px 20px rgba(0,0,0,0.08)';
+const SLIDE_MS = 320;
+const SLIDE = `transform ${SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
 
-/** White glass: white at 72% over the page blurred 16px, a hairline in Docket's line grey. */
-const WHITE_GLASS: CSSProperties = {
-  background: 'rgba(255,255,255,0.72)',
-  boxShadow: `inset 0 0 0 1px ${color.line}, ${LIFT}`,
-};
+/** Clear glass: white at 25% over the page, frosted 1px, near Aave's own (their glass barely blurs). */
+const BAR_TINT = 'rgba(255,255,255,0.25)';
+const FROST = 1;
+/** The selected pill: Docket's lime as a subtle tint in the glass, black on it. */
+const PILL_TINT = 'rgba(212,245,76,0.38)';
+/**
+ * Aave's glass ("Building glass for the web"): their lens map, drawn for an 88x40 lens,
+ * bends up to 27.3px across and 9.46px down (green squeezed to 0.556 of its range).
+ * Colour split and rim highlight from their slider demo: red 13% and green 6.5% further
+ * than blue, highlight strength 1.5.
+ */
+const AAVE = { w: 88, h: 40, x: 27.3, y: 9.46 };
+const CHROMA = [1.13, 1.065, 1];
+const SPEC = 1.5;
+/** Room around each piece of glass for its bend to read the page just past its edge. */
+const M = 28;
 
-interface Look {
-  base: CSSProperties;
-  pill: CSSProperties;
-  icon: string;
-  label: string;
-}
+type Html2Canvas = (el: HTMLElement, o: Record<string, unknown>) => Promise<HTMLCanvasElement>;
 
 /**
- * Four bar and pill colour pairs for review, all from Docket's tokens.
- * Prototype switch: open any page with ?nav=a, b, c or d; it holds until reload.
+ * Web tab bar in liquid glass: a clear glass bar holding a lime-tinted glass pill that
+ * slides between tabs. Both bend the page under them at their rims, with a colour split
+ * and a shaded edge, Aave's method done on pixels: when nothing is moving, the page under
+ * the bar is drawn to an image (html2canvas) and each pixel is read from where the map
+ * pushes it. That runs the same in every browser; Safari silently skips SVG filters this
+ * size on a phone. While the page scrolls or the pill slides, the bend steps aside and the
+ * same tints and rims stand in, then it comes back.
  */
-const LOOKS: Record<'a' | 'b' | 'c' | 'd', Look> = {
-  // White glass, the cards' second grey for the pill.
-  a: { base: WHITE_GLASS, pill: { background: color.raise2 }, icon: color.ink, label: color.ink },
-  // White glass, black pill: lime on black, as on the island and the detention card.
-  b: { base: WHITE_GLASS, pill: { background: color.ink }, icon: color.signal, label: color.bg },
-  // White glass, lime pill with black on it.
-  c: { base: WHITE_GLASS, pill: { background: color.signal }, icon: color.onSignal, label: color.onSignal },
-  // Card-grey glass (raise2 at 78%), a white pill lifted on it.
-  d: {
-    base: { background: 'rgba(229,232,236,0.78)', boxShadow: LIFT },
-    pill: { background: color.bg, boxShadow: '0 1px 4px rgba(0,0,0,0.10)' },
-    icon: color.ink,
-    label: color.ink,
-  },
-};
-
-const pick = (): keyof typeof LOOKS => {
-  if (typeof window === 'undefined') return 'b';
-  const v = new URLSearchParams(window.location.search).get('nav');
-  return v === 'a' || v === 'b' || v === 'c' || v === 'd' ? v : 'b';
-};
-const LOOK = LOOKS[pick()];
-
-/** Web tab bar: a glass pill with the selected tab on a pill that slides between tabs. */
 export function TabBar() {
   const path = usePathname();
   const { pillBottom } = useTabSpace();
   const barRef = useRef<HTMLDivElement>(null);
+  const barCv = useRef<HTMLCanvasElement>(null);
+  const pillCv = useRef<HTMLCanvasElement>(null);
   const [width, setWidth] = useState(0);
   const routeIndex = Math.max(0, TABS.findIndex((t) => t.href === path));
   // The pill moves on the tap, before the next screen starts rendering.
   const [tapped, setTapped] = useState<number | null>(null);
   const index = tapped ?? routeIndex;
+  const [bent, setBent] = useState(false);
 
   useEffect(() => {
     const el = barRef.current;
@@ -76,6 +67,75 @@ export function TabBar() {
 
   const tabW = width ? (width - PAD * 2) / TABS.length : 0;
 
+  // Draw the glass from a fresh picture of the page under the bar.
+  const run = useRef(0);
+  const draw = useCallback(async () => {
+    const bar = barRef.current, bc = barCv.current, pc = pillCv.current;
+    if (!bar || !bc || !pc || !tabW) return;
+    const id = ++run.current;
+    const r = bar.getBoundingClientRect();
+    const scale = Math.min(2, window.devicePixelRatio || 1);
+    const W = r.width + M * 2, H = TAB_PILL + M * 2;
+    const { default: html2canvas } = (await import('html2canvas')) as unknown as { default: Html2Canvas };
+    const shot = await html2canvas(document.body, {
+      x: r.left - M + window.scrollX,
+      y: r.top - M + window.scrollY,
+      width: W,
+      height: H,
+      scale,
+      backgroundColor: color.bg,
+      logging: false,
+      ignoreElements: (el: Element) => el === bar.parentElement,
+    }).catch(() => null);
+    if (!shot || id !== run.current) return;
+    const [barMap, lensMap] = await Promise.all([
+      mapData(sliceMap(r.width, TAB_PILL), W, H, { x: M, y: M, w: r.width, h: TAB_PILL }, scale),
+      mapData(GLASS_MAP, tabW + M * 2, PILL_H + M * 2, { x: M, y: M, w: tabW, h: PILL_H }, scale),
+    ]);
+    if (id !== run.current) return;
+
+    // The bar: the page bent at the bar's rim, then its tint.
+    const page = frosted(shot, scale);
+    bend(page, barMap, AAVE.x * (TAB_PILL / AAVE.h) * scale, AAVE.y * (TAB_PILL / AAVE.h) * scale);
+    const bctx = page.getContext('2d')!;
+    bctx.fillStyle = BAR_TINT;
+    bctx.fillRect(0, 0, page.width, page.height);
+    paint(bc, page, M, M, r.width, TAB_PILL, scale);
+
+    // The pill: the bar under it, with the lime tint, bent again by the lens.
+    const x = PAD + index * tabW;
+    const lens = document.createElement('canvas');
+    lens.width = Math.round((tabW + M * 2) * scale);
+    lens.height = Math.round((PILL_H + M * 2) * scale);
+    const lctx = lens.getContext('2d')!;
+    lctx.drawImage(page, Math.round((x) * scale), Math.round((PAD) * scale), lens.width, lens.height, 0, 0, lens.width, lens.height);
+    lctx.fillStyle = PILL_TINT;
+    lctx.fillRect(0, 0, lens.width, lens.height);
+    bend(lens, lensMap, AAVE.x * (tabW / AAVE.w) * scale, AAVE.y * (PILL_H / AAVE.h) * scale);
+    paint(pc, lens, M, M, tabW, PILL_H, scale);
+    setBent(true);
+  }, [index, tabW]);
+
+  // Re-draw when things settle: after a scroll, a resize, a slide or a new screen.
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const settle = (ms: number) => {
+      run.current++;
+      setBent(false);
+      clearTimeout(t);
+      t = setTimeout(draw, ms);
+    };
+    settle(tapped === null ? 400 : SLIDE_MS + 120);
+    const onScroll = () => settle(160);
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener('scroll', onScroll, { capture: true });
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [draw, tapped, path]);
+
   const go = (i: number, href: string) => {
     if (i === index) return;
     setTapped(i);
@@ -83,23 +143,29 @@ export function TabBar() {
     requestAnimationFrame(() => requestAnimationFrame(() => router.navigate(href)));
   };
 
+  const x = PAD + index * tabW;
   return (
     <div style={{ ...S.wrap, bottom: pillBottom }}>
-      <nav ref={barRef} style={{ ...S.bar, ...LOOK.base }} aria-label="Tabs">
+      <nav ref={barRef} style={S.bar} aria-label="Tabs">
+        <canvas ref={barCv} aria-hidden style={{ ...S.cv, opacity: bent ? 1 : 0 }} />
         {tabW ? (
           <div
             aria-hidden
             onTransitionEnd={() => setTapped(null)}
-            style={{ ...S.pill, ...LOOK.pill, width: tabW, transform: `translate3d(${PAD + index * tabW}px, 0, 0)` }}
-          />
+            style={{ ...S.pill, width: tabW, transform: `translate3d(${x}px, 0, 0)` }}
+          >
+            <canvas ref={pillCv} style={{ ...S.cv, opacity: bent ? 1 : 0, borderRadius: PILL_H / 2 }} />
+            <div style={S.pillRim} />
+          </div>
         ) : null}
+        <div style={S.rim} />
         <div style={S.row}>
           {TABS.map(({ href, label, Icon }, i) => {
             const on = i === index;
             return (
               <button key={href} type="button" role="tab" aria-selected={on} onClick={() => go(i, href)} style={S.tab}>
-                <Icon on={on} c={on ? LOOK.icon : color.sub} />
-                <span style={{ ...S.label, color: on ? LOOK.label : color.sub }}>{label}</span>
+                <Icon on={on} c={on ? color.ink : color.sub} />
+                <span style={{ ...S.label, color: on ? color.ink : color.sub }}>{label}</span>
               </button>
             );
           })}
@@ -109,17 +175,133 @@ export function TabBar() {
   );
 }
 
+/** The page frosted: drawn through a 1px blur where the browser can, as is elsewhere. */
+function frosted(src: HTMLCanvasElement, scale: number): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = src.width;
+  c.height = src.height;
+  const ctx = c.getContext('2d')!;
+  if ('filter' in ctx) ctx.filter = `blur(${FROST * scale}px)`;
+  ctx.drawImage(src, 0, 0);
+  if ('filter' in ctx) ctx.filter = 'none';
+  return c;
+}
+
+/** Copy the glass's own area out of a window that has M of room around it. */
+function paint(dst: HTMLCanvasElement, src: HTMLCanvasElement, x: number, y: number, w: number, h: number, scale: number) {
+  dst.width = Math.round(w * scale);
+  dst.height = Math.round(h * scale);
+  dst.getContext('2d')!.drawImage(src, Math.round(x * scale), Math.round(y * scale), dst.width, dst.height, 0, 0, dst.width, dst.height);
+}
+
+/**
+ * Aave's filter, on pixels: red and green in the map say where each pixel is read from
+ * (128 is still), red reaching 13% and green 6.5% further than blue for the colour split;
+ * blue darkens the rim.
+ */
+function bend(cv: HTMLCanvasElement, map: ImageData, kx: number, ky: number) {
+  const ctx = cv.getContext('2d')!;
+  const w = cv.width, h = cv.height;
+  const src = ctx.getImageData(0, 0, w, h).data, m = map.data;
+  const out = ctx.createImageData(w, h), o = out.data;
+  const off = 1 + (SPEC * 128) / 255, kyy = 0.5556 * ky;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const dx = m[i] / 255 - 0.5, dy = m[i + 1] / 255 - 0.5;
+      const shade = Math.max(0, off - (SPEC * m[i + 2]) / 255);
+      for (let c = 0; c < 3; c++) {
+        const ux = Math.min(w - 1, Math.max(0, Math.round(x + dx * kx * CHROMA[c])));
+        const uy = Math.min(h - 1, Math.max(0, Math.round(y + dy * kyy * CHROMA[c])));
+        o[i + c] = Math.min(255, src[(uy * w + ux) * 4 + c] * shade);
+      }
+      o[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+}
+
+/** A map image laid on a neutral (128) field the size of the glass's window, at device scale. */
+function mapData(src: string | Promise<string>, w: number, h: number, box: { x: number; y: number; w: number; h: number }, scale: number) {
+  return Promise.resolve(src).then(
+    (url) =>
+      new Promise<ImageData>((res) => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = Math.round(w * scale);
+          c.height = Math.round(h * scale);
+          const ctx = c.getContext('2d')!;
+          ctx.fillStyle = 'rgb(128,128,128)';
+          ctx.fillRect(0, 0, c.width, c.height);
+          ctx.drawImage(img, box.x * scale, box.y * scale, box.w * scale, box.h * scale);
+          res(ctx.getImageData(0, 0, c.width, c.height));
+        };
+        img.src = url;
+      }),
+  );
+}
+
+/** Aave's map 9-sliced onto a bar: its ends at lens size for the bar's height, its middle column stretched. */
+function sliceMap(w: number, h: number): Promise<string> {
+  return new Promise((res) => {
+    const img = new Image();
+    img.onload = () => {
+      const W = Math.round(w), Hh = Math.round(h);
+      const cap = Math.min(W / 2, Math.round((AAVE.w / 2) * (Hh / AAVE.h)));
+      const c = document.createElement('canvas');
+      c.width = W;
+      c.height = Hh;
+      const ctx = c.getContext('2d')!;
+      const half = img.width / 2;
+      ctx.drawImage(img, 0, 0, half, img.height, 0, 0, cap, Hh);
+      ctx.drawImage(img, half - 1, 0, 2, img.height, cap, 0, W - cap * 2, Hh);
+      ctx.drawImage(img, half, 0, half, img.height, W - cap, 0, cap, Hh);
+      res(c.toDataURL());
+    };
+    img.src = GLASS_MAP;
+  });
+}
+
 const S: Record<string, CSSProperties> = {
   wrap: { position: 'absolute', left: 20, right: 20, pointerEvents: 'none' },
+  // Stand-in glass while things move: the same tint over the page, frosted the same.
   bar: {
     position: 'relative',
     height: TAB_PILL,
     borderRadius: TAB_PILL / 2,
+    overflow: 'hidden',
     pointerEvents: 'auto',
-    backdropFilter: 'blur(16px)',
-    WebkitBackdropFilter: 'blur(16px)',
+    background: BAR_TINT,
+    backdropFilter: `blur(${FROST}px)`,
+    WebkitBackdropFilter: `blur(${FROST}px)`,
+    boxShadow: '0 0 0 0.5px rgba(0,0,0,0.10), 0 6px 20px rgba(0,0,0,0.08)',
   },
-  pill: { position: 'absolute', top: PAD, left: 0, height: PILL_H, borderRadius: PILL_H / 2, pointerEvents: 'none', transition: SLIDE, willChange: 'transform' },
+  cv: { position: 'absolute', inset: 0, width: '100%', height: '100%', transition: 'opacity 120ms', pointerEvents: 'none' },
+  rim: {
+    position: 'absolute',
+    inset: 0,
+    borderRadius: TAB_PILL / 2,
+    pointerEvents: 'none',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 0 1px rgba(255,255,255,0.45)',
+  },
+  pill: {
+    position: 'absolute',
+    top: PAD,
+    left: 0,
+    height: PILL_H,
+    borderRadius: PILL_H / 2,
+    background: PILL_TINT,
+    pointerEvents: 'none',
+    transition: SLIDE,
+    willChange: 'transform',
+  },
+  pillRim: {
+    position: 'absolute',
+    inset: 0,
+    borderRadius: PILL_H / 2,
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75), inset 0 0 0 0.5px rgba(0,0,0,0.08)',
+  },
   row: { position: 'absolute', inset: 0, display: 'flex', padding: PAD },
   tab: {
     flex: 1,
