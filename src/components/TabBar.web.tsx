@@ -56,6 +56,9 @@ export function TabBar() {
   const [tapped, setTapped] = useState<number | null>(null);
   const index = tapped ?? routeIndex;
   const [bent, setBent] = useState(false);
+  // Prototype diagnosis: open any page with ?glass=debug to see what the glass did last.
+  const debug = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('glass') === 'debug';
+  const [note, setNote] = useState('starting');
 
   useEffect(() => {
     const el = barRef.current;
@@ -69,9 +72,10 @@ export function TabBar() {
 
   // Draw the glass from a fresh picture of the page under the bar.
   const run = useRef(0);
-  const draw = useCallback(async () => {
+  const drawGlass = async () => {
     const bar = barRef.current, bc = barCv.current, pc = pillCv.current;
-    if (!bar || !bc || !pc || !tabW) return;
+    if (!bar || !bc || !pc || !tabW) return setNote('waiting for layout');
+    setNote('taking the picture');
     const id = ++run.current;
     const r = bar.getBoundingClientRect();
     const scale = Math.min(2, window.devicePixelRatio || 1);
@@ -86,8 +90,12 @@ export function TabBar() {
       backgroundColor: color.bg,
       logging: false,
       ignoreElements: (el: Element) => el === bar.parentElement,
-    }).catch(() => null);
+    }).catch((e: unknown) => {
+      setNote(`picture failed: ${e instanceof Error ? e.message : String(e)}`);
+      return null;
+    });
     if (!shot || id !== run.current) return;
+    setNote(`picture ${shot.width}x${shot.height}, bending`);
     const [barMap, lensMap] = await Promise.all([
       mapData(sliceMap(r.width, TAB_PILL), W, H, { x: M, y: M, w: r.width, h: TAB_PILL }, scale),
       mapData(GLASS_MAP, tabW + M * 2, PILL_H + M * 2, { x: M, y: M, w: tabW, h: PILL_H }, scale),
@@ -114,7 +122,18 @@ export function TabBar() {
     bend(lens, lensMap, AAVE.x * (tabW / AAVE.w) * scale, AAVE.y * (PILL_H / AAVE.h) * scale);
     paint(pc, lens, M, M, tabW, PILL_H, scale);
     setBent(true);
+    setNote(`bent · ${Math.round(scale)}x · ${navigator.userAgent.includes('Chrome/') ? 'Chrome' : 'Safari'}`);
+  };
+
+  const draw = useCallback(async () => {
+    try {
+      await drawGlass();
+    } catch (e) {
+      setNote(`failed: ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, tabW]);
+
 
   // Re-draw when things settle: after a scroll, a resize, a slide or a new screen.
   useEffect(() => {
@@ -146,6 +165,7 @@ export function TabBar() {
   const x = PAD + index * tabW;
   return (
     <div style={{ ...S.wrap, bottom: pillBottom }}>
+      {debug ? <div style={S.debug}>{`Glass: ${note}`}</div> : null}
       <nav ref={barRef} style={S.bar} aria-label="Tabs">
         <canvas ref={barCv} aria-hidden style={{ ...S.cv, opacity: bent ? 1 : 0 }} />
         {tabW ? (
@@ -294,6 +314,7 @@ function sliceMap(w: number, h: number): Promise<string> {
 
 const S: Record<string, CSSProperties> = {
   wrap: { position: 'absolute', left: 20, right: 20, pointerEvents: 'none' },
+  debug: { position: 'absolute', bottom: TAB_PILL + 8, left: 0, right: 0, textAlign: 'center', fontSize: 12, color: color.ink, background: 'rgba(255,255,255,0.9)', borderRadius: 8, padding: 4 },
   // Stand-in glass while things move: the same tint over the page, frosted the same.
   bar: {
     position: 'relative',
