@@ -1,8 +1,7 @@
 import { router, usePathname } from 'expo-router';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { color, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
-import { GLASS_MAP } from './glassMap';
 import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
 
 const TABS = [
@@ -11,56 +10,59 @@ const TABS = [
   { href: '/companies', label: 'Companies', Icon: TabCompaniesIcon },
 ] as const;
 
-/**
- * Read off Edward's screen recording of Figma's iOS tab bar (dark mode), mirrored
- * for Docket's light app:
- * - pill inset 10 of a 182 bar: 4 of 64;
- * - the bar is nearly clear: page grey 39 reads 42 through it and white text 255
- *   reads 226, softly blurred, so a tint of about 15% and a small blur;
- * - the resting pill is white at about 14% (70 on 39); here black at 12%, the same
- *   31 levels the other way;
- * - the bar's edge is an even line all round, 37 levels off the bar (79 on 42);
- *   here black at 14%;
- * - no drop shadow;
- * - while it moves, the lens stands about a fifth taller than the pill, magnifies,
- *   squashes along its motion, and the bar swells slightly and clears;
- * - the lens takes about 320ms to cross, then shrinks and fades as the pill fades back.
- */
 const PAD = 4;
-const LENS_H = TAB_PILL - PAD * 2;
-const MOVE_MS = 320;
-const SETTLE_MS = 200;
-/** Lens size against the pill while it travels, and how much it squashes per px/ms. */
-const LIFT = 1.2;
-const SQUASH = 0.12;
-/** How far the tint's blur samples past the bar, so it isn't mirrored at the bar's edge. */
-const BLEED = 8;
-/** Room around the lens for its bend to pull in what lies past its edge. */
-const M = 16;
-/** Aave's bend ("Building glass for the web"), scaled from its 88x40 lens. */
-const AAVE_LENS = { w: 88, h: 40, x: 27.3, y: 9.46 };
-const CHROMA = [1.02, 1.01, 1];
+const PILL_H = TAB_PILL - PAD * 2;
+const SLIDE = 'transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1)';
+const LIFT = '0 6px 20px rgba(0,0,0,0.08)';
+
+/** White glass: white at 72% over the page blurred 16px, a hairline in Docket's line grey. */
+const WHITE_GLASS: CSSProperties = {
+  background: 'rgba(255,255,255,0.72)',
+  boxShadow: `inset 0 0 0 1px ${color.line}, ${LIFT}`,
+};
+
+interface Look {
+  base: CSSProperties;
+  pill: CSSProperties;
+  icon: string;
+  label: string;
+}
 
 /**
- * Web tab bar: tinted glass at rest with a soft pill under the selected tab; on a
- * tap the pill gives way to a clear glass lens that carries the tabs, magnified
- * and bent at its rim, to the new tab, then hands back to the pill. The lens bends
- * its own copy of the tabs (Aave's method), so the bend can't go stale. Chromium
- * draws the bend; Safari can't redraw an SVG filter on a moving element, so there
- * the lens magnifies without bending.
+ * Four bar and pill colour pairs for review, all from Docket's tokens.
+ * Prototype switch: open any page with ?nav=a, b, c or d; it holds until reload.
  */
+const LOOKS: Record<'a' | 'b' | 'c' | 'd', Look> = {
+  // White glass, the cards' second grey for the pill.
+  a: { base: WHITE_GLASS, pill: { background: color.raise2 }, icon: color.ink, label: color.ink },
+  // White glass, black pill: lime on black, as on the island and the detention card.
+  b: { base: WHITE_GLASS, pill: { background: color.ink }, icon: color.signal, label: color.bg },
+  // White glass, lime pill with black on it.
+  c: { base: WHITE_GLASS, pill: { background: color.signal }, icon: color.onSignal, label: color.onSignal },
+  // Card-grey glass (raise2 at 78%), a white pill lifted on it.
+  d: {
+    base: { background: 'rgba(229,232,236,0.78)', boxShadow: LIFT },
+    pill: { background: color.bg, boxShadow: '0 1px 4px rgba(0,0,0,0.10)' },
+    icon: color.ink,
+    label: color.ink,
+  },
+};
+
+const pick = (): keyof typeof LOOKS => {
+  if (typeof window === 'undefined') return 'b';
+  const v = new URLSearchParams(window.location.search).get('nav');
+  return v === 'a' || v === 'b' || v === 'c' || v === 'd' ? v : 'b';
+};
+const LOOK = LOOKS[pick()];
+
+/** Web tab bar: a glass pill with the selected tab on a pill that slides between tabs. */
 export function TabBar() {
   const path = usePathname();
   const { pillBottom } = useTabSpace();
   const barRef = useRef<HTMLDivElement>(null);
-  const tintRef = useRef<HTMLDivElement>(null);
-  const pillRef = useRef<HTMLDivElement>(null);
-  const winRef = useRef<HTMLDivElement>(null);
-  const copyRef = useRef<HTMLDivElement>(null);
-  const rimRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const routeIndex = Math.max(0, TABS.findIndex((t) => t.href === path));
-  // The new tab lights up on the tap, before the next screen starts rendering.
+  // The pill moves on the tap, before the next screen starts rendering.
   const [tapped, setTapped] = useState<number | null>(null);
   const index = tapped ?? routeIndex;
 
@@ -73,227 +75,55 @@ export function TabBar() {
   }, []);
 
   const tabW = width ? (width - PAD * 2) / TABS.length : 0;
-  const bends = useMemo(() => typeof navigator !== 'undefined' && /Chrome\//.test(navigator.userAgent), []);
-  const id = `lens-${Math.round(tabW)}`;
-
-  /** One frame: lens at x with scale sx/sy and opacity a; pill opacity p; bar swell s (0..1). */
-  const frame = (x: number, sx: number, sy: number, a: number, p: number, s: number) => {
-    const t = `translate3d(${x}px, ${PAD}px, 0) scale(${sx}, ${sy})`;
-    if (winRef.current) {
-      winRef.current.style.transform = `translate3d(${x - M}px, ${PAD - M}px, 0) scale(${sx}, ${sy})`;
-      winRef.current.style.opacity = String(a);
-      winRef.current.style.visibility = a > 0 ? 'visible' : 'hidden';
-    }
-    if (copyRef.current) copyRef.current.style.transform = `translate3d(${M - x}px, ${M - PAD}px, 0)`;
-    if (rimRef.current) {
-      rimRef.current.style.transform = t;
-      rimRef.current.style.opacity = String(a);
-    }
-    if (pillRef.current) {
-      pillRef.current.style.transform = `translate3d(${x}px, ${PAD}px, 0)`;
-      pillRef.current.style.opacity = String(p);
-    }
-    if (barRef.current) barRef.current.style.transform = `scale(${1 + 0.03 * s})`;
-    if (tintRef.current) tintRef.current.style.opacity = String(1 - 0.4 * s);
-  };
-
-  const xRef = useRef<number | null>(null);
-  useLayoutEffect(() => {
-    if (!tabW) return;
-    const to = PAD + index * tabW;
-    const from = xRef.current;
-    xRef.current = to;
-    if (from === null || from === to) {
-      frame(to, 1, 1, 0, 1, 0);
-      if (tapped !== null) setTapped(null);
-      return;
-    }
-    const t0 = performance.now();
-    let last = from, lastT = t0;
-    let raf = requestAnimationFrame(function step(now) {
-      const t = now - t0;
-      if (t < MOVE_MS) {
-        const p = t / MOVE_MS;
-        const x = from + (to - from) * ease(p);
-        // Velocity in px/ms stretches the lens along its motion and thins it across.
-        const v = Math.abs(x - last) / Math.max(1, now - lastT);
-        last = x;
-        lastT = now;
-        const grow = Math.min(1, p / 0.25);
-        const k = Math.min(0.35, v * SQUASH);
-        frame(x, (1 + (LIFT - 1) * grow) * (1 + k), (1 + (LIFT - 1) * grow) * (1 - k * 0.6), Math.min(1, p / 0.15), Math.max(0, 1 - p / 0.15), grow);
-        raf = requestAnimationFrame(step);
-      } else if (t < MOVE_MS + SETTLE_MS) {
-        const q = (t - MOVE_MS) / SETTLE_MS;
-        const sc = LIFT - (LIFT - 1) * q;
-        frame(to, sc, sc, 1 - q, q, 1 - q);
-        raf = requestAnimationFrame(step);
-      } else {
-        frame(to, 1, 1, 0, 1, 0);
-        setTapped(null);
-      }
-    });
-    return () => cancelAnimationFrame(raf);
-    // frame reads only refs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, tabW]);
 
   const go = (i: number, href: string) => {
     if (i === index) return;
     setTapped(i);
-    // Let the lens start on the next frame, then switch screens.
+    // Let the slide start on the next frame, then switch screens.
     requestAnimationFrame(() => requestAnimationFrame(() => router.navigate(href)));
   };
 
-  const sx = AAVE_LENS.x * (tabW / AAVE_LENS.w);
-  const sy = AAVE_LENS.y * (LENS_H / AAVE_LENS.h);
-  const g = 0.5556 * (sy / (sx || 1));
-  const spec = 1 + 128 / 255;
-  const winW = tabW + M * 2, winH = LENS_H + M * 2;
-
   return (
     <div style={{ ...S.wrap, bottom: pillBottom }}>
-      <nav ref={barRef} style={S.bar} aria-label="Tabs">
-        <div ref={tintRef} aria-hidden style={S.tint} />
-        <div aria-hidden style={S.rim} />
-        {tabW ? <div ref={pillRef} aria-hidden style={{ ...S.pill, width: tabW }} /> : null}
-        <Row onTab={go} index={index} />
-      </nav>
-      {/* The lens rides outside the bar's clip, so it can stand taller than the bar. */}
-      {tabW ? (
-        <>
-          {bends ? (
-            <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden>
-              <filter id={id} filterUnits="userSpaceOnUse" x="0" y="0" width={winW} height={winH} colorInterpolationFilters="sRGB">
-                <feFlood floodColor="rgb(128,128,128)" result="mapBg" />
-                <feImage href={GLASS_MAP} x={M} y={M} width={tabW} height={LENS_H} preserveAspectRatio="none" result="rawMap" />
-                <feComposite in="rawMap" in2="mapBg" operator="over" result="map" />
-                <feColorMatrix in="map" type="matrix" values={`1 0 0 0 0  0 ${g} 0 0 ${(1 - g) / 2}  0 0 1 0 0  0 0 0 1 0`} result="scaledMap" />
-                {(['R', 'G', 'B'] as const).map((c, i) => (
-                  <feDisplacementMap key={c} in="SourceGraphic" in2="scaledMap" scale={sx * CHROMA[i]} xChannelSelector="R" yChannelSelector="G" result={`d${c}`} />
-                ))}
-                <feColorMatrix in="dR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
-                <feColorMatrix in="dG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="gg" />
-                <feColorMatrix in="dB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b" />
-                <feComposite in="r" in2="gg" operator="arithmetic" k2="1" k3="1" result="rg" />
-                <feComposite in="rg" in2="b" operator="arithmetic" k2="1" k3="1" result="bent" />
-                <feColorMatrix in="map" type="matrix" values={`0 0 -1 0 ${spec}  0 0 -1 0 ${spec}  0 0 -1 0 ${spec}  0 0 0 0 1`} result="spec" />
-                <feComposite in="spec" in2="bent" operator="arithmetic" k1="1" />
-              </filter>
-            </svg>
-          ) : null}
+      <nav ref={barRef} style={{ ...S.bar, ...LOOK.base }} aria-label="Tabs">
+        {tabW ? (
           <div
-            ref={winRef}
             aria-hidden
-            style={{
-              ...S.win,
-              width: winW,
-              height: winH,
-              filter: bends ? `url(#${id})` : 'none',
-              clipPath: `inset(${M}px round ${LENS_H / 2}px)`,
-              WebkitClipPath: `inset(${M}px round ${LENS_H / 2}px)`,
-            }}
-          >
-            <div ref={copyRef} style={{ ...S.copy, width }}>
-              <Row index={index} />
-            </div>
-          </div>
-          <div ref={rimRef} aria-hidden style={{ ...S.lensRim, width: tabW }} />
-        </>
-      ) : null}
+            onTransitionEnd={() => setTapped(null)}
+            style={{ ...S.pill, ...LOOK.pill, width: tabW, transform: `translate3d(${PAD + index * tabW}px, 0, 0)` }}
+          />
+        ) : null}
+        <div style={S.row}>
+          {TABS.map(({ href, label, Icon }, i) => {
+            const on = i === index;
+            return (
+              <button key={href} type="button" role="tab" aria-selected={on} onClick={() => go(i, href)} style={S.tab}>
+                <Icon on={on} c={on ? LOOK.icon : color.sub} />
+                <span style={{ ...S.label, color: on ? LOOK.label : color.sub }}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
-}
-
-function Row({ onTab, index }: { onTab?: (i: number, href: string) => void; index: number }) {
-  return (
-    <div style={S.row}>
-      {TABS.map(({ href, label, Icon }, i) => {
-        const on = i === index;
-        const fg = on ? color.signal : color.ink;
-        const body = (
-          <>
-            <Icon on={on} c={fg} />
-            <span style={{ ...S.label, color: fg }}>{label}</span>
-          </>
-        );
-        return onTab ? (
-          <button key={href} type="button" role="tab" aria-selected={on} onClick={() => onTab(i, href)} style={S.tab}>
-            {body}
-          </button>
-        ) : (
-          <div key={href} style={S.tab}>
-            {body}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/** cubic-bezier(0.2, 0.8, 0.2, 1). */
-function ease(p: number): number {
-  const bez = (t: number, a: number, b: number) => 3 * (1 - t) ** 2 * t * a + 3 * (1 - t) * t ** 2 * b + t ** 3;
-  let lo = 0, hi = 1, t = p;
-  for (let i = 0; i < 20; i++) {
-    t = (lo + hi) / 2;
-    if (bez(t, 0.2, 0.2) < p) lo = t;
-    else hi = t;
-  }
-  return bez(t, 0.8, 1);
 }
 
 const S: Record<string, CSSProperties> = {
-  wrap: { position: 'absolute', left: 20, right: 20, height: TAB_PILL, pointerEvents: 'none' },
+  wrap: { position: 'absolute', left: 20, right: 20, pointerEvents: 'none' },
   bar: {
     position: 'relative',
     height: TAB_PILL,
     borderRadius: TAB_PILL / 2,
-    overflow: 'hidden',
     pointerEvents: 'auto',
+    backdropFilter: 'blur(16px)',
+    WebkitBackdropFilter: 'blur(16px)',
   },
-  // Tinted glass, nearly clear: the page softly blurred. The reference's tint lifts its
-  // page 3 levels (39 to 42); here it lowers it 3. It samples a
-  // box BLEED larger than the bar so the blur isn't mirrored at the edge.
-  tint: {
-    position: 'absolute',
-    inset: -BLEED,
-    pointerEvents: 'none',
-    background: 'rgba(0,0,0,0.012)',
-    backdropFilter: 'blur(3px)',
-    WebkitBackdropFilter: 'blur(3px)',
-  },
-  // The reference's edge: an even line all round.
-  rim: {
-    position: 'absolute',
-    inset: 0,
-    borderRadius: TAB_PILL / 2,
-    pointerEvents: 'none',
-    boxShadow: 'inset 0 0 0 1.5px rgba(0,0,0,0.14)',
-  },
-  // The resting pill: a soft wash under the selected tab.
-  pill: { position: 'absolute', top: 0, left: 0, height: LENS_H, borderRadius: LENS_H / 2, background: 'rgba(0,0,0,0.12)', pointerEvents: 'none' },
-  // The lens: clear glass carrying a copy of the tabs; the page shows through it.
-  win: { position: 'absolute', top: 0, left: 0, overflow: 'hidden', pointerEvents: 'none', visibility: 'hidden', willChange: 'transform, opacity', transformOrigin: 'center' },
-  copy: { position: 'absolute', top: 0, left: 0, height: TAB_PILL },
-  // The lens's edge: a bright specular top, a darker bottom and a hairline.
-  lensRim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    height: LENS_H,
-    borderRadius: LENS_H / 2,
-    pointerEvents: 'none',
-    opacity: 0,
-    transformOrigin: 'center',
-    willChange: 'transform, opacity',
-    boxShadow:
-      '0 6px 16px rgba(0,0,0,0.10), inset 0 1.5px 1px rgba(255,255,255,1), inset 0 -1px 1px rgba(0,0,0,0.08), inset 0 0 0 0.5px rgba(0,0,0,0.14)',
-  },
+  pill: { position: 'absolute', top: PAD, left: 0, height: PILL_H, borderRadius: PILL_H / 2, pointerEvents: 'none', transition: SLIDE, willChange: 'transform' },
   row: { position: 'absolute', inset: 0, display: 'flex', padding: PAD },
   tab: {
     flex: 1,
-    height: LENS_H,
+    height: PILL_H,
     border: 0,
     background: 'transparent',
     padding: 0,
