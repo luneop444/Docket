@@ -1,5 +1,7 @@
+import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { PageHead, Screen } from '../../components/Chrome';
+import { ChevronRight } from '../../components/Icons';
 import { Card, Fake, Gap, Pill, Row, Seg, T } from '../../components/ui';
 import { dur, money } from '../../logic/format';
 import { MIN_REPORTS, SAMPLE_BOARD } from '../../logic/sampleData';
@@ -32,10 +34,13 @@ export default function Companies() {
       <Gap h={16} />
       <View style={{ gap: 12 }}>
         {list.map((c) => (
-          <Card key={c.name}>
+          <Card key={c.name} onPress={() => router.push({ pathname: '/company-info', params: { name: c.name } })}>
             <Row base>
-              <T v="bodyStrong">{c.name}</T>
-              {c.name === s.company ? <Pill label="Yours" tone="signal" /> : null}
+              <T v="bodyStrong" style={styles.name}>{c.name}</T>
+              <View style={styles.end}>
+                {c.name === s.company ? <Pill label="Yours" tone="signal" /> : null}
+                <ChevronRight size={18} c={color.sub} />
+              </View>
             </Row>
             <T v="bodyTiny">
               {dur(c.rules.free)} free from {c.rules.start === 'appt' ? 'appointment' : 'arrival'}, then{' '}
@@ -80,6 +85,8 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 const styles = StyleSheet.create({
+  name: { flexShrink: 1 },
+  end: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   stats: { flexDirection: 'row', gap: 8, marginTop: 14 },
   stat: { flex: 1, backgroundColor: color.bg, borderRadius: 10, borderCurve: 'continuous', padding: 10 },
   statValue: { fontSize: 17 },

@@ -98,6 +98,9 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
           const c = COMPANIES.find((c) => c.name === name);
           return { ...s, company: name, customCompany: custom, rules: c ? { ...c.rules } : s.rules };
         }),
+      /** From the Companies tab: drive for a company and start from the rules its drivers report. */
+      switchCompany: (name: string, rules: Rules) =>
+        setS((s) => ({ ...s, company: name, customCompany: false, rules: { ...rules }, rulesCheck: 'unsure', sent: false })),
       setPay: (pay: AppState['pay']) => setS((s) => ({ ...s, pay })),
       setRulesCheck: (rulesCheck: AppState['rulesCheck']) => setS((s) => ({ ...s, rulesCheck })),
       /** Also switches an existing load between one-off and every-run. */
