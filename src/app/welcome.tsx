@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { View } from 'react-native';
 import { Screen, TopBar } from '../components/Chrome';
-import { Button, Gap, Row, StepItem, T, TimeBar } from '../components/ui';
+import { ChecklistIcon, DocIcon, LocationIcon } from '../components/Icons';
+import { Button, Gap, IconRow, Row, T, TimeBar } from '../components/ui';
 import { fontFamily } from '../theme/tokens';
 
 /** v1 01 Welcome */
@@ -25,10 +26,11 @@ export default function Welcome() {
         </T>
       </Row>
       <Gap h={32} />
-      <View style={{ gap: 14 }}>
-        <StepItem badge="1">Notices when you arrive at and leave a stop on your load. You just confirm.</StepItem>
-        <StepItem badge="2">Applies your company’s detention rules to every wait.</StepItem>
-        <StepItem badge="3">Shows you which loads to look for on your settlement, and how much.</StepItem>
+      {/* Onboarding v3: icon rows instead of a numbered paragraph list. */}
+      <View style={{ gap: 18 }}>
+        <IconRow icon={(c) => <LocationIcon c={c} />} label="Notices your stops" sub="When you pull in and leave. You just confirm" />
+        <IconRow icon={(c) => <ChecklistIcon c={c} />} label="Applies your company’s rules" sub="Free time, rate and breaks, on every wait" />
+        <IconRow icon={(c) => <DocIcon c={c} size={20} />} label="Checks your paycheck" sub="Which loads to look for, and how much" />
       </View>
       <Gap h={24} />
       {/* Audit #1: the old line ("stays on your phone") wasn't true once BOL and settlement scans went to the AI reader. */}

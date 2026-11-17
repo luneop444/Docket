@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { color, fontFamily, protoColor, radius, type, type TypeToken } from '../theme/tokens';
 import { noWidow } from '../logic/text';
-import { ChevronRight } from './Icons';
+import { CheckIcon, ChevronRight } from './Icons';
 
 /* ---------- text ---------- */
 
@@ -297,8 +297,167 @@ export function StepItem({ badge, children }: { badge: ReactNode; children: Reac
   );
 }
 
+/* ---------- Onboarding v3 visuals (Figma 344:861): icon-led choices ---------- */
+
+/** An icon is passed as a render function so each state can recolor it. */
+export type IconFn = (c: string) => ReactNode;
+
+export type IconTileTone = 'raise' | 'white' | 'ink' | 'signal';
+
+/**
+ * Figma "Icon tile": a squircle holding one icon. Sizes follow the frames: 40
+ * in icon rows, 44 in action cards, 48 in choice tiles. The icon color is
+ * picked to stay readable on the tile (lime on ink, ink everywhere else).
+ */
+export function IconTile({ icon, tone = 'raise', size = 40 }: { icon: IconFn; tone?: IconTileTone; size?: 40 | 44 | 48 }) {
+  const bg = { raise: color.raise, white: color.bg, ink: color.ink, signal: color.signal }[tone];
+  const fg = tone === 'ink' ? color.signal : color.ink;
+  const r = size === 40 ? 12 : size === 44 ? 13 : 14;
+  return (
+    <View style={[styles.iconTile, { width: size, height: size, borderRadius: r, backgroundColor: bg }]}>
+      {icon(fg)}
+    </View>
+  );
+}
+
+/**
+ * Figma "Option" / "Option · selected" (L-A Loads · icon tiles). One radio
+ * choice: icon tile, title and line, radio ring. Selected turns the whole tile
+ * lime, the icon tile ink and the ring a check, so the choice reads without color too.
+ */
+export function ChoiceTile({
+  icon,
+  label,
+  sub,
+  selected,
+  onPress,
+}: {
+  icon: IconFn;
+  label: string;
+  sub?: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={sub ? `${label}. ${sub}` : label}
+      onPress={onPress}
+      style={({ pressed }) => [styles.choice, selected && styles.choiceOn, pressed && styles.pressed]}
+    >
+      <IconTile icon={icon} tone={selected ? 'ink' : 'white'} size={48} />
+      <View style={styles.flexGap2}>
+        <T v="bodyStrong" c={selected ? color.onSignal : color.ink}>
+          {label}
+        </T>
+        {sub ? (
+          <T v="bodySmall" c={selected ? color.onSignal : color.sub}>
+            {sub}
+          </T>
+        ) : null}
+      </View>
+      {selected ? (
+        <View style={styles.choiceCheck}>
+          <CheckIcon c={color.bg} size={16} />
+        </View>
+      ) : (
+        <View style={styles.choiceRing} />
+      )}
+    </Pressable>
+  );
+}
+
+/** Figma "Promise": an icon tile beside a bold line and a short sub line. Not tappable. */
+export function IconRow({ icon, label, sub }: { icon: IconFn; label: string; sub?: string }) {
+  return (
+    <View style={styles.iconRow}>
+      <IconTile icon={icon} />
+      <View style={styles.flexGap1}>
+        <T v="bodyStrong">{label}</T>
+        {sub ? <T v="bodySmall">{sub}</T> : null}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Figma "Choice · primary / secondary" (P-A Location · weighted choices). A
+ * full-width card that does something when tapped. Primary is ink with a lime
+ * tile; secondary is white with a line. Both carry a title, a line saying what
+ * it means, and a chevron, so the lighter one is still a whole choice.
+ */
+export function ActionCard({
+  icon,
+  label,
+  sub,
+  primary,
+  onPress,
+}: {
+  icon: IconFn;
+  label: string;
+  sub?: string;
+  primary?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={sub ? `${label}. ${sub}` : label}
+      onPress={onPress}
+      style={({ pressed }) => [styles.action, primary ? styles.actionPrimary : styles.actionSecondary, pressed && styles.pressed]}
+    >
+      <IconTile icon={icon} tone={primary ? 'signal' : 'raise'} size={44} />
+      <View style={styles.flexGap2}>
+        <T v="labelButton" c={primary ? color.bg : color.ink}>
+          {label}
+        </T>
+        {sub ? (
+          <T v="bodySmall" c={primary ? color.bg : color.sub}>
+            {sub}
+          </T>
+        ) : null}
+      </View>
+      <ChevronRight c={primary ? color.bg : color.sub} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
+  flexGap1: { flex: 1, minWidth: 0, gap: 1 },
+  flexGap2: { flex: 1, minWidth: 0, gap: 2 },
+  iconTile: { borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center' },
+  choice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderRadius: radius.option,
+    borderCurve: 'continuous',
+    backgroundColor: color.raise,
+  },
+  choiceOn: { backgroundColor: color.signal },
+  choiceRing: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: color.track },
+  choiceCheck: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: color.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  action: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderRadius: 22,
+    borderCurve: 'continuous',
+  },
+  actionPrimary: { backgroundColor: color.ink },
+  actionSecondary: { backgroundColor: color.bg, borderWidth: 1.5, borderColor: color.line },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   rowBase: { alignItems: 'baseline' },
   hr: { height: 1, backgroundColor: color.line, marginVertical: 14 },
