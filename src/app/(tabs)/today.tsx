@@ -4,9 +4,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
 import { DemoDrawer } from '../../components/DemoDrawer';
 import { FreeBar } from '../../components/FreeBar';
+import { Timeline } from '../../components/Timeline';
 import { Button, Gap, T } from '../../components/ui';
 import { isDemoState } from '../../logic/demo';
-import { clock, dur, money, rateShort } from '../../logic/format';
+import { clock, dur, hm, money, rateShort } from '../../logic/format';
 import { placeOf, watchedStop } from '../../logic/state';
 import { dockTimeline, stopCalc } from '../../logic/stop';
 import { useStore } from '../../state/AppStore';
@@ -53,6 +54,7 @@ function Current() {
   const phase = s.stop.phase;
   if (phase === 'idle') return <NoStop />;
   if (phase === 'arriving') return <Parked />;
+  if (phase === 'dock') return <AtTheDock />;
   return <AtStop />;
 }
 
@@ -91,6 +93,90 @@ function Head({ name, since }: { name: string; since: number }) {
       <T v="bodySmall" c={color.sub}>
         {`since ${clock(since)}`}
       </T>
+    </View>
+  );
+}
+
+/**
+ * Figma 08 "At the dock, free time" and 09 "At the dock, detention running": the place and
+ * load, the time waited, one status line, the lime "Detention so far" once it runs, then
+ * the timeline of the stop.
+ */
+function AtTheDock() {
+  const { s, a } = useStore();
+  const st = s.stop;
+  const c = stopCalc(st, s.now, s.rules);
+  const place = placeOf(s.load);
+  const inDetention = s.now >= c.freeEnd;
+  const beforeClock = s.now < c.start;
+  const fromAppt = s.rules.start === 'appt';
+  const waited = s.now - (st.arrive ?? s.now);
+  const status = inDetention
+    ? 'Detention running'
+    : beforeClock
+      ? `Clock starts at your ${clock(c.start)} ${fromAppt ? 'appointment' : 'arrival'}`
+      : `Detention starts at ${clock(c.freeEnd)}`;
+  const events = dockTimeline(st, s.now, s.rules).map(({ canCheckIn, ...e }) =>
+    canCheckIn ? { ...e, action: { label: 'I checked in', onPress: a.checkIn } } : e,
+  );
+
+  return (
+    <View>
+      <View style={styles.head}>
+        <T v="bodyStrong" style={styles.flex}>
+          {place.name}
+        </T>
+        {place.load ? (
+          <T v="bodyTiny" c={color.sub}>
+            {`Load ${place.load}`}
+          </T>
+        ) : null}
+      </View>
+      <Gap h={16} />
+      <View
+        style={styles.waited}
+        accessible
+        accessibilityRole="timer"
+        accessibilityLabel={`${dur(waited)} waited. ${status}${inDetention ? `. Detention so far ${money(c.owed)}` : ''}`}
+      >
+        <T v="displayTimer" style={[styles.tabular, styles.optical]}>
+          {hm(waited)}
+        </T>
+        <T v="numberS" c={color.sub} style={styles.waitedWord}>
+          waited
+        </T>
+      </View>
+      <Gap h={8} />
+      <View style={styles.status}>
+        <View style={styles.dot} />
+        <T v="labelSmall">{status}</T>
+      </View>
+      <Gap h={16} />
+      {inDetention ? (
+        <>
+          <View style={styles.owed}>
+            <T v="bodyTiny" c={color.ink}>
+              Detention so far
+            </T>
+            <Gap h={4} />
+            <T v="numberL" style={styles.tabular}>
+              {money(c.owed)}
+            </T>
+          </View>
+          <Gap h={20} />
+        </>
+      ) : null}
+      <Timeline events={events} />
+      <Gap h={16} />
+      {st.live ? (
+        <>
+          <Button label="I left" onPress={() => a.leave()} />
+          <Gap h={16} />
+        </>
+      ) : null}
+      <View style={styles.links}>
+        <Link label="Edit arrival time" onPress={a.openFix} />
+      </View>
     </View>
   );
 }
@@ -246,4 +332,10 @@ const styles = StyleSheet.create({
   link: { textDecorationLine: 'underline' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: color.raise2 },
+  // Figma 08/09: "waited" sits 6 above the timer's bottom, 6 to its right.
+  waited: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  waitedWord: { marginBottom: 6, letterSpacing: 0 },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3.5 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.signal },
+  owed: { backgroundColor: color.signal, borderRadius: 24, borderCurve: 'continuous', padding: 18 },
 });

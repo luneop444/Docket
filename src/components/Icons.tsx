@@ -174,10 +174,16 @@ const IslandIconSvg = ({ c = color.ink, size = 20 }: P) => (
   </Svg>
 );
 
+/** Figma "sf: eye.slash" (Onboarding v3, E1), 20 box, 1.67 stroke. */
 const EyeSlashIconSvg = ({ c = color.ink, size = 20 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Path d="M2.5 12S6 5.5 12 5.5c1.6 0 3 .4 4.2 1M21.5 12S18 18.5 12 18.5c-1.6 0-3-.4-4.2-1" {...stroke(c)} />
-    <Path d="M9.2 14.8a4 4 0 0 1 5.6-5.6M4 20L20 4" {...stroke(c)} />
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 20 20" fill="none">
+    <Path
+      d="M2.5 2.5l15 15M8.834 4.25c.386-.055.776-.083 1.166-.083 4.167 0 7.083 3.75 7.917 5.833a10.6 10.6 0 0 1-2.167 3.167M5.5 5.5C3.667 6.667 2.5 8.5 2.083 10c.834 2.083 3.75 5.833 7.917 5.833 1.583 0 3-.5 4.167-1.333M8.25 8.25a2.5 2.5 0 0 0 3.5 3.5"
+      stroke={c}
+      strokeWidth={1.6667}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </Svg>
 );
 
@@ -367,6 +373,22 @@ export const HourglassIcon = ({ c = color.bg, size = 15 }: P) =>
 
 export const DollarIcon = ({ c = color.ink, size = 15 }: P) =>
   sf('dollarsign', 'bold', c, size, <DollarIconSvg c={c} size={size} />);
+
+/** Figma E1 "sf: truck.box", exported: box, cab, two wheels; 20 box, 1.67 stroke. */
+const TruckOutlineIconSvg = ({ c = color.ink, size = 20 }: P) => (
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 20 20" fill="none">
+    <Path
+      d="M2.083 5.417h9.167v7.916H2.083V5.417zM11.25 7.917h3.333l2.5 2.916v2.5H11.25M5.417 16.083a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM14.167 16.083a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"
+      stroke={c}
+      strokeWidth={1.6667}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const TruckOutlineIcon = ({ c = color.ink, size = 20 }: P) =>
+  sf('truck.box', 'regular', c, size, <TruckOutlineIconSvg c={c} size={size} />);
 
 export const TruckIcon = ({ c = color.ink, size = 15 }: P) =>
   sf('truck.box.fill', 'regular', c, size, <TruckIconSvg c={c} size={size} />);

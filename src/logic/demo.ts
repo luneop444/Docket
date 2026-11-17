@@ -31,6 +31,7 @@ export function demoState(s: AppState, state: DemoState): AppState {
   // 18 minutes of free time left, or 1:42 in if free time runs longer.
   if (state === 'counting') return { ...base, stop: { ...stop, phase: 'dock' }, now: Math.max(start, Math.min(arrive + 102, freeEnd - 18)) };
   const now = freeEnd + 48;
-  if (state === 'paid') return { ...base, stop: { ...stop, phase: 'dock' }, now };
+  // Checked in a minute after pulling in, as Figma 09 shows (arrived 1:48, checked in 1:49).
+  if (state === 'paid') return { ...base, stop: { ...stop, checkin: arrive + 1, phase: 'dock' }, now };
   return { ...base, stop: { ...stop, leave: now, phase: state === 'left' ? 'left' : 'logged' }, now };
 }

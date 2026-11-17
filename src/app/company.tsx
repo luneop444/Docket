@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, TextInput, View, type HostInstance, type ScrollViewInstance, type ImageSourcePropType } from 'react-native';
 import { OnboardingBar, Screen } from '../components/Chrome';
-import { EyeSlashIcon, SearchIcon, TruckIcon } from '../components/Icons';
+import { EyeSlashIcon, SearchIcon, TruckOutlineIcon } from '../components/Icons';
 import { INDEX_LETTERS, LetterIndex } from '../components/LetterIndex';
 import { Gap, noFocusRing, Option, T } from '../components/ui';
 import { COMPANIES, SUGGESTED } from '../logic/sampleData';
@@ -85,17 +85,17 @@ export default function PickCompany() {
     >
       <T v="h2">Who do you drive for?</T>
       <Gap h={8} />
-      <T v="body" c={color.sub}>Every company pays detention its own way. Pick yours and you’ll check its rules next.</T>
-      <Gap h={24} />
+      <T v="body" c={color.sub}>Each company pays detention its own way.</T>
+      <Gap h={20} />
       <View style={[styles.field, focused && styles.fieldFocus]}>
-        <SearchIcon />
+        <SearchIcon c={color.faint} />
         <TextInput
           value={query}
           onChangeText={setQuery}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder="Search or add your company"
-          placeholderTextColor={color.sub}
+          placeholderTextColor={color.faint}
           autoCorrect={false}
           autoComplete="off"
           style={styles.input}
@@ -105,7 +105,7 @@ export default function PickCompany() {
       <Gap h={24} />
       {!q ? (
         <>
-          <T v="labelPill">Popular with drivers</T>
+          <T v="labelSmall">Popular with drivers</T>
           <Gap h={10} />
           {/* Six visible before scrolling: Plaid found more visible choices meant fewer people had to search. */}
           <View style={styles.grid}>
@@ -144,13 +144,13 @@ export default function PickCompany() {
           <Gap h={16} />
           <View style={{ gap: 10 }}>
             <Option
-              icon={(c) => <TruckIcon c={c} size={17} />}
+              icon={(c) => <TruckOutlineIcon c={c} />}
               label="I’m an owner-operator"
               sub="You’ll enter your own rules"
               onPress={() => pick('', true)}
             />
             <Option
-              icon={(c) => <EyeSlashIcon c={c} size={18} />}
+              icon={(c) => <EyeSlashIcon c={c} size={20} />}
               label="I’d rather not say"
               sub="Nothing is counted"
               onPress={() => pick('', true)}
@@ -209,10 +209,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    height: 56,
-    // Pill: radius is half the height; 20 inset keeps the icon clear of the round end.
-    paddingHorizontal: 20,
-    borderRadius: 28, borderCurve: 'continuous',
+    // Figma E1 Search: 50 tall, a pill, 16 in, 10 between the glass and the text.
+    height: 50,
+    paddingHorizontal: 16,
+    borderRadius: 25, borderCurve: 'continuous',
     backgroundColor: color.raise,
   },
   fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },

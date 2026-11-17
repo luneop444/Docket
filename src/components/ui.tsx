@@ -189,7 +189,8 @@ export function Option({
   const text = (
     <View style={styles.flex}>
       <T v="bodyStrong">{label}</T>
-      {sub ? <T v="bodyTiny">{sub}</T> : null}
+      {/* Figma E1 icon options: the line under is 14 grey, 1 below the title. */}
+      {sub ? icon ? <T v="bodySmall" c={color.sub} style={{ marginTop: 1 }}>{sub}</T> : <T v="bodyTiny">{sub}</T> : null}
     </View>
   );
   if (radio) {
@@ -216,7 +217,7 @@ export function Option({
     >
       {icon ? <IconTile icon={icon} tone="white" size={40} /> : null}
       {text}
-      <ChevronRight />
+      <ChevronRight c={icon ? color.faint : undefined} />
     </Pressable>
   );
 }

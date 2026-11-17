@@ -147,8 +147,9 @@ export function OnboardingBar({ step, onBack }: { step?: number; onBack: () => v
 }
 
 /** Centered dashes; only the current step is long and dark (reference: Pinterest pin 737183032797648903). */
-const DASH = 18;
-const DASH_ON = 34;
+// Figma Onboarding v3 (E1 Progress): 40 for this step, 27 for the rest, 4 apart, #D7DBE0.
+const DASH = 27;
+const DASH_ON = 40;
 
 function StepDashes({ step }: { step: number }) {
   const { from } = useStepMotion(step);
@@ -184,9 +185,9 @@ function StepDashes({ step }: { step: number }) {
         const growing = n === step;
         const shrinking = animate && n === from;
         if (!growing && !shrinking)
-          return <View key={n} style={[styles.dash, { width: DASH, backgroundColor: color.track }]} />;
+          return <View key={n} style={[styles.dash, { width: DASH, backgroundColor: color.line }]} />;
         const range = growing ? [DASH, DASH_ON] : [DASH_ON, DASH];
-        const tint = growing ? [color.track, color.ink] : [color.ink, color.track];
+        const tint = growing ? [color.line, color.ink] : [color.ink, color.line];
         return (
           <Animated.View
             key={n}
