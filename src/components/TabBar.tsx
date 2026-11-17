@@ -35,8 +35,9 @@ export function TabBar() {
               onPress={() => router.navigate(href)}
               style={[styles.tab, on && styles.tabOn]}
             >
-              <Icon on={on} c={on ? color.signal : color.ink} />
-              <Text style={[type.labelTab, { color: on ? color.signal : color.ink }]}>{label}</Text>
+              {/* As the web bar: black, filled when selected and outlined otherwise. */}
+              <Icon on={on} c={color.ink} />
+              <Text style={[type.labelTab, { color: color.ink }]}>{label}</Text>
             </Pressable>
           );
         })}

@@ -50,7 +50,7 @@ export function useInsets() {
 }
 
 /** Height of the floating tab pill. */
-export const TAB_PILL = 64;
+export const TAB_PILL = 62;
 
 /**
  * Where the floating tab pill sits (12 above the home indicator's area) and how

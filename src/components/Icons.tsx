@@ -229,6 +229,14 @@ const useMaskId = () => `m${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
 
 const TabTodayIconSvg = ({ on, c }: TabP) => {
   const id = useMaskId();
+  // Off: the outline, as iOS tab bars pair a filled selected symbol with outlined others.
+  if (!on)
+    return (
+      <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
+        <Circle cx={12} cy={12} r={9.1} fill="none" stroke={c ?? color.ink} strokeWidth={1.8} />
+        <Path d="M12 7v5l-3.2 2" stroke={c ?? color.ink} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </Svg>
+    );
   return (
     <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
       <Defs>
@@ -244,6 +252,19 @@ const TabTodayIconSvg = ({ on, c }: TabP) => {
 
 const TabPaycheckIconSvg = ({ on, c }: TabP) => {
   const id = useMaskId();
+  if (!on)
+    return (
+      <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
+        <Path
+          d="M6.4 2.9h6.8l5 5V20a1.1 1.1 0 0 1-1.1 1.1H6.4A1.1 1.1 0 0 1 5.3 20V4a1.1 1.1 0 0 1 1.1-1.1zM13 3v5h5M8.6 13h6.8M8.6 16.8h6.8"
+          fill="none"
+          stroke={c ?? color.ink}
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    );
   return (
     <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
       <Defs>
@@ -265,6 +286,24 @@ const TabPaycheckIconSvg = ({ on, c }: TabP) => {
 
 const TabCompaniesIconSvg = ({ on, c }: TabP) => {
   const id = useMaskId();
+  if (!on)
+    return (
+      <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
+        <Path
+          d="M4 21V4.6a.7.7 0 0 1 .7-.7h7.6a.7.7 0 0 1 .7.7V21m0-10.1h6.3a.7.7 0 0 1 .7.7V21M2.6 21.1h18.8"
+          fill="none"
+          stroke={c ?? color.ink}
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <G fill={c ?? color.ink}>
+          {[[6.3, 6.6], [9.7, 6.6], [6.3, 10.2], [9.7, 10.2], [6.3, 13.8], [9.7, 13.8], [15.6, 13.4], [15.6, 16.8]].map(([x, y]) => (
+            <Rect key={`${x}-${y}`} x={x} y={y} width={2} height={2} rx={0.4} />
+          ))}
+        </G>
+      </Svg>
+    );
   return (
     <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
       <Defs>
@@ -383,10 +422,10 @@ export const ChecklistIcon = ({ c = color.ink, size = 20 }: P) =>
   sf('checklist', 'medium', c, size, <ChecklistIconSvg c={c} size={size} />);
 
 export const TabTodayIcon =({ on, c, cut }: TabP) =>
-  sf('clock.fill', 'regular', c ?? (on ? color.ink : color.faint), 24, <TabTodayIconSvg on={on} c={c} cut={cut} />);
+  sf(on ? 'clock.fill' : 'clock', 'regular', c ?? color.ink, 24, <TabTodayIconSvg on={on} c={c} cut={cut} />);
 
 export const TabPaycheckIcon = ({ on, c, cut }: TabP) =>
-  sf('doc.text.fill', 'regular', c ?? (on ? color.ink : color.faint), 24, <TabPaycheckIconSvg on={on} c={c} cut={cut} />);
+  sf(on ? 'doc.text.fill' : 'doc.text', 'regular', c ?? color.ink, 24, <TabPaycheckIconSvg on={on} c={c} cut={cut} />);
 
 export const TabCompaniesIcon = ({ on, c, cut }: TabP) =>
-  sf('building.2.fill', 'regular', c ?? (on ? color.ink : color.faint), 24, <TabCompaniesIconSvg on={on} c={c} cut={cut} />);
+  sf(on ? 'building.2.fill' : 'building.2', 'regular', c ?? color.ink, 24, <TabCompaniesIconSvg on={on} c={c} cut={cut} />);
