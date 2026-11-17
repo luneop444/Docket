@@ -16,23 +16,19 @@ const PILL_H = TAB_PILL - PAD * 2;
 const SLIDE_MS = 320;
 const SLIDE = `transform ${SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
 
+/** The bar's glass: white at 25% over the page, frosted 1px, as Edward asked (not doubled). */
+const BAR_TINT = 'rgba(255,255,255,0.25)';
+const FROST = 1;
+/** The selected pill: grey glass, the cards' second grey (#E5E8EC) at 55%. */
+const PILL_TINT = 'rgba(229,232,236,0.55)';
 /**
- * The bar's glass: white at 62% over the page, frosted 4px. At 25% and 1px (Aave's own
- * near-clear glass) list text read straight through the labels on Edward's phone; this
- * keeps the page visible behind the glass while the labels stay readable.
+ * Aave's glass ("Building glass for the web"): their lens map, drawn for an 88x40 lens.
+ * Bend: 1.6 times their 27.3px across and 9.46px down, so the page under the glass reads
+ * as bent and not just frosted. Colour split from their switch demo, their strongest:
+ * red 20% and green 10% further than blue. Rim highlight strength 1.5, from the same demos.
  */
-const BAR_TINT = 'rgba(255,255,255,0.62)';
-const FROST = 4;
-/** The selected pill: Docket's lime as a subtle tint in the glass, black on it. */
-const PILL_TINT = 'rgba(212,245,76,0.38)';
-/**
- * Aave's glass ("Building glass for the web"): their lens map, drawn for an 88x40 lens,
- * bends up to 27.3px across and 9.46px down (green squeezed to 0.556 of its range).
- * Colour split and rim highlight from their slider demo: red 13% and green 6.5% further
- * than blue, highlight strength 1.5.
- */
-const AAVE = { w: 88, h: 40, x: 27.3, y: 9.46 };
-const CHROMA = [1.13, 1.065, 1];
+const AAVE = { w: 88, h: 40, x: 27.3 * 1.6, y: 9.46 * 1.6 };
+const CHROMA = [1.2, 1.1, 1];
 const SPEC = 1.5;
 /** Room around each piece of glass for its bend to read the page just past its edge. */
 const M = 28;
@@ -168,7 +164,7 @@ export function TabBar() {
             const on = i === index;
             return (
               <button key={href} type="button" role="tab" aria-selected={on} onClick={() => go(i, href)} style={S.tab}>
-                <Icon on={on} c={on ? color.ink : color.sub} />
+                <Icon on={on} c={on ? color.signal : color.sub} />
                 <span style={{ ...S.label, color: on ? color.ink : color.sub }}>{label}</span>
               </button>
             );
