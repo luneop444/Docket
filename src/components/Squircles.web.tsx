@@ -30,9 +30,9 @@ const radii = new WeakMap<HTMLElement, number[]>();
 
 /**
  * Apple's concentric rule for nested shapes: when a rounded element's corner
- * sits inside its rounded parent's corner, inner radius = outer radius − gap,
- * so both curves share a center. Corners that sit further in than the
- * parent's radius keep their own radius.
+ * sits tight inside its rounded parent's corner, inner radius = outer radius − gap,
+ * so both curves share a center. It only ever widens a corner; elements set
+ * further in keep their own radius on every corner.
  */
 function concentric(el: HTMLElement, own: number[]) {
   let parent = el.parentElement;
@@ -47,7 +47,10 @@ function concentric(el: HTMLElement, own: number[]) {
     Math.max(a.right - b.right, a.bottom - b.bottom),
     Math.max(b.left - a.left, a.bottom - b.bottom),
   ];
-  return own.map((v, i) => (v > 0 && gaps[i] >= 0 && gaps[i] < pr[i] ? Math.max(pr[i] - gaps[i], 0) : v));
+  // Only ever widen a corner to stay concentric, never sharpen it: with a 20 inset
+  // inside a 24 card, 24 - 20 = 4 would leave a button with near-square outer corners
+  // and round inner ones. Every corner of an element keeps one shape.
+  return own.map((v, i) => (v > 0 && gaps[i] >= 0 && gaps[i] < pr[i] ? Math.max(pr[i] - gaps[i], v) : v));
 }
 
 function px(v: string) {
@@ -78,11 +81,13 @@ function apply(el: HTMLElement) {
   const r = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius].map(px);
   const w = el.offsetWidth;
   const h = el.offsetHeight;
-    const rounded = r.some((v) => v > 0) && r.every((v) => !Number.isNaN(v));
+  const rounded = r.some((v) => v > 0) && r.every((v) => !Number.isNaN(v));
+  // Inline text (the SAMPLE DATA tag) has no box to clip; a clip there hides it.
+  const inline = cs.display === 'inline';
   // Circles and pills (every corner at least half the short side) keep their round ends.
   const circle = w > 0 && r.every((v) => v >= Math.min(w, h) / 2 - 0.5);
   const outerShadow = cs.boxShadow !== 'none' && !cs.boxShadow.includes('inset');
-  if (!rounded || circle || outerShadow || !w || !h) {
+  if (!rounded || inline || circle || outerShadow || !w || !h) {
     release(el);
     return;
   }
