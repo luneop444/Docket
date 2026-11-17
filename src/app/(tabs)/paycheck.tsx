@@ -98,6 +98,17 @@ export default function Paycheck() {
           {w.eligible} load{w.eligible === 1 ? '' : 's'}, {rulesLine(s.rules)}.
         </T>
         <Gap h={12} />
+        <T v="bodyTiny">
+          {week.sample ? (
+            <>
+              <Fake label="Sample data" /> A made-up week. Stops you time with “I’m here” show here instead. Scan fills in a
+              sample settlement.
+            </>
+          ) : (
+            'From the stops you timed. Scan your settlement and Claude marks each load by its number, or mark them below.'
+          )}
+        </T>
+        <Gap h={20} />
         <Row style={{ gap: 12 }}>
           <Button label="Change rules" variant="white" small style={styles.flex} onPress={() => router.push('/rules')} />
           {w.eligible ? (
@@ -112,20 +123,9 @@ export default function Paycheck() {
             />
           ) : null}
         </Row>
-        <Gap h={8} />
-        <T v="bodyTiny">
-          {week.sample ? (
-            <>
-              <Fake label="Sample data" /> A made-up week. Stops you time with “I’m here” show here instead. Scan fills in a
-              sample settlement.
-            </>
-          ) : (
-            'From the stops you timed. Scan your settlement and Claude marks each load by its number, or mark them below.'
-          )}
-        </T>
       </Card>
-      <Gap h={16} />
-      <T v="bodySmall" style={{ paddingLeft: 4 }}>
+      <Gap h={32} />
+      <T v="bodySmall">
         {loads.length ? 'Find each load on your settlement and mark what you see.' : 'No stops this week.'}
       </T>
       <Gap h={12} />
@@ -184,11 +184,11 @@ function LoadCard({
         {loadNo(l) ? `Load ${loadNo(l)}, ` : ''}
         {l.day}, {clock(l.arrive)} to {clock(l.leave)}
       </T>
-      <Gap h={12} />
+      <Gap h={16} />
       <TimeBar free={Math.min(free, total)} detention={Math.max(0, total - free)} />
       <Gap h={8} />
       <T v="bodyTiny">{dur(paidMin)} past free time</T>
-      <Gap h={12} />
+      <Gap h={16} />
       <Seg
         label={`What your settlement shows for ${l.name}${loadNo(l) ? `, load ${loadNo(l)}` : ''}`}
         options={[
