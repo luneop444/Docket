@@ -50,6 +50,10 @@ interface Picture {
   height: number;
   w: number;
   h: number;
+  /** An element under the bar when the picture was taken, and where it sits in the picture. */
+  anchor: HTMLElement;
+  ax: number;
+  ay: number;
 }
 
 /**
@@ -109,8 +113,12 @@ export function TabBar() {
     const g = gls.current, p = pic.current, bar = barRef.current, pill = pillRef.current;
     if (!g || !p || !bar || !pill || !g.bar.ready()) return;
     const cr = p.el.getBoundingClientRect(), br = bar.getBoundingClientRect(), pr = pill.getBoundingClientRect();
+    // The picture follows the element that was under the bar when it was taken, so it moves
+    // with the page whichever element scrolls (on a phone that isn't always the one found).
+    const ar = p.anchor.isConnected ? p.anchor.getBoundingClientRect() : null;
+    const origin: [number, number] = ar && ar.height > 0 ? [ar.left - p.ax, ar.top - p.ay] : [cr.left, cr.top + p.top];
     const base = {
-      pageOrigin: [cr.left, cr.top + p.top] as [number, number],
+      pageOrigin: origin,
       pageSize: [p.w, p.h] as [number, number],
       barOrigin: [br.left, br.top] as [number, number],
       barSize: [br.width, br.height] as [number, number],
@@ -191,9 +199,21 @@ export function TabBar() {
       if (!cv) return;
       g.bar.setPage(frosted(cv, scale));
       g.pill.setPage(frosted(cv, scale));
-      pic.current = { el: content, path, top: shift, bandTop: top, height: Math.min(band, content.scrollHeight - top), w: cv.width / scale, h: cv.height / scale };
+      const ar0 = anchor.getBoundingClientRect();
+      pic.current = {
+        el: content,
+        path,
+        top: shift,
+        bandTop: top,
+        height: Math.min(band, content.scrollHeight - top),
+        w: cv.width / scale,
+        h: cv.height / scale,
+        anchor,
+        ax: ar0.left - cr0.left,
+        ay: anchorY - shift,
+      };
       setLiveFor(path);
-      setNote(`live · ${Math.round(scale)}x · ${navigator.userAgent.includes('Chrome/') ? 'Chrome' : 'Safari'}`);
+      setNote(`live · ${scroller ? 'scrolling list' : 'whole screen'} · ${Math.round(scale)}x · ${navigator.userAgent.includes('Chrome/') ? 'Chrome' : 'Safari'}`);
       requestAnimationFrame(frame);
     } finally {
       busy.current = false;
@@ -367,23 +387,30 @@ function boxBlur(d: Uint8ClampedArray, w: number, h: number, r: number, across: 
 }
 
 /**
- * The scrolling element under the bar: of the scrollable elements the bar's middle sits
- * over, the outermost. Found by position, not by what the finger last touched, so the
- * screen is drawn once when it opens and not again on its first scroll.
+ * The scrolling element under the bar: the nearest scroll area around whatever is actually
+ * showing under the bar's middle. Screens the app keeps loaded behind the current one
+ * (Today stays loaded under Paycheck) are skipped, because they aren't what's showing.
  */
 function scrollerUnder(bar: HTMLElement): HTMLElement | null {
   const r = bar.getBoundingClientRect();
-  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-  let best: HTMLElement | null = null;
-  for (const e of Array.from(document.querySelectorAll<HTMLElement>('div'))) {
-    if (bar.parentElement?.contains(e) || e.scrollHeight <= e.clientHeight + 1) continue;
-    const oy = getComputedStyle(e).overflowY;
-    if (oy !== 'auto' && oy !== 'scroll') continue;
-    const b = e.getBoundingClientRect();
-    if (cx < b.left || cx > b.right || cy < b.top || cy > b.bottom || b.width === 0) continue;
-    if (!best || b.height * b.width > best.getBoundingClientRect().height * best.getBoundingClientRect().width) best = e;
+  const hits = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  let fallback: HTMLElement | null = null;
+  // From the top layer down: transparent layers over the list (a drawer's hit area) have no
+  // scroll area of their own, so the first hit that sits in one that scrolls wins.
+  for (const h of hits) {
+    if (bar.parentElement?.contains(h) || h === document.documentElement || h === document.body) continue;
+    let e: HTMLElement | null = h as HTMLElement;
+    while (e && e !== document.body) {
+      const oy = getComputedStyle(e).overflowY;
+      if (oy === 'auto' || oy === 'scroll') {
+        if (e.scrollHeight > e.clientHeight + 1) return e;
+        fallback = fallback ?? e;
+        break;
+      }
+      e = e.parentElement;
+    }
   }
-  return best;
+  return fallback;
 }
 
 /** A map image laid on a neutral (128) field the size of the glass's window, at device scale. */
