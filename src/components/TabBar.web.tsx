@@ -101,6 +101,8 @@ export function TabBar() {
   const pic = useRef<Picture | null>(null);
   const busy = useRef(false);
   const takePicture = useRef<() => void>(() => {});
+  const lastShot = useRef(0);
+  const retries = useRef(0);
 
   // One frame: where the page, the bar and the pill are now.
   const frame = useCallback(() => {
@@ -125,8 +127,11 @@ export function TabBar() {
     g.bar.draw({ ...base, outOrigin: [br.left, br.top], outSize: [br.width, br.height], isPill: false });
     g.pill.draw({ ...base, outOrigin: [pr.left, pr.top], outSize: [pr.width, pr.height], isPill: true });
     // A scroll that leaves the band asks for a new picture of the part now under the bar.
-    const need = br.top - M - cr.top;
-    if (!busy.current && (need < p.bandTop || need + TAB_PILL + M * 2 > p.bandTop + p.height)) takePicture.current();
+    // Past the end of the content there is nothing more to draw, so that doesn't count as
+    // leaving the band (on Paycheck, scrolled to the bottom, it re-drew in a loop).
+    const need = br.top - M - cr.top, end = p.el.scrollHeight;
+    const below = need + TAB_PILL + M * 2 > p.bandTop + p.height && p.bandTop + p.height < end - 1;
+    if (!busy.current && (need < p.bandTop - 1 || below) && performance.now() - lastShot.current > 500) takePicture.current();
   }, [scale]);
 
   // The picture: a band of the screen around the bar, frosted, handed to the glass.
@@ -134,9 +139,16 @@ export function TabBar() {
     const bar = barRef.current, g = gls.current;
     if (!bar || !g || busy.current) return;
     busy.current = true;
+    lastShot.current = performance.now();
     try {
       const r = bar.getBoundingClientRect();
       const scroller = scrollerUnder(bar);
+      // Right after a tab switch the new screen may not be laid out yet; until its scroller
+      // is there, draw what's there and look again shortly.
+      if (!scroller && retries.current < 4) {
+        retries.current++;
+        setTimeout(() => takePicture.current(), 400);
+      }
       // A screen too short to scroll: draw the whole app root.
       const content = ((scroller?.firstElementChild as HTMLElement | null) ?? document.getElementById('root')) as HTMLElement | null;
       if (!content) return setNote('nothing under the bar to draw');
@@ -227,8 +239,16 @@ export function TabBar() {
   // A new screen needs a new picture; until it's in, the plain tints stand in.
   useEffect(() => {
     pic.current = null;
+    retries.current = 0;
+    // The new screen fades in, so a picture taken mid-fade comes out washed white, and a
+    // short screen like Paycheck never scrolls far enough to take another. So a second
+    // picture follows once the fade is done.
     const t = setTimeout(() => void picture(), 250);
-    return () => clearTimeout(t);
+    const t2 = setTimeout(() => takePicture.current(), 900);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(t2);
+    };
   }, [path, picture]);
 
   // Every frame something moves: scrolling, and the pill's slide.
