@@ -40,6 +40,12 @@ const radii = new WeakMap<HTMLElement, number[]>();
  * further in keep their own radius on every corner.
  */
 function concentric(el: HTMLElement, own: number[]) {
+  // Controls (buttons, segmented choices, tabs) and objects that sit on a card (icon
+  // tiles) keep their own squircle on all four corners: a control's corners never get
+  // sharper than its own, and pressing it (which scales it) can't change its shape.
+  // Only inner panels nest.
+  const role = el.getAttribute('role');
+  if (el.dataset.squircle === 'own' || role === 'button' || role === 'radio' || role === 'tab') return own;
   let parent = el.parentElement;
   while (parent && !radii.has(parent)) parent = parent.parentElement;
   if (!parent) return own;

@@ -155,7 +155,8 @@ const CalendarPlusIconSvg = ({ c = color.ink, size = 24 }: P) => (
 );
 
 const LocationIconSvg = ({ c = color.ink, size = 20, filled }: P & { filled?: boolean }) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
+  // Shifted down-left so the arrow's weight, not its box, sits in the middle of the tile.
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0.8 -0.8 24 24">
     <Path
       d="M20.5 3.5L3.8 10.6c-.7.3-.6 1.3.1 1.5l7 1.9 1.9 7c.2.7 1.2.8 1.5.1l7.1-16.7c.2-.5-.4-1.1-.9-.9z"
       stroke={c}
