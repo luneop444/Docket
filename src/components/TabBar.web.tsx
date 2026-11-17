@@ -80,33 +80,83 @@ export function TabBar() {
 
   // Draw the glass from a fresh picture of the page under the bar.
   const run = useRef(0);
+  const snap = useRef<{ el: HTMLElement; path: string; cv: HTMLCanvasElement; scale: number; top: number; bandTop: number; height: number } | null>(null);
   const drawGlass = async () => {
     const bar = barRef.current, bc = barCv.current, pc = pillCv.current;
     if (!bar || !bc || !pc || !tabW) return setNote('waiting for layout');
-    setNote('taking the picture');
     const id = ++run.current;
     const r = bar.getBoundingClientRect();
     const scale = Math.min(2, window.devicePixelRatio || 1);
     const W = r.width + M * 2, H = TAB_PILL + M * 2;
-    const { default: html2canvas } = (await import('html2canvas')) as unknown as { default: Html2Canvas };
-    const shot = await html2canvas(document.body, {
-      x: r.left - M + window.scrollX,
-      y: r.top - M + window.scrollY,
-      width: W,
-      height: H,
-      scale,
-      backgroundColor: color.bg,
-      logging: false,
-      ignoreElements: (el: Element) => el === bar.parentElement,
-    }).catch((e: unknown) => {
-      setNote(`picture failed: ${e instanceof Error ? e.message : String(e)}`);
-      return null;
-    });
-    if (!shot || id !== run.current) return;
-    setNote(`picture ${shot.width}x${shot.height}, bending`);
+
+    // The slow part, once per screen: the scrolling content under the bar, drawn whole.
+    const scroller = scrollerUnder(bar);
+    // A screen too short to scroll: draw the whole app root instead, still only once.
+    const content = ((scroller?.firstElementChild as HTMLElement | null) ?? document.getElementById('root')) as HTMLElement | null;
+    if (!content) return setNote('nothing under the bar to draw');
+    // Only a band around the bar is drawn (a 42,000px list is too big for one picture on a
+    // phone); it's drawn again only when a scroll leaves it.
+    const cr0 = content.getBoundingClientRect();
+    const need = r.top - M - cr0.top;
+    const s0 = snap.current;
+    if (!s0 || s0.el !== content || s0.path !== path || need < s0.bandTop || need + H > s0.bandTop + s0.height) {
+      setNote('drawing this part of the screen');
+      if (debug) console.log('[glass] snapshot', path, s0 ? (s0.el !== content ? 'new element' : s0.path !== path ? 'new path' : 'left band') : 'first', content.scrollHeight);
+      const band = Math.round(window.innerHeight * 1.5);
+      const top = Math.max(0, Math.min(content.scrollHeight - band, need - band / 2));
+      // html2canvas copies the whole page before drawing; rows far from the bar are left out
+      // of that copy, which is most of the work on a long list. Leaving rows out moves the
+      // rest up, so one element under the bar is marked and measured in the copy to put the
+      // picture back in place.
+      const bandTop = top, bandBottom = top + band;
+      const hit = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2).find((e) => content.contains(e) && e !== content) as HTMLElement | undefined;
+      const anchor = hit ?? content;
+      const anchorY = anchor.getBoundingClientRect().top - cr0.top;
+      content.setAttribute('data-glass-root', '');
+      anchor.setAttribute('data-glass-anchor', '');
+      let shift = 0;
+      const { default: html2canvas } = (await import('html2canvas')) as unknown as { default: Html2Canvas };
+      const cv = await html2canvas(content, {
+        scale,
+        backgroundColor: color.bg,
+        logging: false,
+        ignoreElements: (el: Element) => {
+          if (el === bar.parentElement) return true;
+          if (!content.contains(el) || el === content || el.contains(anchor)) return false;
+          const b = el.getBoundingClientRect();
+          const y0 = b.top - cr0.top, y1 = b.bottom - cr0.top;
+          return y1 < bandTop || y0 > bandBottom;
+        },
+        onclone: (doc: Document) => {
+          const root = doc.querySelector('[data-glass-root]'), a = doc.querySelector('[data-glass-anchor]');
+          if (root && a) shift = anchorY - (a.getBoundingClientRect().top - root.getBoundingClientRect().top);
+        },
+      }).catch((e: unknown) => {
+        setNote(`picture failed: ${e instanceof Error ? e.message : String(e)}`);
+        return null;
+      });
+      anchor.removeAttribute('data-glass-anchor');
+      content.removeAttribute('data-glass-root');
+      if (!cv) return;
+      snap.current = { el: content, path, cv, scale, top: shift, bandTop: top, height: Math.min(band, content.scrollHeight - top) };
+    }
+    const picture = snap.current;
+    if (id !== run.current || !picture) return;
+
+    // The fast part, after every scroll: crop the strip now under the bar.
+    const cr = content.getBoundingClientRect();
+    const shot = document.createElement('canvas');
+    shot.width = Math.round(W * scale);
+    shot.height = Math.round(H * scale);
+    const sctx = shot.getContext('2d')!;
+    sctx.fillStyle = color.bg;
+    sctx.fillRect(0, 0, shot.width, shot.height);
+    const sc = picture.scale;
+    sctx.drawImage(picture.cv, (r.left - M - cr.left) * sc, (r.top - M - cr.top - picture.top) * sc, W * sc, H * sc, 0, 0, shot.width, shot.height);
+
     const [barMap, lensMap] = await Promise.all([
-      mapData(sliceMap(r.width, TAB_PILL), W, H, { x: M, y: M, w: r.width, h: TAB_PILL }, scale),
-      mapData(GLASS_MAP, tabW + M * 2, PILL_H + M * 2, { x: M, y: M, w: tabW, h: PILL_H }, scale),
+      cachedMap(`bar-${Math.round(r.width)}-${scale}`, () => mapData(sliceMap(r.width, TAB_PILL), W, H, { x: M, y: M, w: r.width, h: TAB_PILL }, scale)),
+      cachedMap(`lens-${Math.round(tabW)}-${scale}`, () => mapData(GLASS_MAP, tabW + M * 2, PILL_H + M * 2, { x: M, y: M, w: tabW, h: PILL_H }, scale)),
     ]);
     if (id !== run.current) return;
 
@@ -149,17 +199,22 @@ export function TabBar() {
     const settle = (ms: number) => {
       run.current++;
       setBent(false);
+      setNote('waiting for the page to settle');
       clearTimeout(t);
       t = setTimeout(draw, ms);
     };
-    settle(tapped === null ? 400 : SLIDE_MS + 120);
-    const onScroll = () => settle(160);
+    settle(tapped === null ? 250 : SLIDE_MS + 60);
+    const onScroll = () => settle(80);
+    const onResize = () => {
+      snap.current = null;
+      settle(250);
+    };
     document.addEventListener('scroll', onScroll, { capture: true, passive: true });
-    window.addEventListener('resize', onScroll);
+    window.addEventListener('resize', onResize);
     return () => {
       clearTimeout(t);
       document.removeEventListener('scroll', onScroll, { capture: true });
-      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('resize', onResize);
     };
   }, [draw, tapped, path]);
 
@@ -242,6 +297,33 @@ function boxBlur(d: Uint8ClampedArray, w: number, h: number, r: number, across: 
       }
     }
   }
+}
+
+/**
+ * The scrolling element under the bar: of the scrollable elements the bar's middle sits
+ * over, the outermost. Found by position, not by what the finger last touched, so the
+ * screen is drawn once when it opens and not again on its first scroll.
+ */
+function scrollerUnder(bar: HTMLElement): HTMLElement | null {
+  const r = bar.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  let best: HTMLElement | null = null;
+  for (const e of Array.from(document.querySelectorAll<HTMLElement>('div'))) {
+    if (bar.parentElement?.contains(e) || e.scrollHeight <= e.clientHeight + 1) continue;
+    const oy = getComputedStyle(e).overflowY;
+    if (oy !== 'auto' && oy !== 'scroll') continue;
+    const b = e.getBoundingClientRect();
+    if (cx < b.left || cx > b.right || cy < b.top || cy > b.bottom || b.width === 0) continue;
+    if (!best || b.height * b.width > best.getBoundingClientRect().height * best.getBoundingClientRect().width) best = e;
+  }
+  return best;
+}
+
+/** Bend maps are the same for a given size, so each is built once. */
+const maps = new Map<string, Promise<ImageData>>();
+function cachedMap(key: string, make: () => Promise<ImageData>) {
+  if (!maps.has(key)) maps.set(key, make());
+  return maps.get(key)!;
 }
 
 /** Copy the glass's own area out of a window that has M of room around it. */
