@@ -422,9 +422,12 @@ export const COMPANIES: Company[] = withSetup(BASE_COMPANIES, TEST_SETUP);
 // The six in the team's Figma (Onboarding v3, E1 Pick company), which have logos. FedEx
 // Freight, not FedEx: its logo is the Freight one, and Freight runs its own company drivers.
 const POPULAR = ['Swift Transportation', 'Schneider National', 'J.B. Hunt Transport', 'FedEx Freight', 'Werner Enterprises', 'Prime Inc.'];
+// With a test setup, the participant's company leads and the Figma's popular ones fill the
+// rest, so the logos stay (before, the first six A-list rows showed, mostly without logos).
+const popular = POPULAR.map((n) => COMPANIES.find((c) => c.name === n)).filter((c): c is Company => !!c);
 export const SUGGESTED: Company[] = TEST_SETUP
-  ? COMPANIES.slice(0, 6)
-  : POPULAR.map((n) => COMPANIES.find((c) => c.name === n)).filter((c): c is Company => !!c);
+  ? [COMPANIES[0], ...popular.filter((c) => c.name !== COMPANIES[0].name)].slice(0, 6)
+  : popular;
 
 export interface WeekLoad {
   /** Key for settlement marks. For the sample week it's also the load number. */
