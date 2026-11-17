@@ -306,6 +306,9 @@ function useIslandContent() {
   return copy ? { ...copy, stg } : null;
 }
 
+/** Off: matches iOS, which hides an app's own Live Activity while that app is open. */
+const OPEN_APP_SHOWS_ACTIVITY = false;
+
 const ISLAND = {
   idle: { w: 126, h: 37, r: 19 },
   live: { w: 250, h: 37, r: 19 },
@@ -316,7 +319,11 @@ function Island() {
   const { ui, a } = useStore();
   const framed = useFramed();
   const insets = useSafeAreaInsets();
-  const content = useIslandContent();
+  // The app's own Live Activity never shows in the island while the app is open
+  // (iOS hides it in the foreground), so inside the app the island stays the
+  // plain hardware pill. The Live Activity shows on the simulated lock screen.
+  const live = useIslandContent();
+  const content = OPEN_APP_SHOWS_ACTIVITY ? live : null;
   const stg = content?.stg ?? 0;
   const mode = !content ? 'idle' : ui.expanded ? 'expanded' : 'live';
 

@@ -41,14 +41,25 @@ export function useIslandStage() {
 export function useInsets() {
   const framed = useFramed();
   const insets = useSafeAreaInsets();
-  const live = useIslandStage() > 0;
   if (framed) return { top: 48, footerBottom: 34, tabBottom: 22 };
-  // On a phone our simulated island floats below the real one, so leave room for it.
   return {
-    top: Math.max(12, insets.top) + (live ? 48 : 0),
+    top: Math.max(12, insets.top),
     footerBottom: Math.max(20, insets.bottom),
     tabBottom: insets.bottom,
   };
+}
+
+/** Height of the floating tab pill. */
+export const TAB_PILL = 64;
+
+/**
+ * Where the floating tab pill sits (12 above the home indicator's area) and how
+ * much bottom padding a tab screen needs so its last row can scroll clear of it.
+ */
+export function useTabSpace() {
+  const { tabBottom } = useInsets();
+  const pillBottom = Math.max(12, tabBottom - 12);
+  return { pillBottom, space: pillBottom + TAB_PILL + 24 };
 }
 
 export function TopSafe() {
@@ -65,24 +76,24 @@ export function Wordmark() {
 }
 
 /** Docket wordmark on the left, optional actions on the right. */
-export function TopBar({ trailing }: { trailing?: ReactNode }) {
+export function TopBar({ trailing, title }: { trailing?: ReactNode; title?: string }) {
   return (
     <>
       <TopSafe />
       <View style={styles.topbar}>
-        <Wordmark />
+        {title ? <T v="h2">{title}</T> : <Wordmark />}
         <View style={styles.trailing}>{trailing}</View>
       </View>
     </>
   );
 }
 
-/** Date + profile button (opens Your rules). */
-export function ProfileTrailing() {
+/** Date + profile button (opens Your rules). `noDate` when the date is already the title. */
+export function ProfileTrailing({ noDate }: { noDate?: boolean } = {}) {
   const { s } = useStore();
   return (
     <>
-      <T v="bodyTiny">{headerDate(s.stop, TODAY_LABEL)}</T>
+      {noDate ? null : <T v="bodyTiny">{headerDate(s.stop, TODAY_LABEL)}</T>}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Profile and rules"
@@ -255,6 +266,7 @@ export function Screen({
   onScrollY,
   overlay,
   step,
+  tabs,
 }: {
   header: ReactNode;
   footer?: ReactNode;
@@ -267,8 +279,11 @@ export function Screen({
   overlay?: ReactNode;
   /** Onboarding step: the content (not the header) pushes in from the side. */
   step?: number;
+  /** A tab screen: leave room under the content for the floating tab pill. */
+  tabs?: boolean;
 }) {
   const { footerBottom } = useInsets();
+  const { space } = useTabSpace();
   return (
     <View style={styles.screen}>
       {header}
@@ -276,7 +291,7 @@ export function Screen({
         <ScrollView
           ref={scrollRef}
           style={styles.flex}
-          contentContainerStyle={[styles.scroll, step ? styles.stepTop : null, contentStyle]}
+          contentContainerStyle={[styles.scroll, step ? styles.stepTop : null, tabs ? { paddingBottom: space } : null, contentStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           onScroll={onScrollY ? (e) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}

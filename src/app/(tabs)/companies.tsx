@@ -17,7 +17,7 @@ export default function Companies() {
       (s.sort === 'wait' ? parseFloat(x.avg) - parseFloat(y.avg) || x.past - y.past : y.paid - x.paid),
   );
   return (
-    <Screen header={<PageHead title="Companies" />}>
+    <Screen tabs header={<PageHead title="Companies" />}>
       <T v="bodySmall">What waiting looks like at each company</T>
       <Gap h={12} />
       <Seg<CompanySort>

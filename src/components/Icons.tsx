@@ -5,8 +5,8 @@
  * v1 prototype). The status bar pieces at the bottom are not icons.
  */
 import { SymbolView, type SFSymbol, type SymbolWeight } from 'expo-symbols';
-import type { ReactElement } from 'react';
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import { useId, type ReactElement } from 'react';
+import Svg, { Circle, Defs, G, Mask, Path, Rect } from 'react-native-svg';
 import { color } from '../theme/tokens';
 
 /**
@@ -129,31 +129,74 @@ const ShieldIconSvg = ({ c = color.ink, size = 20 }: P) => (
   </Svg>
 );
 
-const TabTodayIconSvg = ({ on }: { on: boolean }) => (
-  <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
-    <Circle cx={12} cy={12} r={10} fill={on ? color.ink : color.faint} />
-    <Path d="M12 6.5V12l-3.5 2.2" stroke={color.bg} strokeWidth={2.2} strokeLinecap="round" fill="none" />
-  </Svg>
-);
+/**
+ * Tab icons: `c` overrides the fill. Their details (clock hands, page lines,
+ * windows) are cut out of the shape, so whatever the icon sits on shows through.
+ * `cut` is accepted for older callers and ignored.
+ */
+type TabP = { on: boolean; c?: string; cut?: string };
 
-const TabPaycheckIconSvg = ({ on }: { on: boolean }) => (
-  <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
-    <Path d="M6 2h7.5L19 7.5V21a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" fill={on ? color.ink : color.faint} />
-    <Path d="M13 2v6h6" fill={color.bg} opacity={0.45} />
-    <Path d="M8.5 13h7M8.5 17h7" stroke={color.bg} strokeWidth={1.8} strokeLinecap="round" />
-  </Svg>
-);
+/** A per-instance mask id; useId's colons would break url(#…). */
+const useMaskId = () => `m${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
 
-const TabCompaniesIconSvg = ({ on }: { on: boolean }) => (
-  <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24" fill={on ? color.ink : color.faint}>
-    <Path d="M3 4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v17H3V4zm11 6h6a1 1 0 0 1 1 1v10h-7V10z" />
-    <G fill={color.bg}>
-      {[[5.5, 5.5], [9.5, 5.5], [5.5, 9.5], [9.5, 9.5], [5.5, 13.5], [9.5, 13.5], [16, 12.5], [16, 16.5]].map(([x, y]) => (
-        <Rect key={`${x}-${y}`} x={x} y={y} width={2} height={2} rx={0.4} />
-      ))}
-    </G>
-  </Svg>
-);
+const TabTodayIconSvg = ({ on, c }: TabP) => {
+  const id = useMaskId();
+  return (
+    <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
+      <Defs>
+        <Mask id={id} x={0} y={0} width={24} height={24} maskUnits="userSpaceOnUse">
+          <Rect width={24} height={24} fill="#fff" />
+          <Path d="M12 6.5V12l-3.5 2.2" stroke="#000" strokeWidth={2.2} strokeLinecap="round" fill="none" />
+        </Mask>
+      </Defs>
+      <Circle cx={12} cy={12} r={10} fill={c ?? (on ? color.ink : color.faint)} mask={`url(#${id})`} />
+    </Svg>
+  );
+};
+
+const TabPaycheckIconSvg = ({ on, c }: TabP) => {
+  const id = useMaskId();
+  return (
+    <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
+      <Defs>
+        <Mask id={id} x={0} y={0} width={24} height={24} maskUnits="userSpaceOnUse">
+          <Rect width={24} height={24} fill="#fff" />
+          {/* The folded corner lets 45% through, as the old fold was drawn at 45%. */}
+          <Path d="M13 2v6h6" fill="#000" opacity={0.45} />
+          <Path d="M8.5 13h7M8.5 17h7" stroke="#000" strokeWidth={1.8} strokeLinecap="round" />
+        </Mask>
+      </Defs>
+      <Path
+        d="M6 2h7.5L19 7.5V21a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"
+        fill={c ?? (on ? color.ink : color.faint)}
+        mask={`url(#${id})`}
+      />
+    </Svg>
+  );
+};
+
+const TabCompaniesIconSvg = ({ on, c }: TabP) => {
+  const id = useMaskId();
+  return (
+    <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
+      <Defs>
+        <Mask id={id} x={0} y={0} width={24} height={24} maskUnits="userSpaceOnUse">
+          <Rect width={24} height={24} fill="#fff" />
+          <G fill="#000">
+            {[[5.5, 5.5], [9.5, 5.5], [5.5, 9.5], [9.5, 9.5], [5.5, 13.5], [9.5, 13.5], [16, 12.5], [16, 16.5]].map(([x, y]) => (
+              <Rect key={`${x}-${y}`} x={x} y={y} width={2} height={2} rx={0.4} />
+            ))}
+          </G>
+        </Mask>
+      </Defs>
+      <Path
+        d="M3 4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v17H3V4zm11 6h6a1 1 0 0 1 1 1v10h-7V10z"
+        fill={c ?? (on ? color.ink : color.faint)}
+        mask={`url(#${id})`}
+      />
+    </Svg>
+  );
+};
 
 /** iOS status bar indicators (desktop frame only). */
 export const SignalBars = () => (
@@ -218,11 +261,11 @@ export const SearchIcon = ({ c = color.sub, size = 20 }: P) =>
 export const ShieldIcon = ({ c = color.ink, size = 20 }: P) =>
   sf('checkmark.shield', 'medium', c, size, <ShieldIconSvg c={c} size={size} />);
 
-export const TabTodayIcon = ({ on }: { on: boolean }) =>
-  sf('clock.fill', 'regular', on ? color.ink : color.faint, 24, <TabTodayIconSvg on={on} />);
+export const TabTodayIcon = ({ on, c, cut }: TabP) =>
+  sf('clock.fill', 'regular', c ?? (on ? color.ink : color.faint), 24, <TabTodayIconSvg on={on} c={c} cut={cut} />);
 
-export const TabPaycheckIcon = ({ on }: { on: boolean }) =>
-  sf('doc.text.fill', 'regular', on ? color.ink : color.faint, 24, <TabPaycheckIconSvg on={on} />);
+export const TabPaycheckIcon = ({ on, c, cut }: TabP) =>
+  sf('doc.text.fill', 'regular', c ?? (on ? color.ink : color.faint), 24, <TabPaycheckIconSvg on={on} c={c} cut={cut} />);
 
-export const TabCompaniesIcon = ({ on }: { on: boolean }) =>
-  sf('building.2.fill', 'regular', on ? color.ink : color.faint, 24, <TabCompaniesIconSvg on={on} />);
+export const TabCompaniesIcon = ({ on, c, cut }: TabP) =>
+  sf('building.2.fill', 'regular', c ?? (on ? color.ink : color.faint), 24, <TabCompaniesIconSvg on={on} c={c} cut={cut} />);

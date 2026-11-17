@@ -62,7 +62,7 @@ export default function Paycheck() {
   }
 
   return (
-    <Screen header={<PageHead title="Paycheck check" right={weeks.length > 1 ? undefined : week.label} />}>
+    <Screen tabs header={<PageHead title="Paycheck check" right={weeks.length > 1 ? undefined : week.label} />}>
       {weeks.length > 1 ? (
         <>
           <View style={styles.weekNav}>
