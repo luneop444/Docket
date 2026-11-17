@@ -16,19 +16,19 @@ const PILL_H = TAB_PILL - PAD * 2;
 const SLIDE_MS = 320;
 const SLIDE = `transform ${SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
 
-/** The bar's glass: white at 25% over the page, frosted 1px, as Edward asked (not doubled). */
-const BAR_TINT = 'rgba(255,255,255,0.25)';
+/** The bar's glass: white at 35% over the page, frosted 1px, as Edward asked. */
+const BAR_TINT = 'rgba(255,255,255,0.35)';
 const FROST = 1;
 /** The selected pill: grey glass, the cards' second grey (#E5E8EC) at 55%. */
 const PILL_TINT = 'rgba(229,232,236,0.55)';
 /**
  * Aave's glass ("Building glass for the web"): their lens map, drawn for an 88x40 lens.
- * Bend: 1.6 times their 27.3px across and 9.46px down, so the page under the glass reads
- * as bent and not just frosted. Colour split from their switch demo, their strongest:
- * red 20% and green 10% further than blue. Rim highlight strength 1.5, from the same demos.
+ * Bend: 2.2 times their 27.3px across and 9.46px down, so the page under the glass reads
+ * as bent and not just frosted. Colour split 1.5 times their strongest demo (the switch):
+ * red 30% and green 15% further than blue. Rim highlight strength 1.5, from their demos.
  */
-const AAVE = { w: 88, h: 40, x: 27.3 * 1.6, y: 9.46 * 1.6 };
-const CHROMA = [1.2, 1.1, 1];
+const AAVE = { w: 88, h: 40, x: 27.3 * 2.2, y: 9.46 * 2.2 };
+const CHROMA = [1.3, 1.15, 1];
 const SPEC = 1.5;
 /** Room around each piece of glass for its bend to read the page just past its edge. */
 const M = 28;
