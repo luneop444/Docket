@@ -142,7 +142,7 @@ export const type = {
   bodyTiny: style('regular', 13, 1.4, 0),
   labelButton: style('semibold', 17, 1.2, 0),
   labelSmall: style('semibold', 15, 1.2, 0),
-  labelTab: style('medium', 11, 1.2, 0),
+  labelTab: style('medium', 12, 1.2, 0),
   labelPill: style('medium', 13, 1.2, 0),
   labelControl: style('medium', 15, 1.2, 0),
 } as const;

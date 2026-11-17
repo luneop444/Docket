@@ -18,18 +18,14 @@ const SLIDE_MS = 320;
 const SLIDE = `transform ${SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
 
 /**
- * Matched to Edward's reference (Reddit's iOS 26 tab bar, screen recording 17 Nov): a
- * compact bar centered over the page, white glass heavy enough that what's behind reads
- * only as soft shapes, a light grey pill, black icons (filled when selected, outlined
- * otherwise) and black labels. The bend stays at the rim; no visible colour fringe.
+ * Tint, pill and icons from Edward's reference (Reddit's iOS 26 tab bar, 17 Nov): white
+ * glass at 62%, a light grey pill, black icons (filled when selected, outlined otherwise)
+ * and black labels. Size, frost and bend stay as they were.
  */
 const BAR_TINT = 'rgba(255,255,255,0.62)';
-const FROST = 9;
+const FROST = 1;
 /** The selected pill: light grey glass over the bar. */
 const PILL_TINT = 'rgba(214,216,220,0.5)';
-/** 88 per tab (fits "Companies"), 4 around the pill: 272 wide, as the reference's ~271. */
-const TAB_W = 88;
-const BAR_W = TAB_W * 3 + PAD * 2;
 /**
  * Aave's glass ("Building glass for the web"): their lens map, drawn for an 88x40 lens.
  * Their map only bends the outer rim (the middle is flat, as in their demos), so the bend
@@ -52,10 +48,9 @@ function bendSetting() {
 }
 const BEND = typeof window === 'undefined' ? BEND_DEFAULT : bendSetting();
 const AAVE = { w: 88, h: 40, x: 27.3 * BEND, y: 9.46 * BEND };
-// Colour fringe = bend × (split − 1). The reference shows none, so it's a sixth of what it
-// was (red 0.15, green 0.07 of Aave's offset past blue): enough to keep the edge from
-// looking flat, not enough to read as a rainbow.
-const CHROMA = [1 + 0.15 / BEND, 1 + 0.07 / BEND, 1];
+// Colour fringe = bend × (split − 1). The fringe stays the same width at any bend: red
+// 0.88 and green 0.43 of Aave's offset past blue (at 5x, a split of 1.176 / 1.086).
+const CHROMA = [1 + 0.88 / BEND, 1 + 0.43 / BEND, 1];
 const SPEC = 1.5;
 /** Room above and below the bar that the picture must also cover, for the bend to read. */
 const M = 28;
@@ -482,7 +477,7 @@ function sliceMap(w: number, h: number): Promise<string> {
 }
 
 const S: Record<string, CSSProperties> = {
-  wrap: { position: 'absolute', left: '50%', width: BAR_W, marginLeft: -BAR_W / 2, pointerEvents: 'none' },
+  wrap: { position: 'absolute', left: 20, right: 20, pointerEvents: 'none' },
   debug: { position: 'absolute', bottom: TAB_PILL + 8, left: 0, right: 0, textAlign: 'center', fontSize: 12, color: color.ink, background: 'rgba(255,255,255,0.9)', borderRadius: 8, padding: 4 },
   // Stand-in glass while things move: the same tint over the page, frosted the same.
   bar: {
@@ -494,7 +489,7 @@ const S: Record<string, CSSProperties> = {
     background: BAR_TINT,
     backdropFilter: `blur(${FROST}px)`,
     WebkitBackdropFilter: `blur(${FROST}px)`,
-    boxShadow: '0 0 0 0.5px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.10)',
+    boxShadow: '0 0 0 0.5px rgba(0,0,0,0.10), 0 6px 20px rgba(0,0,0,0.08)',
   },
   cv: { position: 'absolute', inset: 0, width: '100%', height: '100%', transition: 'opacity 120ms', pointerEvents: 'none' },
   rim: {
