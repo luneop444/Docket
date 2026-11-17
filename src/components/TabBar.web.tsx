@@ -1,5 +1,6 @@
 import { router, usePathname } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { createGlass, type Glass } from './glassGL';
 import { color, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
 import { GLASS_MAP } from './glassMap';
@@ -30,24 +31,39 @@ const PILL_TINT = 'rgba(229,232,236,0.55)';
 const AAVE = { w: 88, h: 40, x: 27.3 * 2.2, y: 9.46 * 2.2 };
 const CHROMA = [1.3, 1.15, 1];
 const SPEC = 1.5;
-/** Room around each piece of glass for its bend to read the page just past its edge. */
+/** Room above and below the bar that the picture must also cover, for the bend to read. */
 const M = 28;
 
 type Html2Canvas = (el: HTMLElement, o: Record<string, unknown>) => Promise<HTMLCanvasElement>;
 
+const rgba = (r: number, g: number, b: number, a: number): [number, number, number, number] => [r / 255, g / 255, b / 255, a];
+/** The tints as the shader takes them: colour and strength. */
+const BAR_TINT_GL = rgba(255, 255, 255, 0.35);
+const PILL_TINT_GL = rgba(229, 232, 236, 0.55);
+
+interface Picture {
+  el: HTMLElement;
+  path: string;
+  /** Content y the picture's top row shows, and the band it covers. */
+  top: number;
+  bandTop: number;
+  height: number;
+  w: number;
+  h: number;
+}
+
 /**
- * Web tab bar in liquid glass: a clear glass bar holding a lime-tinted glass pill that
- * slides between tabs. Both bend the page under them at their rims, with a colour split
- * and a shaded edge, Aave's method done on pixels: when nothing is moving, the page under
- * the bar is drawn to an image (html2canvas) and each pixel is read from where the map
- * pushes it. That runs the same in every browser; Safari silently skips SVG filters this
- * size on a phone. While the page scrolls or the pill slides, the bend steps aside and the
- * same tints and rims stand in, then it comes back.
+ * Web tab bar in liquid glass: a clear glass bar holding a grey glass pill that slides
+ * between tabs. Both bend the page under them at their rims, with a colour split and a
+ * shaded edge, live on every frame (see glassGL.ts). The page is drawn to a picture once
+ * per screen, a band around the bar (html2canvas), and drawn again only when a scroll
+ * leaves the band; each frame then only says where things are now.
  */
 export function TabBar() {
   const path = usePathname();
   const { pillBottom } = useTabSpace();
   const barRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
   const barCv = useRef<HTMLCanvasElement>(null);
   const pillCv = useRef<HTMLCanvasElement>(null);
   const [width, setWidth] = useState(0);
@@ -55,7 +71,9 @@ export function TabBar() {
   // The pill moves on the tap, before the next screen starts rendering.
   const [tapped, setTapped] = useState<number | null>(null);
   const index = tapped ?? routeIndex;
-  const [bent, setBent] = useState(false);
+  // The glass is live for the screen its picture was taken of.
+  const [liveFor, setLiveFor] = useState<string | null>(null);
+  const live = liveFor === path;
   // Prototype diagnosis: open any page with ?glass=debug to see what the glass did last.
   const [debug] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -63,7 +81,7 @@ export function TabBar() {
       if (new URLSearchParams(window.location.search).get('glass') === 'debug') sessionStorage.setItem('glass', 'debug');
       return sessionStorage.getItem('glass') === 'debug';
     } catch {
-      return new URLSearchParams(window.location.search).get('glass') === 'debug';
+      return false;
     }
   });
   const [note, setNote] = useState('starting');
@@ -77,38 +95,60 @@ export function TabBar() {
   }, []);
 
   const tabW = width ? (width - PAD * 2) / TABS.length : 0;
+  const scale = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
 
-  // Draw the glass from a fresh picture of the page under the bar.
-  const run = useRef(0);
-  const snap = useRef<{ el: HTMLElement; path: string; cv: HTMLCanvasElement; scale: number; top: number; bandTop: number; height: number } | null>(null);
-  const drawGlass = async () => {
-    const bar = barRef.current, bc = barCv.current, pc = pillCv.current;
-    if (!bar || !bc || !pc || !tabW) return setNote('waiting for layout');
-    const id = ++run.current;
-    const r = bar.getBoundingClientRect();
-    const scale = Math.min(2, window.devicePixelRatio || 1);
-    const W = r.width + M * 2, H = TAB_PILL + M * 2;
+  const gls = useRef<{ bar: Glass; pill: Glass } | null>(null);
+  const pic = useRef<Picture | null>(null);
+  const busy = useRef(false);
+  const takePicture = useRef<() => void>(() => {});
 
-    // The slow part, once per screen: the scrolling content under the bar, drawn whole.
-    const scroller = scrollerUnder(bar);
-    // A screen too short to scroll: draw the whole app root instead, still only once.
-    const content = ((scroller?.firstElementChild as HTMLElement | null) ?? document.getElementById('root')) as HTMLElement | null;
-    if (!content) return setNote('nothing under the bar to draw');
-    // Only a band around the bar is drawn (a 42,000px list is too big for one picture on a
-    // phone); it's drawn again only when a scroll leaves it.
-    const cr0 = content.getBoundingClientRect();
-    const need = r.top - M - cr0.top;
-    const s0 = snap.current;
-    if (!s0 || s0.el !== content || s0.path !== path || need < s0.bandTop || need + H > s0.bandTop + s0.height) {
+  // One frame: where the page, the bar and the pill are now.
+  const frame = useCallback(() => {
+    const g = gls.current, p = pic.current, bar = barRef.current, pill = pillRef.current;
+    if (!g || !p || !bar || !pill || !g.bar.ready()) return;
+    const cr = p.el.getBoundingClientRect(), br = bar.getBoundingClientRect(), pr = pill.getBoundingClientRect();
+    const base = {
+      pageOrigin: [cr.left, cr.top + p.top] as [number, number],
+      pageSize: [p.w, p.h] as [number, number],
+      barOrigin: [br.left, br.top] as [number, number],
+      barSize: [br.width, br.height] as [number, number],
+      pillOrigin: [pr.left, pr.top] as [number, number],
+      pillSize: [pr.width, pr.height] as [number, number],
+      scale,
+      barK: [AAVE.x * (TAB_PILL / AAVE.h), 0.5556 * AAVE.y * (TAB_PILL / AAVE.h)] as [number, number],
+      lensK: [AAVE.x * (pr.width / AAVE.w), 0.5556 * AAVE.y * (pr.height / AAVE.h)] as [number, number],
+      chroma: CHROMA as [number, number, number],
+      spec: SPEC,
+      barTint: BAR_TINT_GL,
+      pillTint: PILL_TINT_GL,
+    };
+    g.bar.draw({ ...base, outOrigin: [br.left, br.top], outSize: [br.width, br.height], isPill: false });
+    g.pill.draw({ ...base, outOrigin: [pr.left, pr.top], outSize: [pr.width, pr.height], isPill: true });
+    // A scroll that leaves the band asks for a new picture of the part now under the bar.
+    const need = br.top - M - cr.top;
+    if (!busy.current && (need < p.bandTop || need + TAB_PILL + M * 2 > p.bandTop + p.height)) takePicture.current();
+  }, [scale]);
+
+  // The picture: a band of the screen around the bar, frosted, handed to the glass.
+  const picture = useCallback(async () => {
+    const bar = barRef.current, g = gls.current;
+    if (!bar || !g || busy.current) return;
+    busy.current = true;
+    try {
+      const r = bar.getBoundingClientRect();
+      const scroller = scrollerUnder(bar);
+      // A screen too short to scroll: draw the whole app root.
+      const content = ((scroller?.firstElementChild as HTMLElement | null) ?? document.getElementById('root')) as HTMLElement | null;
+      if (!content) return setNote('nothing under the bar to draw');
       setNote('drawing this part of the screen');
-      if (debug) console.log('[glass] snapshot', path, s0 ? (s0.el !== content ? 'new element' : s0.path !== path ? 'new path' : 'left band') : 'first', content.scrollHeight);
+      const cr0 = content.getBoundingClientRect();
+      const need = r.top - M - cr0.top;
       const band = Math.round(window.innerHeight * 1.5);
       const top = Math.max(0, Math.min(content.scrollHeight - band, need - band / 2));
-      // html2canvas copies the whole page before drawing; rows far from the bar are left out
-      // of that copy, which is most of the work on a long list. Leaving rows out moves the
+      // html2canvas copies the whole page before drawing; rows far from the bar are left
+      // out of that copy, the bulk of the work on a long list. Leaving rows out moves the
       // rest up, so one element under the bar is marked and measured in the copy to put the
       // picture back in place.
-      const bandTop = top, bandBottom = top + band;
       const hit = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2).find((e) => content.contains(e) && e !== content) as HTMLElement | undefined;
       const anchor = hit ?? content;
       const anchorY = anchor.getBoundingClientRect().top - cr0.top;
@@ -124,8 +164,7 @@ export function TabBar() {
           if (el === bar.parentElement) return true;
           if (!content.contains(el) || el === content || el.contains(anchor)) return false;
           const b = el.getBoundingClientRect();
-          const y0 = b.top - cr0.top, y1 = b.bottom - cr0.top;
-          return y1 < bandTop || y0 > bandBottom;
+          return b.bottom - cr0.top < top || b.top - cr0.top > top + band;
         },
         onclone: (doc: Document) => {
           const root = doc.querySelector('[data-glass-root]'), a = doc.querySelector('[data-glass-anchor]');
@@ -138,85 +177,94 @@ export function TabBar() {
       anchor.removeAttribute('data-glass-anchor');
       content.removeAttribute('data-glass-root');
       if (!cv) return;
-      snap.current = { el: content, path, cv, scale, top: shift, bandTop: top, height: Math.min(band, content.scrollHeight - top) };
+      g.bar.setPage(frosted(cv, scale));
+      g.pill.setPage(frosted(cv, scale));
+      pic.current = { el: content, path, top: shift, bandTop: top, height: Math.min(band, content.scrollHeight - top), w: cv.width / scale, h: cv.height / scale };
+      setLiveFor(path);
+      setNote(`live · ${Math.round(scale)}x · ${navigator.userAgent.includes('Chrome/') ? 'Chrome' : 'Safari'}`);
+      requestAnimationFrame(frame);
+    } finally {
+      busy.current = false;
     }
-    const picture = snap.current;
-    if (id !== run.current || !picture) return;
-
-    // The fast part, after every scroll: crop the strip now under the bar.
-    const cr = content.getBoundingClientRect();
-    const shot = document.createElement('canvas');
-    shot.width = Math.round(W * scale);
-    shot.height = Math.round(H * scale);
-    const sctx = shot.getContext('2d')!;
-    sctx.fillStyle = color.bg;
-    sctx.fillRect(0, 0, shot.width, shot.height);
-    const sc = picture.scale;
-    sctx.drawImage(picture.cv, (r.left - M - cr.left) * sc, (r.top - M - cr.top - picture.top) * sc, W * sc, H * sc, 0, 0, shot.width, shot.height);
-
-    const [barMap, lensMap] = await Promise.all([
-      cachedMap(`bar-${Math.round(r.width)}-${scale}`, () => mapData(sliceMap(r.width, TAB_PILL), W, H, { x: M, y: M, w: r.width, h: TAB_PILL }, scale)),
-      cachedMap(`lens-${Math.round(tabW)}-${scale}`, () => mapData(GLASS_MAP, tabW + M * 2, PILL_H + M * 2, { x: M, y: M, w: tabW, h: PILL_H }, scale)),
-    ]);
-    if (id !== run.current) return;
-
-    // The bar: the page bent at the bar's rim, then its tint.
-    const page = frosted(shot, scale);
-    bend(page, barMap, AAVE.x * (TAB_PILL / AAVE.h) * scale, AAVE.y * (TAB_PILL / AAVE.h) * scale);
-    const bctx = page.getContext('2d')!;
-    bctx.fillStyle = BAR_TINT;
-    bctx.fillRect(0, 0, page.width, page.height);
-    paint(bc, page, M, M, r.width, TAB_PILL, scale);
-
-    // The pill: the bar under it, with the lime tint, bent again by the lens.
-    const x = PAD + index * tabW;
-    const lens = document.createElement('canvas');
-    lens.width = Math.round((tabW + M * 2) * scale);
-    lens.height = Math.round((PILL_H + M * 2) * scale);
-    const lctx = lens.getContext('2d')!;
-    lctx.drawImage(page, Math.round((x) * scale), Math.round((PAD) * scale), lens.width, lens.height, 0, 0, lens.width, lens.height);
-    lctx.fillStyle = PILL_TINT;
-    lctx.fillRect(0, 0, lens.width, lens.height);
-    bend(lens, lensMap, AAVE.x * (tabW / AAVE.w) * scale, AAVE.y * (PILL_H / AAVE.h) * scale);
-    paint(pc, lens, M, M, tabW, PILL_H, scale);
-    setBent(true);
-    setNote(`bent · ${Math.round(scale)}x · ${navigator.userAgent.includes('Chrome/') ? 'Chrome' : 'Safari'}`);
-  };
-
-  const draw = useCallback(async () => {
-    try {
-      await drawGlass();
-    } catch (e) {
-      setNote(`failed: ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, tabW]);
-
-
-  // Re-draw when things settle: after a scroll, a resize, a slide or a new screen.
+  }, [path, scale, frame]);
   useEffect(() => {
-    let t: ReturnType<typeof setTimeout> | undefined;
-    const settle = (ms: number) => {
-      run.current++;
-      setBent(false);
-      setNote('waiting for the page to settle');
-      clearTimeout(t);
-      t = setTimeout(draw, ms);
+    takePicture.current = () => void picture();
+  }, [picture]);
+
+  // Set up the glass once the canvases and sizes are known; maps are built once per size.
+  useEffect(() => {
+    const bc = barCv.current, pc = pillCv.current;
+    if (!bc || !pc || !width || !tabW) return;
+    if (!gls.current) {
+      try {
+        const bar = createGlass(bc), pill = createGlass(pc);
+        if (!bar || !pill) {
+          void Promise.resolve().then(() => setNote('this browser has no WebGL'));
+          return;
+        }
+        gls.current = { bar, pill };
+      } catch (e) {
+        void Promise.resolve().then(() => setNote(`glass failed: ${e instanceof Error ? e.message : String(e)}`));
+        return;
+      }
+    }
+    const g = gls.current;
+    let alive = true;
+    Promise.all([
+      mapData(sliceMap(width, TAB_PILL), width, TAB_PILL, { x: 0, y: 0, w: width, h: TAB_PILL }, scale),
+      mapData(GLASS_MAP, tabW, PILL_H, { x: 0, y: 0, w: tabW, h: PILL_H }, scale),
+    ]).then(([bm, lm]) => {
+      if (!alive) return;
+      g.bar.setMaps(bm, lm);
+      g.pill.setMaps(bm, lm);
+      requestAnimationFrame(frame);
+    });
+    return () => {
+      alive = false;
     };
-    settle(tapped === null ? 250 : SLIDE_MS + 60);
-    const onScroll = () => settle(80);
+  }, [width, tabW, scale, frame]);
+
+  // A new screen needs a new picture; until it's in, the plain tints stand in.
+  useEffect(() => {
+    pic.current = null;
+    const t = setTimeout(() => void picture(), 250);
+    return () => clearTimeout(t);
+  }, [path, picture]);
+
+  // Every frame something moves: scrolling, and the pill's slide.
+  useEffect(() => {
+    let raf = 0;
+    const kick = () => {
+      if (!raf) raf = requestAnimationFrame(() => {
+        raf = 0;
+        frame();
+      });
+    };
+    document.addEventListener('scroll', kick, { capture: true, passive: true });
     const onResize = () => {
-      snap.current = null;
-      settle(250);
+      pic.current = null;
+      setLiveFor(null);
+      setTimeout(() => void picture(), 250);
     };
-    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
     window.addEventListener('resize', onResize);
     return () => {
-      clearTimeout(t);
-      document.removeEventListener('scroll', onScroll, { capture: true });
+      cancelAnimationFrame(raf);
+      document.removeEventListener('scroll', kick, { capture: true });
       window.removeEventListener('resize', onResize);
     };
-  }, [draw, tapped, path]);
+  }, [frame, picture]);
+
+  useEffect(() => {
+    if (tapped === null) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const step = () => {
+      frame();
+      if (performance.now() - t0 < SLIDE_MS + 80) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [tapped, frame]);
 
   const go = (i: number, href: string) => {
     if (i === index) return;
@@ -230,17 +278,16 @@ export function TabBar() {
     <div style={{ ...S.wrap, bottom: pillBottom }}>
       {debug ? <div style={S.debug}>{`Glass: ${note}`}</div> : null}
       <nav ref={barRef} style={S.bar} aria-label="Tabs">
-        <canvas ref={barCv} aria-hidden style={{ ...S.cv, opacity: bent ? 1 : 0 }} />
-        {tabW ? (
-          <div
-            aria-hidden
-            onTransitionEnd={() => setTapped(null)}
-            style={{ ...S.pill, width: tabW, transform: `translate3d(${x}px, 0, 0)` }}
-          >
-            <canvas ref={pillCv} style={{ ...S.cv, opacity: bent ? 1 : 0, borderRadius: PILL_H / 2 }} />
-            <div style={S.pillRim} />
-          </div>
-        ) : null}
+        <canvas ref={barCv} aria-hidden style={{ ...S.cv, opacity: live ? 1 : 0 }} />
+        <div
+          ref={pillRef}
+          aria-hidden
+          onTransitionEnd={() => setTapped(null)}
+          style={{ ...S.pill, width: tabW || 0, transform: `translate3d(${x}px, 0, 0)` }}
+        >
+          <canvas ref={pillCv} style={{ ...S.cv, opacity: live ? 1 : 0, borderRadius: PILL_H / 2 }} />
+          <div style={S.pillRim} />
+        </div>
         <div style={S.rim} />
         <div style={S.row}>
           {TABS.map(({ href, label, Icon }, i) => {
@@ -317,47 +364,6 @@ function scrollerUnder(bar: HTMLElement): HTMLElement | null {
     if (!best || b.height * b.width > best.getBoundingClientRect().height * best.getBoundingClientRect().width) best = e;
   }
   return best;
-}
-
-/** Bend maps are the same for a given size, so each is built once. */
-const maps = new Map<string, Promise<ImageData>>();
-function cachedMap(key: string, make: () => Promise<ImageData>) {
-  if (!maps.has(key)) maps.set(key, make());
-  return maps.get(key)!;
-}
-
-/** Copy the glass's own area out of a window that has M of room around it. */
-function paint(dst: HTMLCanvasElement, src: HTMLCanvasElement, x: number, y: number, w: number, h: number, scale: number) {
-  dst.width = Math.round(w * scale);
-  dst.height = Math.round(h * scale);
-  dst.getContext('2d')!.drawImage(src, Math.round(x * scale), Math.round(y * scale), dst.width, dst.height, 0, 0, dst.width, dst.height);
-}
-
-/**
- * Aave's filter, on pixels: red and green in the map say where each pixel is read from
- * (128 is still), red reaching 13% and green 6.5% further than blue for the colour split;
- * blue darkens the rim.
- */
-function bend(cv: HTMLCanvasElement, map: ImageData, kx: number, ky: number) {
-  const ctx = cv.getContext('2d')!;
-  const w = cv.width, h = cv.height;
-  const src = ctx.getImageData(0, 0, w, h).data, m = map.data;
-  const out = ctx.createImageData(w, h), o = out.data;
-  const off = 1 + (SPEC * 128) / 255, kyy = 0.5556 * ky;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const i = (y * w + x) * 4;
-      const dx = m[i] / 255 - 0.5, dy = m[i + 1] / 255 - 0.5;
-      const shade = Math.max(0, off - (SPEC * m[i + 2]) / 255);
-      for (let c = 0; c < 3; c++) {
-        const ux = Math.min(w - 1, Math.max(0, Math.round(x + dx * kx * CHROMA[c])));
-        const uy = Math.min(h - 1, Math.max(0, Math.round(y + dy * kyy * CHROMA[c])));
-        o[i + c] = Math.min(255, src[(uy * w + ux) * 4 + c] * shade);
-      }
-      o[i + 3] = 255;
-    }
-  }
-  ctx.putImageData(out, 0, 0);
 }
 
 /** A map image laid on a neutral (128) field the size of the glass's window, at device scale. */
