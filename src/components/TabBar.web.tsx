@@ -57,7 +57,15 @@ export function TabBar() {
   const index = tapped ?? routeIndex;
   const [bent, setBent] = useState(false);
   // Prototype diagnosis: open any page with ?glass=debug to see what the glass did last.
-  const debug = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('glass') === 'debug';
+  const [debug] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      if (new URLSearchParams(window.location.search).get('glass') === 'debug') sessionStorage.setItem('glass', 'debug');
+      return sessionStorage.getItem('glass') === 'debug';
+    } catch {
+      return new URLSearchParams(window.location.search).get('glass') === 'debug';
+    }
+  });
   const [note, setNote] = useState('starting');
 
   useEffect(() => {
