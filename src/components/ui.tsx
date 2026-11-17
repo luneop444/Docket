@@ -312,9 +312,15 @@ export type IconTileTone = 'raise' | 'white' | 'ink' | 'signal';
 export function IconTile({ icon, tone = 'raise', size = 40 }: { icon: IconFn; tone?: IconTileTone; size?: 40 | 44 | 48 }) {
   const bg = { raise: color.raise, white: color.bg, ink: color.ink, signal: color.signal }[tone];
   const fg = tone === 'ink' ? color.signal : color.ink;
-  const r = size === 40 ? 12 : size === 44 ? 13 : 14;
+  // Sizes live in the stylesheet, not inline: Squircles.web.tsx reads the radius from a class
+  // and clears inline radii when it re-measures.
+  const sized = size === 40 ? styles.tile40 : size === 44 ? styles.tile44 : styles.tile48;
   return (
-    <View style={[styles.iconTile, { width: size, height: size, borderRadius: r, backgroundColor: bg }]}>
+    <View
+      // Web: keep this tile's own squircle instead of the concentric inner corner (Squircles.web.tsx).
+      {...({ dataSet: { squircle: 'own' } } as object)}
+      style={[styles.iconTile, sized, { backgroundColor: bg }]}
+    >
       {icon(fg)}
     </View>
   );
@@ -428,6 +434,9 @@ const styles = StyleSheet.create({
   flexGap1: { flex: 1, minWidth: 0, gap: 1 },
   flexGap2: { flex: 1, minWidth: 0, gap: 2 },
   iconTile: { borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center' },
+  tile40: { width: 40, height: 40, borderRadius: 12 },
+  tile44: { width: 44, height: 44, borderRadius: 13 },
+  tile48: { width: 48, height: 48, borderRadius: 14 },
   choice: {
     flexDirection: 'row',
     alignItems: 'center',
