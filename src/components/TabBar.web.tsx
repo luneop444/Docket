@@ -332,7 +332,7 @@ export function TabBar() {
     return () => cancelAnimationFrame(raf);
   }, [tapped, frame]);
 
-  const go = (i: number, href: string) => {
+  const go = (i: number, href: (typeof TABS)[number]['href']) => {
     if (i === index) return;
     setTapped(i);
     // Let the slide start on the next frame, then switch screens.
