@@ -28,8 +28,8 @@ const PILL_TINT = 'rgba(229,232,236,0.55)';
  * as bent and not just frosted. Colour split 1.5 times their strongest demo (the switch):
  * red 30% and green 15% further than blue. Rim highlight strength 1.5, from their demos.
  */
-const AAVE = { w: 88, h: 40, x: 27.3 * 2.2, y: 9.46 * 2.2 };
-const CHROMA = [1.3, 1.15, 1];
+const AAVE = { w: 88, h: 40, x: 27.3 * 2.6, y: 9.46 * 2.6 };
+const CHROMA = [1.45, 1.22, 1];
 const SPEC = 1.5;
 /** Room above and below the bar that the picture must also cover, for the bend to read. */
 const M = 28;
