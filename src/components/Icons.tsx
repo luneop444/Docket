@@ -129,6 +129,94 @@ const ShieldIconSvg = ({ c = color.ink, size = 20 }: P) => (
   </Svg>
 );
 
+/* ---------- icon-tile icons (Onboarding v3, Figma 344:861) ---------- */
+
+const stroke = (c: string) => ({ stroke: c, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' }) as const;
+
+const RepeatIconSvg = ({ c = color.ink, size = 24 }: P) => (
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
+    <Path d="M4.5 10.5A7.5 7.5 0 0 1 17.6 6.4L19.5 8.5M19.5 4v4.5H15" {...stroke(c)} />
+    <Path d="M19.5 13.5a7.5 7.5 0 0 1-13.1 4.1L4.5 15.5M4.5 20v-4.5H9" {...stroke(c)} />
+  </Svg>
+);
+
+const ShuffleIconSvg = ({ c = color.ink, size = 24 }: P) => (
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
+    <Path d="M3 7h3.5c4.5 0 6.5 10 11 10H21M3 17h3.5c1.6 0 2.8-1.3 3.8-3M13.7 10c1-1.7 2.2-3 3.8-3H21" {...stroke(c)} />
+    <Path d="M18 4l3 3-3 3M18 14l3 3-3 3" {...stroke(c)} />
+  </Svg>
+);
+
+const CalendarPlusIconSvg = ({ c = color.ink, size = 24 }: P) => (
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
+    <Path d="M20 11V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h6M4 9.5h16M8 3v4M16 3v4" {...stroke(c)} />
+    <Path d="M18 15v6M15 18h6" {...stroke(c)} />
+  </Svg>
+);
+
+const LocationIconSvg = ({ c = color.ink, size = 20, filled }: P & { filled?: boolean }) => (
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      d="M20.5 3.5L3.8 10.6c-.7.3-.6 1.3.1 1.5l7 1.9 1.9 7c.2.7 1.2.8 1.5.1l7.1-16.7c.2-.5-.4-1.1-.9-.9z"
+      stroke={c}
+      strokeWidth={2}
+      strokeLinejoin="round"
+      fill={filled ? c : 'none'}
+    />
+  </Svg>
+);
+
+const IslandIconSvg = ({ c = color.ink, size = 20 }: P) => (
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
+    <Rect x={2.5} y={8} width={19} height={8} rx={4} {...stroke(c)} />
+    <Circle cx={17.5} cy={12} r={1.6} fill={c} />
+  </Svg>
+);
+
+const EyeSlashIconSvg = ({ c = color.ink, size = 20 }: P) => (
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
+    <Path d="M2.5 12S6 5.5 12 5.5c1.6 0 3 .4 4.2 1M21.5 12S18 18.5 12 18.5c-1.6 0-3-.4-4.2-1" {...stroke(c)} />
+    <Path d="M9.2 14.8a4 4 0 0 1 5.6-5.6M4 20L20 4" {...stroke(c)} />
+  </Svg>
+);
+
+const HandTapIconSvg = ({ c = color.ink, size = 22 }: P) => (
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      d="M9.5 11V5a1.5 1.5 0 0 1 3 0v5.5m0-1a1.5 1.5 0 0 1 3 0v1m0-.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-.6a5 5 0 0 1-3.9-1.9L5 15.5a1.6 1.6 0 0 1 2.4-2.1l2.1 1.9"
+      {...stroke(c)}
+    />
+    <Path d="M6.5 6.5a4.5 4.5 0 0 1 9 0" {...stroke(c)} />
+  </Svg>
+);
+
+const ShareIconSvg = ({ c = color.ink, size = 22 }: P) => (
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
+    <Path d="M12 3v12M8 7l4-4 4 4" {...stroke(c)} />
+    <Path d="M8.5 10H7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1.5" {...stroke(c)} />
+  </Svg>
+);
+
+const MailIconSvg = ({ c = color.ink, size = 22 }: P) => (
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
+    <Rect x={3} y={5.5} width={18} height={13} rx={2.5} {...stroke(c)} />
+    <Path d="M4 7.5l8 6 8-6" {...stroke(c)} />
+  </Svg>
+);
+
+const KeyboardIconSvg = ({ c = color.ink, size = 22 }: P) => (
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
+    <Rect x={2.5} y={6} width={19} height={12} rx={2.5} {...stroke(c)} />
+    <Path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 13.5h.01M17 13.5h.01M9.5 14.5h5" {...stroke(c)} strokeWidth={2.2} />
+  </Svg>
+);
+
+const ChecklistIconSvg = ({ c = color.ink, size = 20 }: P) => (
+  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
+    <Path d="M3.5 6.5l1.5 1.5 3-3M3.5 13.5l1.5 1.5 3-3M11.5 7h9M11.5 14h9M11.5 19.5h9" {...stroke(c)} />
+  </Svg>
+);
+
 /**
  * Tab icons: `c` overrides the fill. Their details (clock hands, page lines,
  * windows) are cut out of the shape, so whatever the icon sits on shows through.
@@ -261,7 +349,40 @@ export const SearchIcon = ({ c = color.sub, size = 20 }: P) =>
 export const ShieldIcon = ({ c = color.ink, size = 20 }: P) =>
   sf('checkmark.shield', 'medium', c, size, <ShieldIconSvg c={c} size={size} />);
 
-export const TabTodayIcon = ({ on, c, cut }: TabP) =>
+export const RepeatIcon = ({ c = color.ink, size = 24 }: P) =>
+  sf('arrow.triangle.2.circlepath', 'medium', c, size, <RepeatIconSvg c={c} size={size} />);
+
+export const ShuffleIcon = ({ c = color.ink, size = 24 }: P) =>
+  sf('shuffle', 'medium', c, size, <ShuffleIconSvg c={c} size={size} />);
+
+export const CalendarPlusIcon = ({ c = color.ink, size = 24 }: P) =>
+  sf('calendar.badge.plus', 'medium', c, size, <CalendarPlusIconSvg c={c} size={size} />);
+
+export const LocationIcon = ({ c = color.ink, size = 20, filled }: P & { filled?: boolean }) =>
+  sf(filled ? 'location.fill' : 'location', 'medium', c, size, <LocationIconSvg c={c} size={size} filled={filled} />);
+
+export const IslandIcon = ({ c = color.ink, size = 20 }: P) =>
+  sf('capsule', 'medium', c, size, <IslandIconSvg c={c} size={size} />);
+
+export const EyeSlashIcon = ({ c = color.ink, size = 20 }: P) =>
+  sf('eye.slash', 'medium', c, size, <EyeSlashIconSvg c={c} size={size} />);
+
+export const HandTapIcon = ({ c = color.ink, size = 22 }: P) =>
+  sf('hand.tap', 'medium', c, size, <HandTapIconSvg c={c} size={size} />);
+
+export const ShareIcon = ({ c = color.ink, size = 22 }: P) =>
+  sf('square.and.arrow.up', 'medium', c, size, <ShareIconSvg c={c} size={size} />);
+
+export const MailIcon = ({ c = color.ink, size = 22 }: P) =>
+  sf('envelope', 'medium', c, size, <MailIconSvg c={c} size={size} />);
+
+export const KeyboardIcon = ({ c = color.ink, size = 22 }: P) =>
+  sf('keyboard', 'medium', c, size, <KeyboardIconSvg c={c} size={size} />);
+
+export const ChecklistIcon = ({ c = color.ink, size = 20 }: P) =>
+  sf('checklist', 'medium', c, size, <ChecklistIconSvg c={c} size={size} />);
+
+export const TabTodayIcon =({ on, c, cut }: TabP) =>
   sf('clock.fill', 'regular', c ?? (on ? color.ink : color.faint), 24, <TabTodayIconSvg on={on} c={c} cut={cut} />);
 
 export const TabPaycheckIcon = ({ on, c, cut }: TabP) =>

@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Platform, View } from 'react-native';
 import { OnboardingBar, Screen } from '../components/Chrome';
-import { Button, Fake, Gap, Option, T } from '../components/ui';
+import { KeyboardIcon, MailIcon, ShareIcon } from '../components/Icons';
+import { Button, ChoiceTile, Fake, Gap, T } from '../components/ui';
 import { loadFromRateCon, type RateConReading } from '../logic/documents';
 import { RECENT_STOPS } from '../logic/sampleData';
 import { setsStopsOnce } from '../logic/state';
@@ -85,25 +86,25 @@ export default function AddLoad() {
           : 'Share it the way dispatch sent it. Docket reads the stops for you.'}
       </T>
       <Gap h={24} />
-      <View style={{ gap: 8 }}>
-        <Option
-          radio
+      <View style={{ gap: 10 }} accessibilityRole="radiogroup" accessibilityLabel="How to add the load">
+        <ChoiceTile
+          icon={(c) => <ShareIcon c={c} />}
           label="Share from your dispatch app or a text"
           sub="Tap Share, then Docket. Screenshots work too."
           selected={source === 'share'}
           onPress={() => setSource('share')}
         />
-        <Option
-          radio
+        <ChoiceTile
+          icon={(c) => <MailIcon c={c} />}
           label="Forward the rate con email"
           sub="Send it to loads@docket.app"
           selected={source === 'email'}
           onPress={() => setSource('email')}
         />
-        <Option
-          radio
+        <ChoiceTile
+          icon={(c) => <KeyboardIcon c={c} />}
           label="Type it in yourself"
-          sub="Facility names and appointment times. Takes a minute."
+          sub="Facility names and appointment times"
           selected={source === 'manual'}
           onPress={() => setSource('manual')}
         />
