@@ -52,7 +52,7 @@ export default function CompanyRules() {
       <T v="h2">{keepLast(`${s.company}’s detention rules`)}</T>
       <Gap h={8} />
       <T v="body" c={color.sub}>
-        {keepLast(`Reported by ${c ? c.reported : 0} drivers. Rules can differ by fleet or division.`)}
+        {keepLast(`Reported by ${c ? c.reported : 0} drivers. Rules vary by fleet.`)}
       </T>
       <Gap h={24} />
       <Card>
