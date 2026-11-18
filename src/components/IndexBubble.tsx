@@ -8,7 +8,7 @@ export const BUBBLE = 56;
  * The A–Z bubble in liquid glass, like the tab bar: Apple's real glass on iOS 26
  * (expo-glass-effect), the same translucent white elsewhere.
  */
-export function IndexBubble({ letter }: { letter: string; active: boolean }) {
+export function IndexBubble({ letter }: { letter: string; active: boolean; warm: boolean }) {
   const native = Platform.OS === 'ios' && isLiquidGlassAvailable();
   const Shell = native ? GlassView : View;
   return (

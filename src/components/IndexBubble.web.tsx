@@ -29,7 +29,7 @@ interface Picture {
  * the centre) over a picture of the list, drawn live every frame while you scrub, so the
  * names bend and split colour at its edge as the list jumps under it.
  */
-export function IndexBubble({ letter, active }: { letter: string; active: boolean }) {
+export function IndexBubble({ letter, active, warm }: { letter: string; active: boolean; warm: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const cv = useRef<HTMLCanvasElement>(null);
   const glass = useRef<Glass | null>(null);
@@ -148,6 +148,13 @@ export function IndexBubble({ letter, active }: { letter: string; active: boolea
     take.current = () => void picture();
   }, [picture]);
 
+  // Take the picture as soon as the index shows, so the glass is ready before the first touch.
+  useEffect(() => {
+    if (!warm || pic.current) return;
+    const t = setTimeout(() => take.current(), 300);
+    return () => clearTimeout(t);
+  }, [warm]);
+
   // While you scrub: a picture if there isn't one, then a frame every frame.
   useEffect(() => {
     if (!active) return;
@@ -187,12 +194,17 @@ const S: Record<string, CSSProperties> = {
     justifyContent: 'center',
   },
   cv: { position: 'absolute', inset: 0, width: '100%', height: '100%', transition: 'opacity 120ms', pointerEvents: 'none' },
+  // Glass over a plain white page has nothing to bend, so its edge is what shows it's glass:
+  // the rim darkens as it curves away (more glass to look through), lit along the top-left
+  // and in shade along the bottom-right, as Apple's glass is over a white page.
   rim: {
     position: 'absolute',
     inset: 0,
     borderRadius: BUBBLE / 2,
     pointerEvents: 'none',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 0 1px rgba(255,255,255,0.45)',
+    background: 'radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 62%, rgba(20,24,30,0.07) 86%, rgba(20,24,30,0.13) 100%)',
+    boxShadow:
+      'inset 1.5px 1.5px 0.5px -0.5px rgba(255,255,255,1), inset -1px -1px 1px -0.5px rgba(0,0,0,0.12), inset 0 0 0 0.5px rgba(0,0,0,0.10)',
   },
   letter: { position: 'relative', fontFamily: fontFamily.semibold, fontSize: 28, lineHeight: '28px', color: color.ink },
 };

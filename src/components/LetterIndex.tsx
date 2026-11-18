@@ -131,7 +131,7 @@ export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) 
               },
             ]}
           >
-            <IndexBubble letter={bubble.letter} active={scrubbing} />
+            <IndexBubble letter={bubble.letter} active={scrubbing} warm={visible} />
           </Animated.View>
         </View>
       </Animated.View>
