@@ -1,17 +1,17 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Fragment, useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
 import { DemoDrawer } from '../../components/DemoDrawer';
 import { FreeBar } from '../../components/FreeBar';
 import { Timeline } from '../../components/Timeline';
 import { Button, Gap, T } from '../../components/ui';
 import { isDemoState } from '../../logic/demo';
-import { clock, dur, hm, money, rateShort } from '../../logic/format';
+import { clock, dur, money, rateShort } from '../../logic/format';
 import { placeOf, watchedStop } from '../../logic/state';
-import { dockTimeline, stopCalc } from '../../logic/stop';
+import { dockTimeline, stopCalc, stopTime } from '../../logic/stop';
 import { useStore } from '../../state/AppStore';
-import { color } from '../../theme/tokens';
+import { color, type } from '../../theme/tokens';
 
 /** "Sunday, Nov 15": the title is the day, not the app's name. */
 const TITLE = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
@@ -23,7 +23,7 @@ const TITLE = new Date().toLocaleDateString('en-US', { weekday: 'long', month: '
  * save/home-v1-black-card.
  */
 export default function Today() {
-  const { a } = useStore();
+  const { s, a } = useStore();
   const { state } = useLocalSearchParams<{ state?: string }>();
   const linked = isDemoState(state);
 
@@ -36,7 +36,14 @@ export default function Today() {
   return (
     <Screen
       tabs
-      header={<TopBar title={TITLE} trailing={<ProfileTrailing noDate />} />}
+      header={
+        // At the dock the place leads, so the header is Figma 09's: the wordmark and a small date.
+        s.stop.phase === 'dock' ? (
+          <TopBar trailing={<ProfileTrailing />} />
+        ) : (
+          <TopBar title={TITLE} trailing={<ProfileTrailing noDate />} />
+        )
+      }
       overlay={linked ? null : <DemoDrawer />}
     >
       <Gap h={16} />
@@ -111,19 +118,22 @@ function AtTheDock() {
   const beforeClock = s.now < c.start;
   const fromAppt = s.rules.start === 'appt';
   const waited = s.now - (st.arrive ?? s.now);
+  // Times carry the day once a stop runs past midnight.
+  const at = stopTime(st, s.now);
   const status = inDetention
-    ? 'Detention running'
+    ? `Detention since ${at(c.freeEnd)} · ${rateShort(s.rules.rate)}`
     : beforeClock
-      ? `Clock starts at your ${clock(c.start)} ${fromAppt ? 'appointment' : 'arrival'}`
-      : `Detention starts at ${clock(c.freeEnd)}`;
+      ? `Clock starts at your ${at(c.start)} ${fromAppt ? 'appointment' : 'arrival'}`
+      : `Detention starts at ${at(c.freeEnd)}`;
   const events = dockTimeline(st, s.now, s.rules).map(({ canCheckIn, ...e }) =>
     canCheckIn ? { ...e, action: { label: 'I checked in', onPress: a.checkIn } } : e,
   );
 
   return (
     <View>
+      {/* The place leads (Heading/H2); the date is small in the header. */}
       <View style={styles.head}>
-        <T v="bodyStrong" style={styles.flex}>
+        <T v="h2" style={styles.flex} numberOfLines={1}>
           {place.name}
         </T>
         {place.load ? (
@@ -133,25 +143,25 @@ function AtTheDock() {
         ) : null}
       </View>
       <Gap h={16} />
+      {/* Label above the figure, as "Detention so far" is in the lime card, so the figure
+          has the full width and hours and minutes never split across lines. */}
       <View
-        style={styles.waited}
         accessible
         accessibilityRole="timer"
-        accessibilityLabel={`${dur(waited)} waited. ${status}${inDetention ? `. Detention so far ${money(c.owed)}` : ''}`}
+        accessibilityLabel={`Waited ${dur(waited)}. ${status}${inDetention ? `. Detention so far ${money(c.owed)}` : ''}`}
       >
-        <T v="displayTimer" style={[styles.tabular, styles.optical]}>
-          {hm(waited)}
+        <T v="bodyTiny" c={color.sub}>
+          Waited
         </T>
-        <T v="numberS" c={color.sub} style={styles.waitedWord}>
-          waited
-        </T>
+        <Gap h={4} />
+        <WaitFigure min={waited} />
       </View>
       <Gap h={8} />
       <View style={styles.status}>
         <View style={styles.dot} />
         <T v="labelSmall">{status}</T>
       </View>
-      <Gap h={16} />
+      <Gap h={24} />
       {inDetention ? (
         <>
           <View style={styles.owed}>
@@ -163,7 +173,7 @@ function AtTheDock() {
               {money(c.owed)}
             </T>
           </View>
-          <Gap h={20} />
+          <Gap h={16} />
         </>
       ) : null}
       <Timeline events={events} />
@@ -178,6 +188,28 @@ function AtTheDock() {
         <Link label="Edit arrival time" onPress={a.openFix} />
       </View>
     </View>
+  );
+}
+
+/**
+ * "16h 54m" on one line: digits at Display/Timer, the units at Number/M, so the digits are
+ * what's read and the units only label them (Figma 09 · clarity pass).
+ */
+function WaitFigure({ min }: { min: number }) {
+  const m = Math.max(0, Math.floor(min));
+  const h = Math.floor(m / 60);
+  const mm = h ? String(m % 60).padStart(2, '0') : String(m);
+  return (
+    <T v="displayTimer" numberOfLines={1} style={[styles.tabular, styles.optical]}>
+      {h ? (
+        <>
+          {h}
+          <Text style={styles.unit}>h</Text>{' '}
+        </>
+      ) : null}
+      {mm}
+      <Text style={styles.unit}>m</Text>
+    </T>
   );
 }
 
@@ -332,10 +364,9 @@ const styles = StyleSheet.create({
   link: { textDecorationLine: 'underline' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: color.raise2 },
-  // Figma 08/09: "waited" sits 6 above the timer's bottom, 6 to its right.
-  waited: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
-  waitedWord: { marginBottom: 6, letterSpacing: 0 },
+  // Number/M: the h and m after the digits.
+  unit: { ...type.numberM, color: color.ink },
   status: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3.5 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.signal },
-  owed: { backgroundColor: color.signal, borderRadius: 24, borderCurve: 'continuous', padding: 18 },
+  owed: { backgroundColor: color.signal, borderRadius: 24, borderCurve: 'continuous', padding: 20 },
 });

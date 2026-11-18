@@ -60,14 +60,14 @@ export function TimelineEventRow({ title, detail, time, state, segment, icon, ac
       </View>
       {time ? (
         <View style={styles.timeWrap}>
-          <Text style={[type.bodyStrong, styles.time, upcoming ? styles.upcoming_ : styles.ink]}>{time}</Text>
+          <Text style={[type.body, styles.time, upcoming ? styles.sub : styles.ink]}>{time}</Text>
         </View>
       ) : null}
     </View>
   );
 }
 
-/** Figma "Timeline": the grey card the events sit in (09: 16 top and right, 12 left, none below). */
+/** Figma "Timeline": the grey card the events sit in. 20 on three sides; each event carries its own 20 below. */
 export function Timeline({ events }: { events: TimelineEvent[] }) {
   return (
     <View style={styles.card}>
@@ -83,9 +83,9 @@ const styles = StyleSheet.create({
     backgroundColor: color.raise,
     borderRadius: 24,
     borderCurve: 'continuous',
-    paddingTop: 16,
-    paddingRight: 16,
-    paddingLeft: 12,
+    paddingTop: 20,
+    paddingRight: 20,
+    paddingLeft: 20,
   },
   ev: { flexDirection: 'row', gap: 12 },
   rail: { width: 30, alignItems: 'center' },
@@ -98,6 +98,7 @@ const styles = StyleSheet.create({
   segment: { flex: 1, width: 3 },
   // 4 above the title, 20 below the last line, 2 between.
   text: { flex: 1, minWidth: 0, gap: 2, paddingTop: 4, paddingBottom: 20 },
+  // Times are data, not titles: Body/Regular, lined up with the title (09 · clarity pass).
   timeWrap: { paddingTop: 4 },
   ink: { color: color.ink },
   sub: { color: color.sub },
