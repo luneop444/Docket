@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { done, tick } from '../logic/haptics';
 import {
   createContext,
   useCallback,
@@ -183,6 +184,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
           stop: { ...s.stop, phase: 'dock' },
           knownPlaces: remember(s.knownPlaces, placeOf(s.load).name),
         }));
+        done();
         flashIsland();
       },
       /** C2 "Not a stop" or E1 "Undo": back to watching, nothing logged. */
@@ -195,11 +197,15 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         setUi((u) => ({ ...u, undo: null }));
         clearTimeout(timers.current.undo);
       },
-      checkIn: () => setS((s) => ({ ...s, stop: { ...s.stop, checkin: Math.round(stopNow(s.stop, s.now, Date.now())) } })),
+      checkIn: () => {
+        setS((s) => ({ ...s, stop: { ...s.stop, checkin: Math.round(stopNow(s.stop, s.now, Date.now())) } }));
+        done();
+      },
       /** E4: App Intent stand-in. Same safety net as everywhere else: Undo. */
       siriCheckIn: () => {
         setS((s) => ({ ...s, stop: { ...s.stop, checkin: Math.round(stopNow(s.stop, s.now, Date.now())) } }));
         setUi((u) => ({ ...u, siri: true }));
+        done();
       },
       undoCheckIn: () => {
         setS((s) => ({ ...s, stop: { ...s.stop, checkin: null } }));
@@ -215,10 +221,12 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
           return { ...s, now, stop: { ...s.stop, leave: Math.max(Math.round(now), (s.stop.arrive ?? 0) + 1), phase: 'left' } };
         });
         setUi((u) => ({ ...u, undo: null, sheet: u.sheet?.kind === 'left' ? null : u.sheet }));
+        done();
         flashIsland();
       },
       logStop: (bol: boolean, bolTimes?: BolTimes) => {
         setS((s) => saveToHistory({ ...s, stop: { ...s.stop, bol, bolTimes, phase: 'logged' } }));
+        done();
         flashIsland();
       },
       /** Prototype: jump straight to one Home state, for links and screenshots (?state=). */
@@ -238,17 +246,22 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
           sheet: { kind: 'fix', draft: { arrive: st.arrive ?? 0, leave: st.leave, brk: st.brk || 0 } },
         }));
       },
-      fixStep: (k: 'arrive' | 'leave' | 'brk', dir: 1 | -1) =>
-        setUi((u) => (u.sheet?.kind === 'fix' ? { ...u, sheet: { kind: 'fix', draft: stepFix(u.sheet.draft, k, dir) } } : u)),
+      fixStep: (k: 'arrive' | 'leave' | 'brk', dir: 1 | -1) => {
+        tick();
+        setUi((u) => (u.sheet?.kind === 'fix' ? { ...u, sheet: { kind: 'fix', draft: stepFix(u.sheet.draft, k, dir) } } : u));
+      },
       saveFix: (d: FixDraft) => {
         setS((s) => saveToHistory({ ...s, stop: applyFix(s.stop, d) }));
         setUi((u) => ({ ...u, sheet: null }));
+        done();
         toast('Time fixed. The GPS time stays on record.');
       },
 
       /* paycheck */
-      mark: (id: string, m: 'paid' | 'less' | 'none') =>
-        setS((s) => ({ ...s, marks: { ...s.marks, [id]: { ...(s.marks[id] ?? {}), m } }, sent: false })),
+      mark: (id: string, m: 'paid' | 'less' | 'none') => {
+        tick();
+        setS((s) => ({ ...s, marks: { ...s.marks, [id]: { ...(s.marks[id] ?? {}), m } }, sent: false }));
+      },
       setAmt: (id: string, v: string) =>
         setS((s) => ({ ...s, marks: { ...s.marks, [id]: { ...(s.marks[id] ?? { m: 'less' }), amt: cleanAmount(v) } } })),
       /** Marks read off a real settlement; the driver's own marks on other loads stay. */
@@ -264,6 +277,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
       },
       markSent: () => {
         setS((s) => ({ ...s, sent: true }));
+        done();
         setUi((u) => ({ ...u, sheet: null }));
       },
       setAnon: (anon: AppState['anon']) => {

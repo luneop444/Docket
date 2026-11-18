@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PageHead, Screen } from '../../components/Chrome';
 import { ChevronLeft, ChevronRight, DocIcon } from '../../components/Icons';
-import { Button, Card, Fake, Gap, noFocusRing, Row, Seg, T, TimeBar } from '../../components/ui';
+import { Button, Card, Fake, Gap, noFocusRing, press, Row, Seg, T, TimeBar } from '../../components/ui';
 import { calc, rulesLine } from '../../logic/detention';
 import { marksFromSettlement, type SettlementReading } from '../../logic/documents';
 import { clock, dur, money } from '../../logic/format';
@@ -71,7 +71,7 @@ export default function Paycheck() {
               accessibilityLabel="Newer week"
               disabled={i === 0}
               onPress={() => setPick(i - 1)}
-              style={[styles.weekBtn, i === 0 && styles.off]}
+              style={({ pressed }) => [styles.weekBtn, i === 0 && styles.off, pressed && styles.weekPressed]}
             >
               <ChevronLeft size={20} />
             </Pressable>
@@ -81,7 +81,7 @@ export default function Paycheck() {
               accessibilityLabel="Older week"
               disabled={i === weeks.length - 1}
               onPress={() => setPick(i + 1)}
-              style={[styles.weekBtn, i === weeks.length - 1 && styles.off]}
+              style={({ pressed }) => [styles.weekBtn, i === weeks.length - 1 && styles.off, pressed && styles.weekPressed]}
             >
               <ChevronRight size={20} c={color.ink} />
             </Pressable>
@@ -215,7 +215,7 @@ function LoadCard({
         </View>
       ) : null}
       {onRemove ? (
-        <Pressable accessibilityRole="button" onPress={onRemove} style={styles.remove} hitSlop={8}>
+        <Pressable accessibilityRole="button" onPress={onRemove} style={({ pressed }) => [styles.remove, pressed && press.link]} hitSlop={8}>
           <T v="bodyTiny">Not a real stop? Remove it</T>
         </Pressable>
       ) : null}
@@ -288,6 +288,7 @@ function Summary({ week }: { week: PayWeek }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  weekPressed: { backgroundColor: color.line },
   weekBtn: {
     width: 44,
     height: 44,

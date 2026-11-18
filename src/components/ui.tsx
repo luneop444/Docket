@@ -18,6 +18,7 @@ import {
 import { color, fontFamily, protoColor, radius, type, type TypeToken } from '../theme/tokens';
 import { noWidow } from '../logic/text';
 import { CheckIcon, ChevronRight } from './Icons';
+import { tick } from '../logic/haptics';
 
 /* ---------- text ---------- */
 
@@ -86,13 +87,26 @@ export function Card({
   const s = [styles.card, tone === 'signal' && styles.cardSignal, flagged && styles.cardFlagged, style];
   if (onPress) {
     return (
-      <Pressable accessibilityRole="button" onPress={onPress} style={s}>
+      <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [s, pressed && styles.pressed]}>
         {children}
       </Pressable>
     );
   }
   return <View style={s}>{children}</View>;
 }
+
+/**
+ * Press feedback everywhere: cards, tiles and buttons give a little (0.98); text links
+ * dim, as an iOS text button does.
+ */
+export const press = {
+  get give() {
+    return styles.pressed;
+  },
+  get link() {
+    return styles.linkPressed;
+  },
+};
 
 /* ---------- Button (Figma: Primary / Signal / Ghost / Text) ---------- */
 
@@ -200,8 +214,11 @@ export function Option({
       <Pressable
         accessibilityRole="radio"
         accessibilityState={{ checked: !!selected }}
-        onPress={onPress}
-        style={[styles.option, styles.optionRadio, selected && styles.optionOn]}
+        onPress={() => {
+          if (!selected) tick();
+          onPress();
+        }}
+        style={({ pressed }) => [styles.option, styles.optionRadio, selected && styles.optionOn, pressed && styles.pressed]}
       >
         <View style={[styles.radio, selected && styles.radioOn]} />
         {text}
@@ -213,7 +230,7 @@ export function Option({
       accessibilityRole="button"
       accessibilityLabel={sub ? `${label}. ${sub}` : label}
       onPress={onPress}
-      style={[styles.option, icon && styles.optionIcon, selected && styles.optionOn]}
+      style={({ pressed }) => [styles.option, icon && styles.optionIcon, selected && styles.optionOn, pressed && styles.pressed]}
     >
       {icon ? <IconTile icon={icon} tone="white" size={40} /> : null}
       {text}
@@ -249,8 +266,11 @@ export function Seg<K extends string>({
             key={o.key}
             accessibilityRole="radio"
             accessibilityState={{ checked: on }}
-            onPress={() => onChange(o.key)}
-            style={[styles.segBtn, on && { backgroundColor: o.flag ? color.flag : color.ink }]}
+            onPress={() => {
+              if (!on) tick();
+              onChange(o.key);
+            }}
+            style={({ pressed }) => [styles.segBtn, on && { backgroundColor: o.flag ? color.flag : color.ink }, pressed && styles.pressed]}
           >
             <Text style={[type.labelSmall, { color: on ? color.bg : color.ink }]}>{o.label}</Text>
           </Pressable>
@@ -363,7 +383,10 @@ export function ChoiceTile({
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
       accessibilityLabel={sub ? `${label}. ${sub}` : label}
-      onPress={onPress}
+      onPress={() => {
+        if (!selected) tick();
+        onPress();
+      }}
       style={({ pressed }) => [styles.choice, selected && styles.choiceOn, pressed && styles.pressed]}
     >
       {icon ? <IconTile icon={icon} tone={selected ? 'ink' : 'white'} size={48} /> : null}
@@ -506,6 +529,7 @@ const styles = StyleSheet.create({
   btnText: { height: 44 },
   disabled: { opacity: 0.35 },
   pressed: { transform: [{ scale: 0.98 }] },
+  linkPressed: { opacity: 0.3 },
   pill: { height: 26, paddingHorizontal: 10, borderRadius: 13, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
   fake: {
     fontFamily: fontFamily.semibold,

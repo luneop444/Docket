@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Fragment, useEffect } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
 import { DemoDrawer } from '../../components/DemoDrawer';
 import { FreeBar } from '../../components/FreeBar';
 import { Timeline } from '../../components/Timeline';
-import { Button, Gap, T } from '../../components/ui';
+import { Button, Gap, press, T } from '../../components/ui';
 import { isDemoState } from '../../logic/demo';
+import { heads } from '../../logic/haptics';
 import { clock, dur, money, rateShort } from '../../logic/format';
 import { placeOf, watchedStop } from '../../logic/state';
 import { dockTimeline, stopCalc, stopTime } from '../../logic/stop';
@@ -115,6 +116,12 @@ function AtTheDock() {
   const c = stopCalc(st, s.now, s.rules);
   const place = placeOf(s.load);
   const inDetention = s.now >= c.freeEnd;
+  // Free time running out while you watch is the one moment worth a warning tap.
+  const wasDetention = useRef(inDetention);
+  useEffect(() => {
+    if (inDetention && !wasDetention.current) heads();
+    wasDetention.current = inDetention;
+  }, [inDetention]);
   const beforeClock = s.now < c.start;
   const fromAppt = s.rules.start === 'appt';
   const waited = s.now - (st.arrive ?? s.now);
@@ -279,7 +286,7 @@ function AtStop() {
 
 function Link({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={12}>
+    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={12} style={({ pressed }) => pressed && press.link}>
       <T v="bodySmall" c={color.sub} style={styles.link}>
         {label}
       </T>
@@ -297,7 +304,7 @@ function Stops() {
 
   if (!stops.length) {
     return (
-      <Pressable accessibilityRole="button" onPress={() => router.push('/add-load')}>
+      <Pressable accessibilityRole="button" onPress={() => router.push('/add-load')} style={({ pressed }) => pressed && press.link}>
         <T v="bodyStrong">Add today’s load</T>
         <Gap h={4} />
         <T v="bodySmall" c={color.sub}>

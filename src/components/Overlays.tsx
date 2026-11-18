@@ -33,7 +33,8 @@ import { color, fontFamily, protoColor, radius, type } from '../theme/tokens';
 import { useFramed, useInsets, useIslandStage } from './Chrome';
 import { MinusIcon, PlusIcon, TruckIcon } from './Icons';
 import { useReduceMotion } from './stepMotion';
-import { Button, Gap, Row, T } from './ui';
+import { useRepeat } from './useRepeat';
+import { Button, Gap, press, Row, T } from './ui';
 
 /* =========================================================
    Sheets
@@ -151,6 +152,26 @@ function MessageSheet({ text }: { text: string }) {
   );
 }
 
+/** One time on Fix a time: − and + step it, and holding either keeps stepping. */
+function FixRow({ label, value, last, onStep }: { label: string; value: string; last: boolean; onStep: (dir: 1 | -1) => void }) {
+  const earlier = useRepeat(() => onStep(-1));
+  const later = useRepeat(() => onStep(1));
+  return (
+    <View style={[styles.timeRow, !last && styles.timeRowLine]}>
+      <T v="body" c={color.sub}>{label}</T>
+      <View style={styles.stepper}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${label} earlier`} {...earlier} style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}>
+          <MinusIcon size={24} />
+        </Pressable>
+        <T v="bodyStrong" style={styles.stepValue}>{value}</T>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${label} later`} {...later} style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}>
+          <PlusIcon size={24} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 /** Figma C6 Fix a time: reachable from every auto-logged time and every Undo toast. */
 function FixSheet({ draft }: { draft: FixDraft }) {
   const { a } = useStore();
@@ -167,18 +188,7 @@ function FixSheet({ draft }: { draft: FixDraft }) {
       <Gap h={16} />
       <View style={styles.times}>
         {rows.map(({ k, label, value }, i) => (
-          <View key={k} style={[styles.timeRow, i < rows.length - 1 && styles.timeRowLine]}>
-            <T v="body" c={color.sub}>{label}</T>
-            <View style={styles.stepper}>
-              <Pressable accessibilityRole="button" accessibilityLabel={`${label} earlier`} onPress={() => a.fixStep(k, -1)} style={styles.step}>
-                <MinusIcon size={24} />
-              </Pressable>
-              <T v="bodyStrong" style={styles.stepValue}>{value}</T>
-              <Pressable accessibilityRole="button" accessibilityLabel={`${label} later`} onPress={() => a.fixStep(k, 1)} style={styles.step}>
-                <PlusIcon size={24} />
-              </Pressable>
-            </View>
-          </View>
+          <FixRow key={k} label={label} value={value} last={i === rows.length - 1} onStep={(d) => a.fixStep(k, d)} />
         ))}
       </View>
       <Gap h={20} />
@@ -263,10 +273,10 @@ function UndoToast({ text }: { text: string }) {
       ]}
     >
       <Text style={[type.bodyStrong, styles.undoText]}>{text}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Fix the arrival time" onPress={a.openFix} hitSlop={10}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Fix the arrival time" onPress={a.openFix} hitSlop={10} style={({ pressed }) => pressed && press.link}>
         <Text style={[type.labelSmall, { color: protoColor.toastAction }]}>Fix</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="Undo, this isn't a stop" onPress={a.cancelArrival} hitSlop={10}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Undo, this isn't a stop" onPress={a.cancelArrival} hitSlop={10} style={({ pressed }) => pressed && press.link}>
         <Text style={[type.labelSmall, { color: color.signal }]}>Undo</Text>
       </Pressable>
     </Animated.View>
@@ -448,7 +458,7 @@ function LockActivity({
             key={b.label}
             accessibilityRole="button"
             onPress={b.onPress}
-            style={[styles.lockButton, { backgroundColor: b.primary ? color.signal : color.raise2 }]}
+            style={({ pressed }) => [styles.lockButton, { backgroundColor: b.primary ? color.signal : color.raise2 }, pressed && press.give]}
           >
             <Text style={[type.labelSmall, { color: b.primary ? color.signalInk : color.ink }]}>{b.label}</Text>
           </Pressable>
@@ -606,6 +616,7 @@ const styles = StyleSheet.create({
   timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, paddingVertical: 6 },
   timeRowLine: { borderBottomWidth: 1, borderBottomColor: color.line },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  stepPressed: { backgroundColor: color.line },
   step: {
     width: 44,
     height: 44,

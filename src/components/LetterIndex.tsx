@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View, type GestureResponderEvent, type HostInstance } from 'react-native';
+import { tick } from '../logic/haptics';
 import { BUBBLE, IndexBubble } from './IndexBubble';
 import { useReduceMotion } from './stepMotion';
 import { color, fontFamily } from '../theme/tokens';
@@ -58,6 +59,8 @@ export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) 
     const y = Math.max(0, Math.min(box.current.height, pageY - box.current.top));
     setBubble({ letter: l, y });
     if (l !== active) {
+      // A tick per letter, as the iOS index gives under the thumb.
+      tick();
       setActive(l);
       onLetter(l);
     }
