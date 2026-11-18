@@ -67,3 +67,12 @@ export function parseClock(input: string): number | null {
   } else if (h > 23) return null;
   return h * 60 + min;
 }
+
+/**
+ * Joins the last two words with a no-break space, so text that wraps never leaves one word
+ * alone on its last line ("…detention rules" wraps as a pair).
+ */
+export function keepLast(text: string): string {
+  const i = text.lastIndexOf(' ');
+  return i > 0 ? text.slice(0, i) + '\u00A0' + text.slice(i + 1) : text;
+}

@@ -348,7 +348,8 @@ export function ChoiceTile({
   selected,
   onPress,
 }: {
-  icon: IconFn;
+  /** Optional: answers that need no picture (Does this match your paperwork?) go without. */
+  icon?: IconFn;
   label: string;
   sub?: string;
   selected: boolean;
@@ -362,7 +363,7 @@ export function ChoiceTile({
       onPress={onPress}
       style={({ pressed }) => [styles.choice, selected && styles.choiceOn, pressed && styles.pressed]}
     >
-      <IconTile icon={icon} tone={selected ? 'ink' : 'white'} size={48} />
+      {icon ? <IconTile icon={icon} tone={selected ? 'ink' : 'white'} size={48} /> : null}
       <View style={styles.flexGap2}>
         <T v="bodyStrong" c={selected ? color.onSignal : color.ink}>
           {label}
