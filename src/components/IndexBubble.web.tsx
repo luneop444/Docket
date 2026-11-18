@@ -6,10 +6,13 @@ import { color, fontFamily } from '../theme/tokens';
 
 export const BUBBLE = 56;
 /** The tab bar's glass: white at 62%, 1px of frost. */
-const TINT: [number, number, number, number] = [1, 1, 1, 0.62];
-const FROST = 1;
+// Clearer than the tab bar, so the list shows through: white at 30%, half the frost.
+const TINT: [number, number, number, number] = [1, 1, 1, 0.3];
+const FROST = 0.5;
 /** Bend at the bubble's size, scaled the way the tab bar's ends are (by height). */
-const K = AAVE.x * (BUBBLE / AAVE.h);
+const K = AAVE.x * (BUBBLE / AAVE.h) * 1.8;
+/** How far in from the edge the bend reaches, against the tab bar's ends (1). */
+const REACH = 1.5;
 
 type Html2Canvas = (el: HTMLElement, o: Record<string, unknown>) => Promise<HTMLCanvasElement>;
 
@@ -46,7 +49,7 @@ export function IndexBubble({ letter, active, warm }: { letter: string; active: 
       const g = createGlass(c);
       if (!g) return;
       glass.current = g;
-      void roundLensMap(BUBBLE, scale, AAVE).then((m) => g.setMaps(m, m));
+      void roundLensMap(BUBBLE, scale, AAVE, REACH).then((m) => g.setMaps(m, m));
     } catch {
       glass.current = null;
     }
@@ -185,7 +188,7 @@ const S: Record<string, CSSProperties> = {
     height: BUBBLE,
     borderRadius: BUBBLE / 2,
     overflow: 'hidden',
-    background: 'rgba(255,255,255,0.62)',
+    background: 'rgba(255,255,255,0.3)',
     backdropFilter: `blur(${FROST}px)`,
     WebkitBackdropFilter: `blur(${FROST}px)`,
     boxShadow: '0 0 0 0.5px rgba(0,0,0,0.10), 0 6px 20px rgba(0,0,0,0.12)',

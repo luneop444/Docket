@@ -43,6 +43,7 @@ export function frosted(src: HTMLCanvasElement, scale: number, frost: number): H
   ctx.drawImage(src, 0, 0);
   const img = ctx.getImageData(0, 0, c.width, c.height);
   const r = Math.max(1, Math.round(frost * scale * 0.8));
+  if (frost <= 0) return src;
   for (let k = 0; k < 3; k++) {
     boxBlur(img.data, c.width, c.height, r, true);
     boxBlur(img.data, c.width, c.height, r, false);
@@ -78,7 +79,7 @@ function boxBlur(d: Uint8ClampedArray, w: number, h: number, r: number, across: 
  * it shades it (blue). Turned around the centre, that profile becomes a circle that bends
  * inward all the way round, the same amount the tab bar does at its ends.
  */
-export function roundLensMap(diameter: number, scale: number, lens: { w: number; h: number }): Promise<ImageData> {
+export function roundLensMap(diameter: number, scale: number, lens: { w: number; h: number }, reach = 1): Promise<ImageData> {
   return new Promise((res) => {
     const img = new Image();
     img.onload = () => {
@@ -96,7 +97,7 @@ export function roundLensMap(diameter: number, scale: number, lens: { w: number;
       const N = Math.round(diameter * scale), R = N / 2;
       // Map pixels per bubble pixel: the map spans the lens's width, scaled to the bubble
       // by height, as the tab bar's ends are.
-      const k = (img.width / lens.w) / ((diameter / lens.h) * scale);
+      const k = (img.width / lens.w) / ((diameter / lens.h) * scale * reach);
       const c = document.createElement('canvas');
       c.width = N;
       c.height = N;
