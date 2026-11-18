@@ -345,6 +345,7 @@ export function ChoiceTile({
   icon,
   label,
   sub,
+  plain,
   selected,
   onPress,
 }: {
@@ -352,6 +353,8 @@ export function ChoiceTile({
   icon?: IconFn;
   label: string;
   sub?: string;
+  /** Regular-weight label: plain answers to a question, where bold would only add noise. */
+  plain?: boolean;
   selected: boolean;
   onPress: () => void;
 }) {
@@ -365,7 +368,7 @@ export function ChoiceTile({
     >
       {icon ? <IconTile icon={icon} tone={selected ? 'ink' : 'white'} size={48} /> : null}
       <View style={styles.flexGap2}>
-        <T v="bodyStrong" c={selected ? color.onSignal : color.ink}>
+        <T v={plain ? 'body' : 'bodyStrong'} c={selected ? color.onSignal : color.ink}>
           {label}
         </T>
         {sub ? (
@@ -379,7 +382,10 @@ export function ChoiceTile({
           <CheckIcon c={color.bg} size={16} />
         </View>
       ) : (
-        <View style={styles.choiceRing} />
+        // The 24 ring sits in the check's 28 slot, so picking an answer doesn't change its height.
+        <View style={styles.choiceSlot}>
+          <View style={styles.choiceRing} />
+        </View>
       )}
     </Pressable>
   );
@@ -461,6 +467,7 @@ const styles = StyleSheet.create({
   optionIcon: { padding: 14, borderRadius: 20, justifyContent: 'flex-start' },
   choiceOn: { backgroundColor: color.signal },
   choiceRing: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: color.track },
+  choiceSlot: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   choiceCheck: {
     width: 28,
     height: 28,

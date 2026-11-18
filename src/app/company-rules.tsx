@@ -75,7 +75,8 @@ export default function CompanyRules() {
             {i > 0 ? <Hr style={{ marginVertical: 13 }} /> : null}
             <Row>
               <T v="body" c={color.sub}>{label}</T>
-              <T v="bodyStrong">{value}</T>
+              {/* Grey label, black value: colour already separates them, so no bold. */}
+              <T v="body">{value}</T>
             </Row>
           </Fragment>
         ))}
@@ -89,6 +90,7 @@ export default function CompanyRules() {
           <ChoiceTile
             key={o.k}
             label={o.label}
+            plain
             selected={picked === o.k}
             onPress={() => setPicked(o.k)}
           />
