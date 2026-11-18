@@ -13,11 +13,13 @@ import { color } from '../theme/tokens';
  * The three honest answers to "Does this match your paperwork?", none picked to start.
  * Same pick-then-Continue pattern as the loads question (lime = chosen, black = go).
  */
-const ANSWERS: { k: RulesCheck; label: string; sub: string }[] = [
-  { k: 'matches', label: 'Yes, it matches', sub: 'Docket uses these rules' },
-  { k: 'different', label: 'No, mine is different', sub: 'You’ll fix them next' },
-  { k: 'unsure', label: 'I’m not sure', sub: 'Use these for now, change anytime' },
-];
+const ANSWERS: { k: RulesCheck; label: string }[] = [
+  // One line each, with what happens next in the answer, so all three fit above Continue
+  // even on a short screen: a hidden "I'm not sure" would nudge drivers to the other two.
+  { k: 'matches', label: 'Yes, it matches' },
+  { k: 'different', label: 'No, I’ll fix them' },
+  { k: 'unsure', label: 'I’m not sure, use these for now' },
+]
 
 /**
  * Figma A2 Company rules, prefilled from other drivers. The driver is asked whether they
@@ -49,16 +51,28 @@ export default function CompanyRules() {
       header={<OnboardingBar step={2} onBack={() => router.navigate('/company')} />}
       footer={<Button label="Continue" disabled={!picked} onPress={next} />}
     >
-      <T v="h2">{keepLast(`${s.company}’s detention rules`)}</T>
+      {/* A heading that's one line for every carrier, so a long name (Ruan Transportation
+          Management Systems) can't push an answer under Continue. The company goes first in
+          the line under it. */}
+      <T v="h2">Your detention rules</T>
       <Gap h={8} />
       <T v="body" c={color.sub}>
-        {keepLast(`Reported by ${c ? c.reported : 0} drivers. Rules vary by fleet.`)}
+        {keepLast(`${s.company}, as ${c ? c.reported : 0} drivers reported them. Rules vary by fleet.`)}
       </T>
+      {/* Sits with the subtitle it qualifies, so nothing comes between the rules and the question. */}
+      {TEST_SETUP?.company !== s.company ? (
+        <>
+          <Gap h={8} />
+          <T v="bodyTiny">
+            <Fake label="Sample data" /> {keepLast('Made up for this prototype, not the real policy.')}
+          </T>
+        </>
+      ) : null}
       <Gap h={24} />
       <Card>
         {rows.map(([label, value], i) => (
           <Fragment key={label}>
-            {i > 0 ? <Hr style={{ marginVertical: 17 }} /> : null}
+            {i > 0 ? <Hr style={{ marginVertical: 13 }} /> : null}
             <Row>
               <T v="body" c={color.sub}>{label}</T>
               <T v="bodyStrong">{value}</T>
@@ -66,23 +80,15 @@ export default function CompanyRules() {
           </Fragment>
         ))}
       </Card>
-      {TEST_SETUP?.company !== s.company ? (
-        <>
-          <Gap h={8} />
-          <T v="bodyTiny">
-            <Fake label="Sample data" /> {keepLast(`These rules are made up for this prototype, not ${s.company}’s real policy.`)}
-          </T>
-        </>
-      ) : null}
       <Gap h={24} />
-      <T v="labelSmall">Does this match your paperwork?</T>
+      {/* The decision on this screen: as strong as its answers, not a caption. */}
+      <T v="bodyStrong">{keepLast('Does this match your paperwork?')}</T>
       <Gap h={10} />
       <View style={styles.list} accessibilityRole="radiogroup" accessibilityLabel="Does this match your paperwork?">
         {ANSWERS.map((o) => (
           <ChoiceTile
             key={o.k}
             label={o.label}
-            sub={keepLast(o.sub)}
             selected={picked === o.k}
             onPress={() => setPicked(o.k)}
           />
