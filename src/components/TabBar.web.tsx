@@ -4,6 +4,7 @@ import { createGlass, type Glass } from './glassGL';
 import { color, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
 import { GLASS_MAP } from './glassMap';
+import { AAVE, BEND, CHROMA, SPEC, frosted } from './glassPicture';
 import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
 
 const TABS = [
@@ -26,32 +27,6 @@ const BAR_TINT = 'rgba(255,255,255,0.62)';
 const FROST = 1;
 /** The selected pill: light grey glass over the bar. */
 const PILL_TINT = 'rgba(214,216,220,0.5)';
-/**
- * Aave's glass ("Building glass for the web"): their lens map, drawn for an 88x40 lens.
- * Their map only bends the outer rim (the middle is flat, as in their demos), so the bend
- * shows as warping at the ends and edges, not across the middle.
- * Bend: BEND times their 27.3px across and 9.46px down. Prototype switch: open any page
- * with ?bend=8 (or ?bend=max for 12, ?bend=reset) to try another strength; it sticks for
- * the tab.
- */
-const BEND_DEFAULT = 5;
-function bendSetting() {
-  try {
-    const q = new URLSearchParams(window.location.search).get('bend');
-    if (q === 'reset') sessionStorage.removeItem('bend');
-    else if (q) sessionStorage.setItem('bend', q === 'max' ? '12' : q);
-    const v = parseFloat(sessionStorage.getItem('bend') ?? '');
-    return v > 0 && v <= 20 ? v : BEND_DEFAULT;
-  } catch {
-    return BEND_DEFAULT;
-  }
-}
-const BEND = typeof window === 'undefined' ? BEND_DEFAULT : bendSetting();
-const AAVE = { w: 88, h: 40, x: 27.3 * BEND, y: 9.46 * BEND };
-// Colour fringe = bend × (split − 1). The fringe stays the same width at any bend: red
-// 0.88 and green 0.43 of Aave's offset past blue (at 5x, a split of 1.176 / 1.086).
-const CHROMA = [1 + 0.88 / BEND, 1 + 0.43 / BEND, 1];
-const SPEC = 1.5;
 /** Room above and below the bar that the picture must also cover, for the bend to read. */
 const M = 28;
 
@@ -218,8 +193,8 @@ export function TabBar() {
       anchor.removeAttribute('data-glass-anchor');
       content.removeAttribute('data-glass-root');
       if (!cv) return;
-      g.bar.setPage(frosted(cv, scale));
-      g.pill.setPage(frosted(cv, scale));
+      g.bar.setPage(frosted(cv, scale, FROST));
+      g.pill.setPage(frosted(cv, scale, FROST));
       const ar0 = anchor.getBoundingClientRect();
       pic.current = {
         el: content,
@@ -367,52 +342,11 @@ export function TabBar() {
 }
 
 /**
- * The page frosted, on pixels (a box blur run three times, close to a Gaussian), so it
- * looks the same in Safari, whose canvas has no blur filter.
- */
-function frosted(src: HTMLCanvasElement, scale: number): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.width = src.width;
-  c.height = src.height;
-  const ctx = c.getContext('2d')!;
-  ctx.drawImage(src, 0, 0);
-  const img = ctx.getImageData(0, 0, c.width, c.height);
-  const r = Math.max(1, Math.round(FROST * scale * 0.8));
-  for (let k = 0; k < 3; k++) {
-    boxBlur(img.data, c.width, c.height, r, true);
-    boxBlur(img.data, c.width, c.height, r, false);
-  }
-  ctx.putImageData(img, 0, 0);
-  return c;
-}
-
-function boxBlur(d: Uint8ClampedArray, w: number, h: number, r: number, across: boolean) {
-  const n = across ? w : h, lines = across ? h : w, line = new Float32Array(n * 3), win = r * 2 + 1;
-  for (let l = 0; l < lines; l++) {
-    for (let i = 0; i < n; i++) {
-      const p = (across ? l * w + i : i * w + l) * 4;
-      line[i * 3] = d[p];
-      line[i * 3 + 1] = d[p + 1];
-      line[i * 3 + 2] = d[p + 2];
-    }
-    for (let ch = 0; ch < 3; ch++) {
-      let sum = 0;
-      for (let i = -r; i <= r; i++) sum += line[Math.min(n - 1, Math.max(0, i)) * 3 + ch];
-      for (let i = 0; i < n; i++) {
-        const p = (across ? l * w + i : i * w + l) * 4;
-        d[p + ch] = sum / win;
-        sum += line[Math.min(n - 1, i + r + 1) * 3 + ch] - line[Math.max(0, i - r) * 3 + ch];
-      }
-    }
-  }
-}
-
-/**
  * The scrolling element under the bar: the nearest scroll area around whatever is actually
  * showing under the bar's middle. Screens the app keeps loaded behind the current one
  * (Today stays loaded under Paycheck) are skipped, because they aren't what's showing.
  */
-function scrollerUnder(bar: HTMLElement): HTMLElement | null {
+export function scrollerUnder(bar: HTMLElement): HTMLElement | null {
   const r = bar.getBoundingClientRect();
   const hits = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2);
   let fallback: HTMLElement | null = null;
@@ -435,7 +369,7 @@ function scrollerUnder(bar: HTMLElement): HTMLElement | null {
 }
 
 /** A map image laid on a neutral (128) field the size of the glass's window, at device scale. */
-function mapData(src: string | Promise<string>, w: number, h: number, box: { x: number; y: number; w: number; h: number }, scale: number) {
+export function mapData(src: string | Promise<string>, w: number, h: number, box: { x: number; y: number; w: number; h: number }, scale: number) {
   return Promise.resolve(src).then(
     (url) =>
       new Promise<ImageData>((res) => {
