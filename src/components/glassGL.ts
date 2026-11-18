@@ -37,8 +37,8 @@ uniform vec4 pillTint;    // colour and strength of the pill's tint
 uniform float isPill;     // 0 draws the bar, 1 draws the pill
 
 vec3 readPage(vec2 at) {
-  vec2 uv = (at - pageOrigin) / pageSize;
-  if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return vec3(1.0);
+  // Past the picture (the screen's edge, or the end of a piece) the nearest edge carries on.
+  vec2 uv = clamp((at - pageOrigin) / pageSize, vec2(0.0), vec2(1.0));
   return texture2D(page, uv).rgb;
 }
 
