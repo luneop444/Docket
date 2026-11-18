@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import type { ReactElement } from 'react';
+import { CheckIcon, ClockIcon, DollarIcon, HourglassIcon, PinIcon } from './Icons';
 import { color, fontFamily, type } from '../theme/tokens';
 
 export type EventState = 'done' | 'current' | 'upcoming';
@@ -24,28 +25,25 @@ const SEGMENT_COLOR: Record<Exclude<EventSegment, 'none'>, string> = {
   upcoming: color.line,
 };
 
-/** Figma "Icon/Timeline/*": 16 box, 1.47 stroke, exported from the components. */
-const GLYPH: Record<EventIcon, string> = {
-  pin: 'M8 14S3.333 9.867 3.333 6.333a4.667 4.667 0 0 1 9.334 0C12.667 9.867 8 14 8 14ZM8 8a1.667 1.667 0 1 0 0-3.333A1.667 1.667 0 0 0 8 8Z',
-  clock: 'M8 5v3l2 1.333M13.667 8A5.667 5.667 0 1 1 2.333 8a5.667 5.667 0 0 1 11.334 0Z',
-  check: 'M3.333 8.333l3 3L12.667 5',
-  hourglass:
-    'M4.667 2h6.666M4.667 14h6.666M5.333 2v1.333C5.333 5.333 8 6.333 8 8m0 0c0-1.667 2.667-2.667 2.667-4.667V2M8 8c0 1.667-2.667 2.667-2.667 4.667V14M8 8c0 1.667 2.667 2.667 2.667 4.667V14',
-  dollar:
-    'M8 2v12m3-9c-.4-1-1.467-1.667-3-1.667-1.733 0-3 .867-3 2.2 0 3.067 6.333 1.6 6.333 4.8 0 1.4-1.333 2.334-3.2 2.334-1.6 0-2.8-.734-3.266-1.867',
+/** The node icons, as SF Symbols (mappin, clock, checkmark, hourglass, dollarsign). */
+const GLYPH: Record<EventIcon, (p: { c: string; size: number }) => ReactElement | null> = {
+  pin: PinIcon,
+  clock: ClockIcon,
+  check: CheckIcon,
+  hourglass: HourglassIcon,
+  dollar: DollarIcon,
 };
 
 /** Figma "Timeline / Event" (State × Segment): a 30 node with its icon, title, detail, time. */
 export function TimelineEventRow({ title, detail, time, state, segment, icon, action }: TimelineEvent) {
   const upcoming = state === 'upcoming';
+  const Glyph = GLYPH[icon];
   const glyph = state === 'done' ? color.bg : state === 'current' ? color.ink : color.faint;
   return (
     <View style={styles.ev}>
       <View style={styles.rail}>
         <View style={[styles.node, styles[state]]}>
-          <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
-            <Path d={GLYPH[icon]} stroke={glyph} strokeWidth={1.4667} strokeLinecap="round" strokeLinejoin="round" />
-          </Svg>
+          <Glyph c={glyph} size={15} />
         </View>
         {segment === 'none' ? null : <View style={[styles.segment, { backgroundColor: SEGMENT_COLOR[segment] }]} />}
       </View>
