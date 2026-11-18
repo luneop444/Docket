@@ -5,9 +5,9 @@ import { scrollerUnder } from './TabBar.web';
 import { color, fontFamily } from '../theme/tokens';
 
 export const BUBBLE = 56;
-// Clearer than the tab bar, so the list shows through: white at 30%, half the frost.
-const TINT: [number, number, number, number] = [1, 1, 1, 0.3];
-const FROST = 0.5;
+// Clear glass, so the list shows through: white at 12%, and the least frost there is (one pixel), which smooths the rim's squeezed lines.
+const TINT: [number, number, number, number] = [1, 1, 1, 0.12];
+const FROST = 0.25;
 /** Bend at the bubble's size, scaled the way the tab bar's ends are (by height). */
 const K = AAVE.x * (BUBBLE / AAVE.h) * 1.8;
 /** How far in from the edge the bend reaches, against the tab bar's ends (1). */
