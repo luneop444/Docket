@@ -118,7 +118,7 @@ export default function PickCompany() {
                 onPress={() => pick(c.name, false)}
                 style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
               >
-                {/* One card: the logo straight on the tile, the name under it, both from the left. */}
+                {/* One card: the logo straight on the tile, the name under it, both centered. */}
                 <View style={styles.logoBox}>
                   {LOGOS[c.name] ? (
                     <Image
@@ -131,7 +131,7 @@ export default function PickCompany() {
                     <T v="labelPill">{c.name}</T>
                   )}
                 </View>
-                <T v="bodySmall" c={color.sub} numberOfLines={1}>
+                <T v="bodySmall" c={color.sub} numberOfLines={1} style={styles.tileName}>
                   {LOGOS[c.name]?.short ?? c.name}
                 </T>
               </Pressable>
@@ -217,8 +217,9 @@ const styles = StyleSheet.create({
     backgroundColor: color.raise,
   },
   fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
-  // One squircle per carrier, like an option tile: 16 padding, the logo then its name.
-  // The logos are transparent, so no white plate is needed behind them.
+  // One squircle per carrier: 16 padding, the logo then its name. The logos are transparent,
+  // so no plate is needed. Centered: logos run 77 to 108 wide, and a short single-line name
+  // under a centered logo reads as one unit in a two-column grid.
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile: {
     width: '48%',
@@ -230,7 +231,8 @@ const styles = StyleSheet.create({
   },
   tilePressed: { backgroundColor: color.line },
   // The tallest logo is 34; every logo sits in the same 36 band so the names line up.
-  logoBox: { height: 36, justifyContent: 'center', alignItems: 'flex-start' },
+  logoBox: { height: 36, justifyContent: 'center', alignItems: 'center' },
+  tileName: { textAlign: 'center' },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line, marginTop: 8, marginRight: 24 },
   // Compact like Contacts; right padding leaves room for the A–Z strip.
   row: {
