@@ -10,8 +10,9 @@ import { useStore } from '../state/AppStore';
 import { color, type } from '../theme/tokens';
 
 /**
- * Logos for the six popular carriers, from the team's Figma (Onboarding v3, E1 Pick company ·
- * logo plates, component "Carrier logo"). Exported at 3x; sizes are the Figma sizes in pt.
+ * Logos for the six popular carriers, from the team's Figma (Onboarding v3, E1 Pick company,
+ * component "Carrier logo"). Exported at 3x with transparent backgrounds; sizes are the Figma
+ * sizes in pt.
  * Short names are the ones the Figma tiles use.
  */
 const LOGOS: Record<string, { src: ImageSourcePropType; w: number; h: number; short: string }> = {
@@ -117,8 +118,8 @@ export default function PickCompany() {
                 onPress={() => pick(c.name, false)}
                 style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
               >
-                {/* Figma E1: a white plate holds the logo, the name sits under it. */}
-                <View style={styles.plate}>
+                {/* One card: the logo straight on the tile, the name under it, both from the left. */}
+                <View style={styles.logoBox}>
                   {LOGOS[c.name] ? (
                     <Image
                       source={LOGOS[c.name].src}
@@ -130,7 +131,7 @@ export default function PickCompany() {
                     <T v="labelPill">{c.name}</T>
                   )}
                 </View>
-                <T v="bodySmall" c={color.sub} numberOfLines={1} style={styles.tileName}>
+                <T v="bodySmall" c={color.sub} numberOfLines={1}>
                   {LOGOS[c.name]?.short ?? c.name}
                 </T>
               </Pressable>
@@ -216,27 +217,20 @@ const styles = StyleSheet.create({
     backgroundColor: color.raise,
   },
   fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
-  // Figma E1 Pick company · logo plates: 10 between tiles, 8 around the plate, 12 under the name.
+  // One squircle per carrier, like an option tile: 16 padding, the logo then its name.
+  // The logos are transparent, so no white plate is needed behind them.
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile: {
     width: '48%',
     flexGrow: 1,
-    paddingTop: 8,
-    paddingHorizontal: 8,
-    paddingBottom: 12,
-    gap: 10,
+    padding: 16,
+    gap: 12,
     borderRadius: 20, borderCurve: 'continuous',
     backgroundColor: color.raise,
   },
   tilePressed: { backgroundColor: color.line },
-  plate: {
-    height: 64,
-    borderRadius: 14, borderCurve: 'continuous',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileName: { paddingLeft: 6 },
+  // The tallest logo is 34; every logo sits in the same 36 band so the names line up.
+  logoBox: { height: 36, justifyContent: 'center', alignItems: 'flex-start' },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line, marginTop: 8, marginRight: 24 },
   // Compact like Contacts; right padding leaves room for the A–Z strip.
   row: {
