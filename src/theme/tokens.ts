@@ -9,37 +9,47 @@ import type { TextStyle } from 'react-native';
 
 export const color = {
   bg: '#FFFFFF',
-  /** Figma color/canvas: the flat cool grey behind every screen, so glass cards lift off it. */
-  canvas: '#E9ECF0',
+  /**
+   * Figma color/canvas: the flat grey behind every screen, so glass cards lift off it.
+   * Untinted, as in Edward's reference sheet (#E8E8E8); was a cool #E9ECF0.
+   */
+  canvas: '#E8E8E8',
   /** Figma color/glass: white at 62%, the surface of every card and the tab bar. */
   glass: 'rgba(255,255,255,0.62)',
-  raise: '#F2F4F6',
-  raise2: '#E5E8EC',
-  line: '#D7DBE0',
-  ink: '#000000',
-  sub: '#5C6168',
+  /** Untinted greys at the same lightness as before (were #F2F4F6, #E5E8EC). */
+  raise: '#F4F4F4',
+  raise2: '#E8E8E8',
   /**
-   * Non-text only (icons, dividers, inactive bars). 4.26:1 on white, below the
-   * 4.5:1 text minimum, so never use it for text or placeholders: use `sub`.
+   * Ink: one soft near-black, #1C1C1C (the reference's), instead of pure black. Every grey
+   * below is this ink faded, so they share its hue on any surface (canvas, glass, lime),
+   * each at the opacity that keeps its old weight on white (was its own blue-grey hex).
+   * Contrast on the darkest surface it sits on, canvas, in each note.
    */
-  faint: '#767B82',
+  ink: '#1C1C1C',
+  /** Dividers: 16% (was #D7DBE0, 1.39:1 on white; 1.38:1 now on every surface). */
+  line: 'rgba(28,28,28,0.16)',
+  /** Secondary text: 70% (was #5C6168). 6.29:1 on white, 5.72:1 on canvas and lime. */
+  sub: 'rgba(28,28,28,0.70)',
+  /**
+   * Non-text only (icons, dividers, inactive bars): 58% (was #767B82). 4.23:1 on white,
+   * 3.93:1 on canvas, below the 4.5:1 text minimum, so never text or placeholders: `sub`.
+   */
+  faint: 'rgba(28,28,28,0.58)',
   signal: '#D4F54C',
-  signalInk: '#000000',
-  onSignal: '#000000',
+  signalInk: '#1C1C1C',
+  onSignal: '#1C1C1C',
   /**
-   * Inactive onboarding progress segment, radio and choice rings, switch off. Not a Figma
-   * variable: the reference uses a very light gray, darkened to pass WCAG 1.4.11 (3:1) on the
-   * grey canvas: 3.02:1 on canvas, 3.37:1 on glass, 3.58:1 on white.
+   * Inactive onboarding progress segment, radio and choice rings, switch off: 53% (was
+   * #82888F). Passes WCAG 1.4.11 (3:1) everywhere: 3.41:1 on canvas, 3.56:1 on glass.
    */
-  track: '#82888F',
+  track: 'rgba(28,28,28,0.53)',
   /**
-   * Bar segment for time inside free time. Darkened from the Figma #B9C2C8
-   * (1.64:1 on raise) to pass WCAG 1.4.11: 3.09:1 on raise, 3.33:1 on white,
-   * 6.17:1 against the black detention segment.
+   * Bar segment for time inside free time: 51% (was #858C93). 3.22:1 on canvas, 3.31:1 on
+   * raise, 3.41:1 on white (WCAG 1.4.11).
    */
-  free: '#858C93',
+  free: 'rgba(28,28,28,0.51)',
   /** Bar segment for paid detention time. */
-  detention: '#000000',
+  detention: '#1C1C1C',
   flag: '#C9311F',
   flagBg: '#FDECEA',
 } as const;

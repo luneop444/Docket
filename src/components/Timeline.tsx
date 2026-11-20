@@ -18,9 +18,9 @@ export interface TimelineEvent {
   action?: { label: string; onPress: () => void };
 }
 
-/** Figma "Timeline / Event" rails: 3 wide. Free is the Figma's #B9C2C8 (no token has it). */
+/** Figma "Timeline / Event" rails: 3 wide. Free is the Figma's #B9C2C8 as faded ink (no token has it). */
 const SEGMENT_COLOR: Record<Exclude<EventSegment, 'none'>, string> = {
-  free: '#B9C2C8',
+  free: 'rgba(28,28,28,0.27)',
   paid: color.ink,
   upcoming: color.line,
 };
@@ -91,8 +91,8 @@ const styles = StyleSheet.create({
   done: { backgroundColor: color.ink },
   // Figma: lime with a lime glow (60%, blur 12).
   current: { backgroundColor: color.signal, boxShadow: '0 0 12px rgba(212,245,77,0.6)' },
-  // Figma: white, 1 line border, a soft shadow (#1A1F29 at 8%, blur 6).
-  upcoming: { backgroundColor: color.bg, borderWidth: 1, borderColor: color.line, boxShadow: '0 0 6px rgba(26,31,41,0.08)' },
+  // Figma: white, 1 line border, a soft shadow (the ink at 8%, blur 6).
+  upcoming: { backgroundColor: color.bg, borderWidth: 1, borderColor: color.line, boxShadow: '0 0 6px rgba(28,28,28,0.08)' },
   segment: { flex: 1, width: 3 },
   // 4 above the title, 20 below the last line, 2 between.
   text: { flex: 1, minWidth: 0, gap: 2, paddingTop: 4, paddingBottom: 20 },
