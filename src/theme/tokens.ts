@@ -11,28 +11,29 @@ export const color = {
   bg: '#FFFFFF',
   /**
    * Figma color/canvas: the flat grey behind every screen, so glass cards lift off it.
-   * Untinted, as in Edward's reference sheet (#E8E8E8); was a cool #E9ECF0.
+   * Half the old cool tint (#E9ECF0, then neutral #E8E8E8): a hint of cool keeps the
+   * lime reading warm beside it.
    */
-  canvas: '#E8E8E8',
+  canvas: '#E8EAEC',
   /** Figma color/glass: white at 62%, the surface of every card and the tab bar. */
   glass: 'rgba(255,255,255,0.62)',
-  /** Untinted greys at the same lightness as before (were #F2F4F6, #E5E8EC). */
-  raise: '#F4F4F4',
-  raise2: '#E8E8E8',
+  /** The same half cool tint as the canvas, at their own lightness (were #F2F4F6, #E5E8EC). */
+  raise: '#F3F4F5',
+  raise2: '#E7E8EA',
   /**
    * Ink: one soft near-black, #1C1C1C (the reference's), instead of pure black. Every grey
    * below is this ink faded, so they share its hue on any surface (canvas, glass, lime),
    * each at the opacity that keeps its old weight on white (was its own blue-grey hex).
-   * Contrast on the darkest surface it sits on, canvas, in each note.
+   * Contrast on the darkest surface it sits on, canvas, in each note (#E8EAEC).
    */
   ink: '#1C1C1C',
   /** Dividers: 16% (was #D7DBE0, 1.39:1 on white; 1.38:1 now on every surface). */
   line: 'rgba(28,28,28,0.16)',
-  /** Secondary text: 70% (was #5C6168). 6.29:1 on white, 5.72:1 on canvas and lime. */
+  /** Secondary text: 70% (was #5C6168). 6.29:1 on white, 5.74:1 on canvas, 5.72:1 on lime. */
   sub: 'rgba(28,28,28,0.70)',
   /**
    * Non-text only (icons, dividers, inactive bars): 58% (was #767B82). 4.23:1 on white,
-   * 3.93:1 on canvas, below the 4.5:1 text minimum, so never text or placeholders: `sub`.
+   * 3.94:1 on canvas, below the 4.5:1 text minimum, so never text or placeholders: `sub`.
    */
   faint: 'rgba(28,28,28,0.58)',
   signal: '#D4F54C',
@@ -40,11 +41,11 @@ export const color = {
   onSignal: '#1C1C1C',
   /**
    * Inactive onboarding progress segment, radio and choice rings, switch off: 53% (was
-   * #82888F). Passes WCAG 1.4.11 (3:1) everywhere: 3.41:1 on canvas, 3.56:1 on glass.
+   * #82888F). Passes WCAG 1.4.11 (3:1) everywhere: 3.42:1 on canvas, 3.54:1 on glass.
    */
   track: 'rgba(28,28,28,0.53)',
   /**
-   * Bar segment for time inside free time: 51% (was #858C93). 3.22:1 on canvas, 3.31:1 on
+   * Bar segment for time inside free time: 51% (was #858C93). 3.24:1 on canvas, 3.32:1 on
    * raise, 3.41:1 on white (WCAG 1.4.11).
    */
   free: 'rgba(28,28,28,0.51)',

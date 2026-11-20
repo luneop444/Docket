@@ -29,12 +29,12 @@ const SLIDE = `transform ${SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
  * and black labels. Size, frost and bend stay as they were.
  */
 /** The selected pill: light grey glass over the bar. */
-const PILL_TINT = 'rgba(216,216,216,0.5)';
+const PILL_TINT = 'rgba(215,216,218,0.5)';
 
 
 const rgba = (r: number, g: number, b: number, a: number): [number, number, number, number] => [r / 255, g / 255, b / 255, a];
 /** The tints as the shader takes them: colour and strength. */
-const PILL_TINT_GL = rgba(216, 216, 216, 0.5);
+const PILL_TINT_GL = rgba(215, 216, 218, 0.5);
 
 
 interface Current {
