@@ -14,6 +14,11 @@ import { MOVE_EVENT } from './contentMove';
  * The stretch moves the content without scrolling it, so it announces itself (MOVE_EVENT)
  * for the glass, rather than faking scroll events that every screen's handlers would run on.
  *
+ * The wheel listener is passive: it never blocks the browser's own scroll, which runs off the
+ * main thread (a non-passive one made every scroll in the app wait on JavaScript). It never
+ * needs to cancel anything: at an edge there's nothing left to scroll, so the stretch is
+ * only drawn on top. Safari (macOS, iOS) bounces scroll areas natively: left to it there.
+ *
  * Wheel and trackpad only. On touch screens the browser bounces natively (Safari) or shows
  * the platform's own overscroll (Android), so it is left alone there. Areas that can't scroll
  * (content fits, scrolling off) don't stretch, as on iOS.
@@ -60,6 +65,9 @@ type Scrollable = { getScrollableNode?: () => HTMLElement } | HTMLElement | null
 export function useRubberBand(ref: RefObject<Scrollable>) {
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia('(pointer: fine)').matches) return;
+    // Safari draws its own bounce on scroll areas (elastic-scroll-polyfill defers to it too).
+    const ua = navigator.userAgent;
+    if (/Safari\//.test(ua) && !/Chrome|Chromium|CriOS|Edg|Firefox|FxiOS|Android/.test(ua)) return;
     const r = ref.current as Scrollable;
     const node = (r && 'getScrollableNode' in r && r.getScrollableNode ? r.getScrollableNode() : r) as HTMLElement | null;
     if (!node) return;
@@ -73,12 +81,15 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
     let raf = 0;
     let last = 0;
     let idle = 0;
+    // A wheel click that crosses an edge: the browser scrolls up to the edge, the rest is a push.
+    let carry = 0;
+    let carryUntil = 0;
 
     const d = () => node.clientHeight || 1;
     const content = () => node.firstElementChild as HTMLElement | null;
     const paint = () => {
       const c = content();
-      if (c) c.style.transform = shown ? `translateY(${-shown}px)` : '';
+      if (c) c.style.transform = shown ? `translate3d(0, ${-shown}px, 0)` : '';
       document.dispatchEvent(new Event(MOVE_EVENT));
     };
 
@@ -111,29 +122,60 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       raf = requestAnimationFrame(step);
     };
 
+    // A click: a push into the edge, sized so one click alone stretches as far as the curve
+    // gives for its distance, less the further it's already stretched.
+    const push = (dy: number, h: number) => {
+      held = false;
+      const room = give(unband(Math.abs(shown), h), h);
+      vel += (Math.sign(dy) * band(Math.abs(dy), h) * room) / REACH_PER_SPEED;
+      run();
+    };
+    const onScroll = () => {
+      if (!carry) return;
+      if (performance.now() > carryUntil) return void (carry = 0);
+      const max = node.scrollHeight - node.clientHeight;
+      const at = carry < 0 ? node.scrollTop <= 0 : node.scrollTop >= max - 0.5;
+      if (!at) return;
+      const c = carry;
+      carry = 0;
+      push(c, d());
+    };
+
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey) return; // pinch-zoom on a trackpad
-      const style = getComputedStyle(node);
-      const max = node.scrollHeight - node.clientHeight;
-      if (style.overflowY === 'hidden' || style.overflowY === 'visible' || max <= 0.5) return;
       const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * d() : e.deltaY;
       if (!dy) return;
-      const top = node.scrollTop;
       const stretched = shown !== 0;
+      const max = node.scrollHeight - node.clientHeight;
+      const top = node.scrollTop;
       const pastTop = dy < 0 && top <= 0;
       const pastBottom = dy > 0 && top >= max - 0.5;
-      if (!stretched && !pastTop && !pastBottom) return;
-      e.preventDefault();
+      // Mid-list: the browser scrolls, nothing to do here, unless this click runs past the
+      // edge: then what's left over pushes once the scroll gets there (onScroll below).
+      if (!stretched && !pastTop && !pastBottom) {
+        if (isMouseWheel(e)) {
+          const over = dy < 0 ? -(top + dy) : top + dy - max;
+          if (over > 0) {
+            carry = Math.sign(dy) * over;
+            carryUntil = performance.now() + 600;
+          }
+        }
+        return;
+      }
+      // Content that fits (scrolling off) doesn't stretch, as on iOS. Only checked at an edge.
+      if (!stretched && (max <= 0.5 || getComputedStyle(node).overflowY === 'hidden')) return;
       const h = d();
+      // Scrolling back while stretched: the browser scrolls the content, so the stretch lets go now.
+      if (stretched && Math.sign(dy) !== Math.sign(shown)) {
+        held = false;
+        clearTimeout(idle);
+        run();
+        return;
+      }
 
       if (isMouseWheel(e)) {
-        // A click: a push into (or back from) the edge, sized so one click alone stretches as
-        // far as the curve gives for its distance, less the further it's already stretched.
-        held = false;
-        const out = !stretched || Math.sign(dy) === Math.sign(shown);
-        const room = give(unband(Math.abs(shown), h), h);
-        vel += (Math.sign(dy) * band(Math.abs(dy), h) * (out ? room : 1)) / REACH_PER_SPEED;
-        run();
+        carry = 0;
+        push(dy, h);
         return;
       }
 
@@ -146,15 +188,6 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
         pull = Math.sign(shown) * unband(Math.abs(shown), h);
       }
       const next = pull + dy;
-      if (stretched && Math.sign(next) !== Math.sign(pull)) {
-        // Back past the edge: the stretch is gone and the rest scrolls the content.
-        pull = 0;
-        shown = 0;
-        held = false;
-        paint();
-        node.scrollTop += next;
-        return;
-      }
       pull = next;
       shown = Math.sign(pull) * band(Math.abs(pull), h);
       paint();
@@ -165,8 +198,10 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       }, RELEASE_MS);
     };
 
-    node.addEventListener('wheel', onWheel, { passive: false });
+    node.addEventListener('wheel', onWheel, { passive: true });
+    node.addEventListener('scroll', onScroll, { passive: true });
     return () => {
+      node.removeEventListener('scroll', onScroll);
       node.style.removeProperty('overscroll-behavior-y');
       node.removeEventListener('wheel', onWheel);
       cancelAnimationFrame(raf);
