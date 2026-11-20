@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
 import { Chip } from '../components/Chip';
 import { DocIcon } from '../components/Icons';
-import { Button, Card, Fake, Gap, noFocusRing, press, Row, T } from '../components/ui';
+import { Button, Card, Fake, Gap, noFocusRing, Row, T } from '../components/ui';
 import {
   checkEvents,
   checkTime,
@@ -153,7 +153,7 @@ export default function Settlement() {
       <Button label={reading ? 'Reading…' : 'Scan the settlement'} icon={<DocIcon c={color.bg} />} disabled={reading} onPress={scan} />
       <Gap h={8} />
       <T v="bodyTiny" style={styles.center}>Claude finds each load on it by its number.</T>
-      <Gap h={24} />
+      <Gap h={16} />
       {typing ? (
         <Card>
           <T v="bodyStrong">Detention total on the settlement</T>
@@ -178,9 +178,8 @@ export default function Settlement() {
           <Button label="Check it" variant="white" disabled={!Number.isFinite(parseFloat(amt))} onPress={checkTotal} />
         </Card>
       ) : (
-        <Pressable accessibilityRole="button" onPress={() => setTyping(true)} hitSlop={10} style={({ pressed }) => [styles.centerSelf, pressed && press.link]}>
-          <T v="bodySmall" c={color.ink} style={styles.link}>Or type the detention total</T>
-        </Pressable>
+        // On the page itself, the secondary button is the glass one.
+        <Button label="Type the detention total" variant="quiet" onPress={() => setTyping(true)} />
       )}
     </Screen>
   );
@@ -297,8 +296,6 @@ function Outcome({ c, e, unmatched }: { c: Claim; e?: Extract<ClaimEvent, { k: '
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },
-  centerSelf: { alignSelf: 'center' },
-  link: { textDecorationLine: 'underline' },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line },
   loadRow: { paddingVertical: 12, gap: 4 },
   note: { paddingTop: 12 },

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { settlementDue } from '../logic/claims';
 import { money } from '../logic/format';
 import { useStore } from '../state/AppStore';
@@ -7,7 +7,7 @@ import { useClaims } from '../state/useClaims';
 import { useNow } from '../state/useNow';
 import { color } from '../theme/tokens';
 import { DocIcon } from './Icons';
-import { Button, Card, Fake, Gap, press, T } from './ui';
+import { Button, Card, Fake, Gap, T } from './ui';
 
 /**
  * Settlement day on Today: one check, not a tab. It says what to do (check the settlement)
@@ -45,10 +45,9 @@ export function PaydayCard() {
         </T>
         <Gap h={16} />
         <Button label="Scan the settlement" icon={<DocIcon c={color.bg} />} onPress={() => go('scan')} />
-        <Gap h={12} />
-        <Pressable accessibilityRole="button" onPress={() => go('type')} hitSlop={10} style={({ pressed }) => [styles.center, pressed && press.link]}>
-          <T v="bodySmall" c={color.ink} style={styles.link}>Or type the detention total</T>
-        </Pressable>
+        <Gap h={8} />
+        {/* The second way in, as the design system's secondary button on a card (white). */}
+        <Button label="Type the detention total" variant="white" onPress={() => go('type')} />
       </Card>
     </>
   );
@@ -56,6 +55,4 @@ export function PaydayCard() {
 
 const styles = StyleSheet.create({
   tag: { alignSelf: 'flex-start', backgroundColor: color.ink, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
-  center: { alignSelf: 'center' },
-  link: { textDecorationLine: 'underline' },
 });
