@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { CheckIcon, ClockIcon, DollarIcon, HourglassIcon, PinIcon } from './Icons';
 import { color, fontFamily, glass, type } from '../theme/tokens';
 
@@ -65,13 +65,18 @@ export function TimelineEventRow({ title, detail, time, state, segment, icon, ac
   );
 }
 
-/** Figma "Timeline": the grey card the events sit in. 20 on three sides; each event carries its own 20 below. */
-export function Timeline({ events }: { events: TimelineEvent[] }) {
+/**
+ * Figma "Timeline": the grey card the events sit in. 20 on three sides; each event carries
+ * its own 20 below. `footer`: a quiet action about these times (Fix a time), under the last
+ * event, lined up with the event text so it reads as belonging to the rows above it.
+ */
+export function Timeline({ events, footer }: { events: TimelineEvent[]; footer?: ReactNode }) {
   return (
     <View style={styles.card}>
       {events.map((e) => (
         <TimelineEventRow key={e.title} {...e} />
       ))}
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
     </View>
   );
 }
@@ -86,6 +91,8 @@ const styles = StyleSheet.create({
     paddingLeft: 20,
   },
   ev: { flexDirection: 'row', gap: 12 },
+  // Under the event text (rail 30 + gap 12), 20 from the card's bottom like every event.
+  footer: { paddingLeft: 42, paddingBottom: 20, alignItems: 'flex-start' },
   rail: { width: 30, alignItems: 'center' },
   node: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   done: { backgroundColor: color.ink },

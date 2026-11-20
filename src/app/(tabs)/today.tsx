@@ -183,7 +183,8 @@ function AtTheDock() {
           <Gap h={16} />
         </>
       ) : null}
-      <Timeline events={events} />
+      {/* The times can be fixed (arrival, leaving, break): the way in sits with them. */}
+      <Timeline events={events} footer={<Link label="Fix a time" onPress={a.openFix} />} />
       <Gap h={16} />
       {st.live ? (
         <>
@@ -191,9 +192,6 @@ function AtTheDock() {
           <Gap h={16} />
         </>
       ) : null}
-      <View style={styles.links}>
-        <Link label="Edit arrival time" onPress={a.openFix} />
-      </View>
     </View>
   );
 }
@@ -277,7 +275,7 @@ function AtStop() {
         </>
       ) : null}
       <View style={styles.links}>
-        <Link label="Edit arrival time" onPress={a.openFix} />
+        <Link label="Fix a time" onPress={a.openFix} />
         {checkIn ? <Link label="I checked in" onPress={a.checkIn} /> : null}
       </View>
     </View>
