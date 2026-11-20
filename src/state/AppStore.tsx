@@ -13,9 +13,10 @@ import {
 import { ASK_AFTER_MIN, demoState, type DemoState } from '../logic/demo';
 import type { Rules } from '../logic/detention';
 import type { LatLon } from '../logic/geo';
-import { payWeeks, toLogged, upsert, type PayWeek } from '../logic/history';
-import { COMPANIES, SAMPLE_SETTLEMENT, SIM_MINUTES_PER_SECOND, START_NOW, type Marks } from '../logic/sampleData';
-import { claimText, cleanAmount, weekTotals } from '../logic/settlement';
+import { actTime, claimsOf, type ClaimEvent } from '../logic/claims';
+import { toLogged, upsert } from '../logic/history';
+import { COMPANIES, SIM_MINUTES_PER_SECOND, START_NOW } from '../logic/sampleData';
+import { demoClaimLoad } from './demoClaim';
 import {
   parseState,
   freshState,
@@ -23,15 +24,17 @@ import {
   placeOf,
   setsStopsOnce,
   STORAGE_KEY,
-  type AnonAnswer,
   type AppState,
   type LocationMode,
 } from '../logic/state';
 import { applyFix, type BolTimes, freshStop, startLiveStop, stepFix, stopCalc, stopNow, type FixDraft } from '../logic/stop';
 import { clockBare } from '../logic/format';
 
+/** What sending a message does to the claims it's about. */
+export type MessageStep = 'sent' | 'asked' | 'payroll';
+
 export type Sheet =
-  | { kind: 'message'; text: string; week: string }
+  | { kind: 'message'; text: string; ids: string[]; step: MessageStep }
   | { kind: 'fix'; draft: FixDraft }
   /** Location says the driver drove away from a live stop: confirm the time (epoch ms). */
   | { kind: 'left'; at: number }
@@ -62,15 +65,6 @@ function saveToHistory(s: AppState): AppState {
 }
 
 const remember = (places: string[], name: string) => (places.includes(name) ? places : [...places, name]);
-
-/** Marking a load reopens its own week's claim only (it may change what's short); other weeks stay sent. */
-function unsent(s: AppState, ids: string[]): AppState['sent'] {
-  const weeks = payWeeks(s.history).filter((w) => w.loads.some((l) => ids.includes(l.id)));
-  if (!weeks.length) return s.sent;
-  const sent = { ...s.sent };
-  for (const w of weeks) delete sent[w.key];
-  return sent;
-}
 
 const freshUi = (): Ui => ({ expanded: false, lock: false, sheet: null, toast: null, undo: null, siri: false, photoUri: null, leftSnooze: 0 });
 
@@ -267,41 +261,49 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         toast('Time fixed. The GPS time stays on record.');
       },
 
-      /* paycheck */
-      mark: (id: string, m: 'paid' | 'less' | 'none') => {
-        tick();
-        setS((s) => ({ ...s, marks: { ...s.marks, [id]: { ...(s.marks[id] ?? {}), m } }, sent: unsent(s, [id]) }));
-      },
-      setAmt: (id: string, v: string) =>
-        setS((s) => ({ ...s, marks: { ...s.marks, [id]: { ...(s.marks[id] ?? { m: 'less' }), amt: cleanAmount(v) } } })),
-      /** Marks read off a real settlement; the driver's own marks on other loads stay. */
-      applySettlement: (marks: Marks) => setS((s) => ({ ...s, marks: { ...s.marks, ...marks }, sent: unsent(s, Object.keys(marks)) })),
-      scanSample: () => {
+      /* claims */
+      /** Add a step to claims, by id. A sample claim's made-up steps are kept underneath it. */
+      addClaimEvents: (evs: Record<string, ClaimEvent>) => {
         setS((s) => {
-          const { sample: _gone, ...sent } = s.sent;
-          return { ...s, marks: JSON.parse(JSON.stringify(SAMPLE_SETTLEMENT)), sent };
+          const cs = claimsOf(s.history, s.rules, s.claims, demoClaimLoad(s));
+          const claims = { ...s.claims };
+          for (const [id, e] of Object.entries(evs)) {
+            claims[id] = [...(claims[id] ?? cs.find((c) => c.id === id)?.events ?? []), e];
+          }
+          return { ...s, claims };
         });
-        toast('Sample settlement read. Check each load.');
       },
-      openMessage: (week: PayWeek) => {
-        const s = sRef.current;
-        const text = claimText(weekTotals(week.loads, s.rules, s.marks), s.rules, week.label);
-        setUi((u) => ({ ...u, sheet: { kind: 'message', text, week: week.key } }));
+      markClaimPaid: (id: string) => {
+        setS((s) => {
+          const c = claimsOf(s.history, s.rules, s.claims, demoClaimLoad(s)).find((x) => x.id === id);
+          return { ...s, claims: { ...s.claims, [id]: [...(s.claims[id] ?? c?.events ?? []), { k: 'paid', at: actTime(c, Date.now()) }] } };
+        });
+        done();
+        toast('Marked paid.');
       },
-      markSent: (week: string) => {
-        setS((s) => ({ ...s, sent: { ...s.sent, [week]: true } }));
+      openClaimMessage: (ids: string[], step: MessageStep, text: string) =>
+        setUi((u) => ({ ...u, sheet: { kind: 'message', text, ids, step } })),
+      /** The message went out: each claim it was about moves on a step. */
+      claimMessageSent: (ids: string[], step: MessageStep) => {
+        setS((s) => {
+          const cs = claimsOf(s.history, s.rules, s.claims, demoClaimLoad(s));
+          const claims = { ...s.claims };
+          for (const id of ids) {
+            const c = cs.find((x) => x.id === id);
+            claims[id] = [...(claims[id] ?? c?.events ?? []), { k: step, at: actTime(c, Date.now()) }];
+          }
+          return { ...s, claims };
+        });
         done();
         setUi((u) => ({ ...u, sheet: null }));
+        toast(step === 'sent' ? 'Claim sent. It’s in Claims until it’s paid.' : step === 'asked' ? 'Asked. Docket checks the next settlement for it.' : 'Sent to payroll. Your dated record is saved.');
       },
-      setAnon: (week: string, answer: AnonAnswer) => {
-        setS((s) => ({ ...s, anon: { ...s.anon, [week]: answer } }));
-        toast('Thanks. Added anonymously.');
-      },
-      /** Take a logged stop out of the paycheck check (a test tap, a stop that wasn't one). */
+      /** Take a logged stop out of the claims (a test tap, a stop that wasn't one). */
       removeLogged: (id: string) => {
         setS((s) => {
           const { [id]: _gone, ...marks } = s.marks;
-          return { ...s, history: s.history.filter((h) => h.id !== id), marks };
+          const { [id]: _log, ...claims } = s.claims;
+          return { ...s, history: s.history.filter((h) => h.id !== id), marks, claims };
         });
         toast('Stop removed.');
       },

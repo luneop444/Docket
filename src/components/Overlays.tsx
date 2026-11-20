@@ -27,7 +27,7 @@ import { headerDate } from '../logic/history';
 import { placeOf } from '../logic/state';
 import { islandCopy } from '../logic/island';
 import { apptOf, stopCalc, type FixDraft } from '../logic/stop';
-import { useStore } from '../state/AppStore';
+import { useStore, type MessageStep } from '../state/AppStore';
 import { color, fontFamily, glass, protoColor, radius, type } from '../theme/tokens';
 import { BandScrollView } from './BandScrollView';
 import { useFramed, useInsets, useIslandStage } from './Chrome';
@@ -104,7 +104,13 @@ export function SheetShell({
   );
 }
 
-function MessageSheet({ text, week }: { text: string; week: string }) {
+const SEND_TITLE: Record<MessageStep, string> = {
+  sent: 'Send your claim to dispatch',
+  asked: 'Message your fleet manager',
+  payroll: 'Write to payroll',
+};
+
+function MessageSheet({ text, ids, step }: { text: string; ids: string[]; step: MessageStep }) {
   const { a } = useStore();
   // The message grows to its full length and the sheet scrolls, so there's one scroll area
   // (with the rubber band) rather than a box scrolling inside a box.
@@ -125,12 +131,12 @@ function MessageSheet({ text, week }: { text: string; week: string }) {
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') return;
     }
-    a.markSent(week);
+    a.claimMessageSent(ids, step);
   }
 
   return (
     <SheetShell onClose={a.closeSheet} scroll>
-      <T v="h2">Message your fleet manager</T>
+      <T v="h2">{SEND_TITLE[step]}</T>
       <Gap h={8} />
       <T v="bodySmall">
         Edit anything before you send. It opens your own messaging app, so it goes out from you, not from Docket.
@@ -579,7 +585,7 @@ export function Overlays() {
     <>
       {/* Answered on the lock screen first; unlocking without answering leaves it here, unconfirmed. */}
       {s.stop.phase === 'arriving' && path === '/today' && !ui.lock ? <ArrivalSheet /> : null}
-      {ui.sheet?.kind === 'message' ? <MessageSheet text={ui.sheet.text} week={ui.sheet.week} /> : null}
+      {ui.sheet?.kind === 'message' ? <MessageSheet text={ui.sheet.text} ids={ui.sheet.ids} step={ui.sheet.step} /> : null}
       {ui.sheet?.kind === 'fix' ? <FixSheet draft={ui.sheet.draft} /> : null}
       {ui.sheet?.kind === 'left' && !ui.lock ? <LeftSheet at={ui.sheet.at} /> : null}
       {ui.undo && !ui.sheet && !ui.lock ? <UndoToast key={ui.undo} text={ui.undo} /> : null}
