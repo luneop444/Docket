@@ -326,36 +326,62 @@ function Summary({ week }: { week: PayWeek }) {
   const w = weekTotals(week.loads, s.rules, s.marks);
 
   if (s.sent[week.key]) {
-    return (
-      <>
-        <Card>
-          <T v="bodyStrong">Sent to your fleet manager</T>
+    const out = s.anon[week.key];
+    // How it turned out, asked once the next settlement can show it (not as the message
+    // goes). The one answer is the outcome and the anonymous share, so nothing is asked twice.
+    const company = s.company || 'your company';
+    if (out === 'Paid') {
+      return (
+        <Card tone="signal">
+          <T v="bodyStrong" c={color.onSignal}>Paid after you asked</T>
           <Gap h={8} />
-          <T v="bodySmall">Docket will remind you if next week’s settlement still leaves these out.</T>
-          <Gap h={8} />
-          <T v="bodyTiny">
-            <Fake /> No reminder is set in the prototype.
-          </T>
+          <T v="bodySmall" c={color.onSignal}>Added anonymously under {company}.</T>
         </Card>
-        <Card>
-          <T v="bodyStrong">Was your detention paid this week?</T>
+      );
+    }
+    if (out) {
+      return (
+        <Card flagged>
+          <Row base>
+            <T v="bodyStrong">{out === 'Partly' ? 'Still partly short' : 'Still not paid'}</T>
+            <T v="numberS" c={color.flag}>{money(w.short)}</T>
+          </Row>
           <Gap h={8} />
-          <T v="bodySmall">
-            One tap, shared anonymously under {s.company || 'your company'}. No pay documents are shared.
-          </T>
+          <T v="bodySmall">Added anonymously under {company}. You can ask again with the same details.</T>
           <Gap h={12} />
-          <Seg<AnonAnswer>
-            label="Was your detention paid this week?"
-            options={(['Paid', 'Partly', 'Not paid'] as const).map((x) => ({ key: x, label: x }))}
-            value={s.anon[week.key]}
-            onChange={(k) => a.setAnon(week.key, k)}
-          />
-          <Gap h={8} />
-          <T v="bodyTiny">
-            <Fake /> Saved on this phone only. Nothing is shared in the prototype.
-          </T>
+          <Button label="Ask again" onPress={() => a.openMessage(week)} />
         </Card>
-      </>
+      );
+    }
+    return (
+      <Card>
+        <T v="bodyStrong">Sent to your fleet manager</T>
+        <Gap h={8} />
+        <T v="bodySmall">Docket will remind you if next week’s settlement still leaves these out.</T>
+        <Gap h={8} />
+        <T v="bodyTiny">
+          <Fake /> No reminder is set in the prototype.
+        </T>
+        <Gap h={16} />
+        <T v="bodyStrong">When your next settlement comes, how did it go?</T>
+        <Gap h={4} />
+        <T v="bodyTiny">Your answer is shared anonymously under {company}. No pay documents are shared.</T>
+        <Gap h={12} />
+        <Seg<AnonAnswer>
+          label="How did it go?"
+          options={[
+            { key: 'Paid', label: 'Paid now' },
+            { key: 'Partly', label: 'Part of it' },
+            { key: 'Not paid', label: 'Still not paid' },
+          ]}
+          value={undefined}
+          onChange={(k) => a.setAnon(week.key, k)}
+        />
+        <Gap h={8} />
+        <T v="bodyTiny">
+          <Fake /> Saved on this phone only. Nothing is shared in the prototype.
+        </T>
+      </Card>
     );
   }
   if (w.flagged.length) {
