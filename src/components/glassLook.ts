@@ -9,15 +9,18 @@ import type { Slice } from './pagePicture';
  * Values from Edward's reference (Reddit's iOS 26 tab bar, 17 Nov) and Figma style "Glass".
  */
 export const BAR_TINT = 'rgba(255,255,255,0.62)';
-/** Frost on the picture under the glass, in points (was 1: halved on Edward's ask, 19 Nov). */
-export const FROST = 0.5;
-/** Refraction: the bend, against Aave's map scaled by height (1 before 19 Nov). */
-export const REFRACT = 1.5;
+/**
+ * Frost on the picture under the glass, in points. 1 is the nav bar's approved glass; halving it
+ * (19 Nov) made the bar read see-through, so it's back.
+ */
+export const FROST = 1;
+/** Refraction: the bend, against Aave's map scaled by height. 1 is the nav bar's own (1.5 warped its pill). */
+export const REFRACT = 1;
 /**
  * Splay, the colour split at the rim: red and green read this many times Aave's 0.88 and 0.43
  * further than blue (1 before 19 Nov). The fringe also grows with REFRACT.
  */
-export const SPLAY = 2;
+export const SPLAY = 1;
 export const GLASS_CHROMA: [number, number, number] = [1 + (0.88 * SPLAY) / BEND, 1 + (0.43 * SPLAY) / BEND, 1];
 /** Room above and below the glass that the picture must also cover, for the bend to read. */
 export const M = 28;
