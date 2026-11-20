@@ -122,8 +122,9 @@ export const radius = {
  * card for it to bend.
  */
 export const glassEdge = '0 0 0 0.5px rgba(0,0,0,0.10)';
-export const glassLift = '0 6px 20px rgba(0,0,0,0.08)';
-export const glassRim = 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 0 1px rgba(255,255,255,0.45)';
+/** More depth (20 Nov): a deeper, softer lift, and a faint shade on the lower inner rim under the bright top one. */
+export const glassLift = '0 10px 28px rgba(0,0,0,0.11)';
+export const glassRim = 'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(0,0,0,0.06), inset 0 0 0 1px rgba(255,255,255,0.45)';
 export const glass = {
   backgroundColor: color.glass,
   boxShadow: `${glassEdge}, ${glassLift}, ${glassRim}`,

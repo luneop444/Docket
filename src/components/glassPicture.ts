@@ -29,7 +29,8 @@ export const AAVE = { w: 88, h: 40, x: 27.3 * BEND, y: 9.46 * BEND };
 // Colour fringe = bend × (split − 1). The fringe stays the same width at any bend: red
 // 0.88 and green 0.43 of Aave's offset past blue (at 5x, a split of 1.176 / 1.086).
 export const CHROMA = [1 + 0.88 / BEND, 1 + 0.43 / BEND, 1];
-export const SPEC = 1.5;
+/** Specular light on the rim. 2 since 20 Nov (was 1.5), for more depth. */
+export const SPEC = 2;
 
 /**
  * The page frosted, on pixels (a box blur run three times, close to a Gaussian), so it

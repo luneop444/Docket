@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { glassEdge, glassLift, glassRim } from '../theme/tokens';
 import { GLASS_MAP } from './glassMap';
 import { AAVE, BEND, frosted } from './glassPicture';
 import type { Slice } from './pagePicture';
@@ -14,8 +15,12 @@ export const BAR_TINT = 'rgba(255,255,255,0.62)';
  * (19 Nov) made the bar read see-through, so it's back.
  */
 export const FROST = 1;
-/** Refraction: the bend, against Aave's map scaled by height. 1 is the nav bar's own (1.5 warped its pill). */
-export const REFRACT = 1;
+/**
+ * Refraction: the bend, against Aave's map scaled by height. 1.5 since 20 Nov (asked for more,
+ * on all glass). The 19 Nov complaint about 1.5 was really the bar not drawing its glass at all
+ * (fixed in cb1df35), so 1.5 had never been seen on the bar until now.
+ */
+export const REFRACT = 1.5;
 /**
  * Splay, the colour split at the rim: red and green read this many times Aave's 0.88 and 0.43
  * further than blue (1 before 19 Nov). The fringe also grows with REFRACT.
@@ -32,10 +37,10 @@ export const GLASS_STANDIN: CSSProperties = {
   background: BAR_TINT,
   backdropFilter: `blur(${FROST}px)`,
   WebkitBackdropFilter: `blur(${FROST}px)`,
-  boxShadow: '0 0 0 0.5px rgba(0,0,0,0.10), 0 6px 20px rgba(0,0,0,0.08)',
+  boxShadow: `${glassEdge}, ${glassLift}`,
 };
-/** The bright top rim and light edge drawn over the lens. */
-export const GLASS_RIM = 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 0 1px rgba(255,255,255,0.45)';
+/** The rims drawn over the lens: the design system's glass rims, so every glass surface shares them. */
+export const GLASS_RIM = glassRim;
 /** Bend for glass of this height, scaled from Aave's 40-tall lens the way the bar does. */
 export const glassK = (h: number): [number, number] => [REFRACT * AAVE.x * (h / AAVE.h), REFRACT * 0.5556 * AAVE.y * (h / AAVE.h)];
 /** How far past its edge glass of this height reads the page: Aave's strongest bend (red 243), split included, plus room. */
