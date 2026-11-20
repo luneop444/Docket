@@ -29,9 +29,13 @@ const R = 12.5;
 /** Speed is read over the last 50 ms of wheel events (as gpui-kit does). */
 const WINDOW_MS = 50;
 /** A trackpad gesture is over once no event comes for this long. */
-const RELEASE_MS = 50;
-/** After a trackpad lifts, its drift arrives as shrinking events; this many in a row is drift. */
+const RELEASE_MS = 100;
+/** After a trackpad lifts, its drift arrives as shrinking events; this many decreases is drift.
+ * The OS repeats sizes in the tail (3, 3, 2, 2, 1, 1, 1), so a repeat neither counts nor resets. */
 const DRIFT_RUN = 3;
+/** A new trackpad gesture inside the same wheel stream: an event this much bigger than the last, and over NEW_MIN pt. */
+const NEW_JUMP = 1.5;
+const NEW_MIN = 4;
 /** A fling, not a pull: arriving at the edge faster than this (pt/s). */
 const FLING = 800;
 
@@ -59,7 +63,7 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
     let anim: { x0: number; v0: number; t0: number } | null = null; // a release or a throw
     let held = false; // a trackpad is pulling at the edge
     let travel = 0; // that pull's travel past the edge
-    let thrown = false; // this gesture already threw the edge
+    let thrown = false; // this gesture already threw the edge: the latch, its later events don't stretch
     let raf = 0;
     let idle = 0;
     let lastSize = 0;
@@ -129,8 +133,18 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       recent.push([now, dy]);
       const mouse = isMouseWheel(e);
       const size = Math.abs(dy);
-      shrinking = !mouse && size < lastSize * 0.97 ? shrinking + 1 : 0;
+      if (!mouse) {
+        // A clearly new gesture (a jump in size) lifts the latch before the idle gap would.
+        if (thrown && lastSize > 0 && size > lastSize * NEW_JUMP && size > NEW_MIN) thrown = false;
+        shrinking = size < lastSize ? shrinking + 1 : size > lastSize ? 0 : shrinking;
+      } else shrinking = 0;
       lastSize = size;
+      if (!mouse && thrown) {
+        // Latched: the edge was let go for this gesture. Its momentum tail never re-stretches it
+        // or stops the spring; it only keeps the gesture alive until the stream goes idle.
+        endSoon();
+        return;
+      }
       const drift = shrinking >= DRIFT_RUN;
 
       const max = node.scrollHeight - node.clientHeight;
