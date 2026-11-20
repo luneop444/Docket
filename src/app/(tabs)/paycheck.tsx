@@ -119,8 +119,7 @@ export default function Paycheck() {
         <T v="bodyTiny">
           {week.sample ? (
             <>
-              <Fake label="Sample data" /> A made-up week. Stops you time with “I’m here” show here instead. Scan fills in a
-              sample settlement.
+              <Fake label="Sample data" /> A made-up week, until you time your own stops.
             </>
           ) : (
             'From the stops you timed. Scan your settlement and Claude marks each load by its number, or mark them below.'
@@ -208,14 +207,19 @@ function LoadCard({
   onRemove?: () => void;
 }) {
   const { s, a } = useStore();
+  const [confirming, setConfirming] = useState(false);
   const m = s.marks[l.id];
   const total = l.leave - l.arrive;
   const free = Math.max(0, freeEnd - l.arrive);
   return (
     <Card flagged={isFlagged(owed, m)}>
       <Row base>
-        <T v="bodyStrong">{l.name}</T>
-        <T v="numberS">{money(owed)}</T>
+        <T v="bodyStrong" style={styles.flex}>{l.name}</T>
+        {/* Labelled: beside a settlement, a bare figure reads as what was paid. */}
+        <T v="numberS">
+          {money(owed)}
+          <Text style={styles.owedWord}> owed</Text>
+        </T>
       </Row>
       <T v="bodyTiny">
         {loadNo(l) ? `Load ${loadNo(l)}, ` : ''}
@@ -224,7 +228,19 @@ function LoadCard({
       <Gap h={16} />
       <TimeBar free={Math.min(free, total)} detention={Math.max(0, total - free)} />
       <Gap h={8} />
-      <T v="bodyTiny">{dur(paidMin)} past free time</T>
+      {/* The bar's key, in the bar's order and colours. */}
+      <View style={styles.key}>
+        {free > 0 ? (
+          <View style={styles.keyItem}>
+            <View style={[styles.swatch, { backgroundColor: color.free }]} />
+            <T v="bodyTiny">{dur(Math.min(free, total))} free</T>
+          </View>
+        ) : null}
+        <View style={styles.keyItem}>
+          <View style={[styles.swatch, { backgroundColor: color.detention }]} />
+          <T v="bodyTiny">{dur(paidMin)} past free time</T>
+        </View>
+      </View>
       <Gap h={16} />
       {pending ? (
         <>
@@ -272,9 +288,22 @@ function LoadCard({
         </>
       ) : null}
       {onRemove ? (
-        <Pressable accessibilityRole="button" onPress={onRemove} style={({ pressed }) => [styles.remove, pressed && press.link]} hitSlop={8}>
-          <T v="bodyTiny">Not a real stop? Remove it</T>
-        </Pressable>
+        confirming ? (
+          // Removing can't be undone, and the link sits by the marking buttons: confirm first.
+          <View style={styles.confirm}>
+            <T v="bodyTiny" style={styles.flex}>Remove {l.name} from your stops?</T>
+            <Pressable accessibilityRole="button" onPress={() => setConfirming(false)} hitSlop={10} style={({ pressed }) => pressed && press.link}>
+              <T v="labelSmall">Keep</T>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={onRemove} hitSlop={10} style={({ pressed }) => pressed && press.link}>
+              <T v="labelSmall" c={color.flag}>Remove</T>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable accessibilityRole="button" onPress={() => setConfirming(true)} style={({ pressed }) => [styles.remove, pressed && press.link]} hitSlop={8}>
+            <T v="bodyTiny">Not a real stop? Remove it</T>
+          </Pressable>
+        )
       ) : null}
     </Card>
   );
@@ -374,6 +403,11 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   notLess: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
   rulesRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  owedWord: { fontFamily: fontFamily.regular, fontSize: 13, color: color.sub },
+  key: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 4 },
+  keyItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  swatch: { width: 10, height: 6, borderRadius: 3 },
+  confirm: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 12 },
   link: { textDecorationLine: 'underline' },
   weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   weekPressed: { backgroundColor: color.line },
