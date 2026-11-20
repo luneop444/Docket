@@ -13,6 +13,11 @@ import { MOVE_EVENT } from './contentMove';
  * (An earlier version used iOS's finger tuning, 0.55 of the travel with no cap: 88–136 pt
  * stretches that took ~1 s to come back, which read as stuck at the edge.)
  *
+ * Only a fallback now. Chrome 145+ (and Edge), Firefox and Safari all bounce nested scroll areas
+ * natively, from the OS's own trackpad phases (they know when fingers lift; a page can't), on
+ * the compositor. Faking it on top of them, with overscroll-behavior: none switching theirs off,
+ * is what felt stuck and choppy. So this runs only in older Chromium.
+ *
  * The wheel listener is passive, so it never holds up the browser's own scrolling. At an
  * edge there's nothing left to scroll, so the stretch is only drawn on top (a transform on
  * the content). Safari (macOS, iOS) bounces scroll areas natively and is left to it. Touch
@@ -46,13 +51,20 @@ function isMouseWheel(e: WheelEvent) {
   return typeof w === 'number' && w !== 0 && w % 120 === 0;
 }
 
+/** Safari, Firefox and Chromium 145+ rubber-band nested scroll areas themselves. */
+export function bouncesNatively(ua: string) {
+  if (/Firefox\/|FxiOS/.test(ua)) return true;
+  const chrome = /(?:Chrome|Chromium|CriOS)\/(\d+)/.exec(ua);
+  if (chrome) return +chrome[1] >= 145;
+  return /Safari\//.test(ua);
+}
+
 type Scrollable = { getScrollableNode?: () => HTMLElement } | HTMLElement | null;
 
 export function useRubberBand(ref: RefObject<Scrollable>) {
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia('(pointer: fine)').matches) return;
-    const ua = navigator.userAgent;
-    if (/Safari\//.test(ua) && !/Chrome|Chromium|CriOS|Edg|Firefox|FxiOS|Android/.test(ua)) return;
+    if (bouncesNatively(navigator.userAgent)) return;
     const r = ref.current as Scrollable;
     const node = (r && 'getScrollableNode' in r && r.getScrollableNode ? r.getScrollableNode() : r) as HTMLElement | null;
     if (!node) return;
