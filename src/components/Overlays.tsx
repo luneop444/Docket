@@ -106,6 +106,9 @@ export function SheetShell({
 
 function MessageSheet({ text, week }: { text: string; week: string }) {
   const { a } = useStore();
+  // The message grows to its full length and the sheet scrolls, so there's one scroll area
+  // (with the rubber band) rather than a box scrolling inside a box.
+  const [boxH, setBoxH] = useState(0);
 
   async function send(how: 'sms' | 'share' | 'copy') {
     try {
@@ -126,7 +129,7 @@ function MessageSheet({ text, week }: { text: string; week: string }) {
   }
 
   return (
-    <SheetShell onClose={a.closeSheet}>
+    <SheetShell onClose={a.closeSheet} scroll>
       <T v="h2">Message your fleet manager</T>
       <Gap h={8} />
       <T v="bodySmall">
@@ -137,7 +140,9 @@ function MessageSheet({ text, week }: { text: string; week: string }) {
         multiline
         value={text}
         onChangeText={a.setSheetText}
-        style={styles.textarea}
+        scrollEnabled={false}
+        onContentSizeChange={(e) => setBoxH(Math.ceil(e.nativeEvent.contentSize.height))}
+        style={[styles.textarea, boxH ? { height: Math.max(260, boxH) } : null]}
         textAlignVertical="top"
         accessibilityLabel="Message"
       />
