@@ -134,9 +134,20 @@ export default function Paycheck() {
         </Row>
       </Card>
       <Gap h={32} />
-      <T v="bodySmall">
-        {loads.length ? 'Find each load on your settlement and mark what you see.' : 'No stops this week.'}
-      </T>
+      {loads.length ? (
+        <>
+          <T v="bodyStrong">Check each load</T>
+          <Gap h={6} />
+          {/* Which settlement: the stops are grouped by the week they happened, and detention for
+              them is often paid on that week's settlement or the next one. */}
+          <T v="bodySmall">
+            Find each load on the settlement that pays the {week.label.replace(/^Week of/, 'week of')} stops. Detention can come a
+            settlement late, so if a load isn’t on it, mark Not yet.
+          </T>
+        </>
+      ) : (
+        <T v="bodySmall">No stops this week.</T>
+      )}
       <Gap h={12} />
       <View style={{ gap: 12 }}>
         {owedLoads.map(({ l, c }) => (
@@ -213,7 +224,8 @@ function LoadCard({
         options={[
           { key: 'paid' as const, label: 'Paid' },
           { key: 'less' as const, label: 'Less', flag: true },
-          { key: 'none' as const, label: 'Not there', flag: true },
+          // "Not yet", not "Not there": detention is often paid a settlement late.
+          { key: 'none' as const, label: 'Not yet', flag: true },
         ]}
         value={m?.m}
         onChange={(k) => a.mark(l.id, k)}
@@ -315,7 +327,13 @@ function Summary({ week }: { week: PayWeek }) {
           <T v="numberS" c={color.flag}>{money(w.short)}</T>
         </Row>
         <Gap h={8} />
-        <T v="bodySmall">Detention is sometimes paid a pay period late. You can wait a week, or ask now.</T>
+        <T v="bodySmall">
+          {w.flagged.every((f) => f.got === 0)
+            ? 'Detention is often paid a settlement late. You can check next week’s first, or ask now.'
+            : w.flagged.some((f) => f.got === 0)
+              ? 'Some were paid less, and some aren’t on it yet (detention can come a settlement late). You can wait a week, or ask now.'
+              : 'Paid less than your company’s rules give. You can ask now.'}
+        </T>
         <Gap h={12} />
         <Button label="Ask my fleet manager" onPress={() => a.openMessage(week)} />
       </Card>
