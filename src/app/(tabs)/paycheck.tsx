@@ -64,6 +64,8 @@ export default function Paycheck() {
     }
   }
 
+  const onScan = week.sample ? a.scanSample : scan;
+
   return (
     <Screen tabs header={<PageHead title="Paycheck check" right={weeks.length > 1 ? undefined : week.label} />}>
       {weeks.length > 1 ? (
@@ -103,9 +105,16 @@ export default function Paycheck() {
           </>
         ) : null}
         <Gap h={8} />
-        <T v="bodySmall">
-          {w.eligible} load{w.eligible === 1 ? '' : 's'}, {rulesLine(s.rules)}.
-        </T>
+        {/* The rules behind the figure, with the way to change them: setup, so a quiet link,
+            not a button beside the main action. */}
+        <View style={styles.rulesRow}>
+          <T v="bodySmall" style={styles.flex}>
+            {w.eligible} load{w.eligible === 1 ? '' : 's'}, {rulesLine(s.rules)}.
+          </T>
+          <Pressable accessibilityRole="button" accessibilityLabel="Change rules" onPress={() => router.push('/rules')} hitSlop={10} style={({ pressed }) => pressed && press.link}>
+            <T v="bodySmall" style={styles.link}>Change</T>
+          </Pressable>
+        </View>
         <Gap h={12} />
         <T v="bodyTiny">
           {week.sample ? (
@@ -117,26 +126,30 @@ export default function Paycheck() {
             'From the stops you timed. Scan your settlement and Claude marks each load by its number, or mark them below.'
           )}
         </T>
-        <Gap h={20} />
-        <Row style={{ gap: 12 }}>
-          <Button label="Change rules" variant="white" small style={styles.flex} onPress={() => router.push('/rules')} />
-          {w.eligible ? (
+        {w.eligible ? (
+          <>
+            <Gap h={20} />
+            {/* The fastest way to check every load: the one main action here. */}
             <Button
-              label={reading ? 'Reading…' : 'Scan'}
-              variant="white"
-              small
-              style={styles.flex}
-              icon={<DocIcon />}
+              label={reading ? 'Reading…' : 'Scan your settlement'}
+              icon={<DocIcon c={color.bg} />}
               disabled={reading}
-              onPress={week.sample ? a.scanSample : scan}
+              onPress={onScan}
             />
-          ) : null}
-        </Row>
+          </>
+        ) : null}
       </Card>
       <Gap h={32} />
       {loads.length ? (
         <>
-          <T v="bodyStrong">Check each load</T>
+          <Row base>
+            <T v="bodyStrong">Check each load</T>
+            {w.eligible ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Scan your settlement" onPress={onScan} disabled={reading} hitSlop={10} style={({ pressed }) => pressed && press.link}>
+                <T v="bodySmall" style={styles.link}>{reading ? 'Reading…' : 'Or scan it'}</T>
+              </Pressable>
+            ) : null}
+          </Row>
           <Gap h={6} />
           {/* Which settlement: the stops are grouped by the week they happened, and detention for
               them is often paid on that week's settlement or the next one. */}
@@ -360,6 +373,7 @@ function notLess(amt: string | undefined, owed: number) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   notLess: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
+  rulesRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   link: { textDecorationLine: 'underline' },
   weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   weekPressed: { backgroundColor: color.line },
