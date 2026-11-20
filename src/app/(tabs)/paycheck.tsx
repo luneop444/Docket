@@ -26,6 +26,9 @@ export default function Paycheck() {
   const loads = week.loads.map((l) => ({ l, c: calc(l.arrive, l.appt, l.leave, l.brk, s.rules) }));
   const owedLoads = loads.filter((x) => x.c.owed > 0);
   const inFree = loads.filter((x) => x.c.owed <= 0);
+  // The answer as you go: how many loads are checked, and what's short so far.
+  const done = owedLoads.filter((x) => s.marks[x.l.id]).length;
+  const started = done > 0;
   const [reading, setReading] = useState(false);
 
   /** Claude reads the settlement; loads are matched by load number and marked. */
@@ -93,6 +96,12 @@ export default function Paycheck() {
         <T v="bodyTiny">Detention Docket expects on this settlement</T>
         <Gap h={8} />
         <T v="numberL">{money(w.expected)}</T>
+        {w.eligible ? (
+          <>
+            <Gap h={8} />
+            <Progress done={done} of={w.eligible} short={w.short} />
+          </>
+        ) : null}
         <Gap h={8} />
         <T v="bodySmall">
           {w.eligible} load{w.eligible === 1 ? '' : 's'}, {rulesLine(s.rules)}.
@@ -137,6 +146,7 @@ export default function Paycheck() {
             owed={c.owed}
             freeEnd={c.freeEnd}
             paidMin={c.paidMin}
+            pending={started && !s.marks[l.id]}
             onRemove={week.sample ? undefined : () => a.removeLogged(l.id)}
           />
         ))}
@@ -162,12 +172,15 @@ function LoadCard({
   owed,
   freeEnd,
   paidMin,
+  pending,
   onRemove,
 }: {
   l: WeekLoad;
   owed: number;
   freeEnd: number;
   paidMin: number;
+  /** Others in the week are checked and this one isn't yet. */
+  pending?: boolean;
   onRemove?: () => void;
 }) {
   const { s, a } = useStore();
@@ -189,6 +202,12 @@ function LoadCard({
       <Gap h={8} />
       <T v="bodyTiny">{dur(paidMin)} past free time</T>
       <Gap h={16} />
+      {pending ? (
+        <>
+          <T v="labelSmall">Not checked yet</T>
+          <Gap h={8} />
+        </>
+      ) : null}
       <Seg
         label={`What your settlement shows for ${l.name}${loadNo(l) ? `, load ${loadNo(l)}` : ''}`}
         options={[
@@ -233,6 +252,18 @@ function LoadCard({
         </Pressable>
       ) : null}
     </Card>
+  );
+}
+
+/** The running answer under the expected total: checked so far, and what's short. */
+function Progress({ done, of, short }: { done: number; of: number; short: number }) {
+  const all = done === of;
+  const what = short > 0 ? `${money(short)} short${all ? '' : ' so far'}` : all ? 'all paid' : 'nothing short so far';
+  const line = done === 0 ? `None of ${of} checked yet` : `${all ? `All ${of}` : `${done} of ${of}`} checked · ${what}`;
+  return (
+    <T v="labelSmall" c={short > 0 ? color.flag : color.ink} accessibilityLiveRegion="polite">
+      {line}
+    </T>
   );
 }
 
