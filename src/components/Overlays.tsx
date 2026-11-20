@@ -104,7 +104,7 @@ export function SheetShell({
   );
 }
 
-function MessageSheet({ text }: { text: string }) {
+function MessageSheet({ text, week }: { text: string; week: string }) {
   const { a } = useStore();
 
   async function send(how: 'sms' | 'share' | 'copy') {
@@ -122,7 +122,7 @@ function MessageSheet({ text }: { text: string }) {
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') return;
     }
-    a.markSent();
+    a.markSent(week);
   }
 
   return (
@@ -574,7 +574,7 @@ export function Overlays() {
     <>
       {/* Answered on the lock screen first; unlocking without answering leaves it here, unconfirmed. */}
       {s.stop.phase === 'arriving' && path === '/today' && !ui.lock ? <ArrivalSheet /> : null}
-      {ui.sheet?.kind === 'message' ? <MessageSheet text={ui.sheet.text} /> : null}
+      {ui.sheet?.kind === 'message' ? <MessageSheet text={ui.sheet.text} week={ui.sheet.week} /> : null}
       {ui.sheet?.kind === 'fix' ? <FixSheet draft={ui.sheet.draft} /> : null}
       {ui.sheet?.kind === 'left' && !ui.lock ? <LeftSheet at={ui.sheet.at} /> : null}
       {ui.undo && !ui.sheet && !ui.lock ? <UndoToast key={ui.undo} text={ui.undo} /> : null}

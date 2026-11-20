@@ -200,6 +200,7 @@ function LoadCard({
         onChange={(k) => a.mark(l.id, k)}
       />
       {m?.m === 'less' ? (
+        <>
         <View style={styles.amount}>
           <Text style={styles.amountLabel}>Settlement shows $</Text>
           <TextInput
@@ -213,6 +214,18 @@ function LoadCard({
             accessibilityLabel={`Amount on settlement for load ${l.id}`}
           />
         </View>
+        {notLess(m.amt, owed) ? (
+          // "Less" with an amount that covers what's owed would quietly read as paid: say so.
+          <View style={styles.notLess}>
+            <T v="bodyTiny" style={styles.flex}>
+              That’s the full {money(owed)} or more, so it isn’t short.
+            </T>
+            <Pressable accessibilityRole="button" onPress={() => a.mark(l.id, 'paid')} hitSlop={10} style={({ pressed }) => pressed && press.link}>
+              <T v="labelSmall" style={styles.link}>Mark as paid</T>
+            </Pressable>
+          </View>
+        ) : null}
+        </>
       ) : null}
       {onRemove ? (
         <Pressable accessibilityRole="button" onPress={onRemove} style={({ pressed }) => [styles.remove, pressed && press.link]} hitSlop={8}>
@@ -227,13 +240,17 @@ function Summary({ week }: { week: PayWeek }) {
   const { s, a } = useStore();
   const w = weekTotals(week.loads, s.rules, s.marks);
 
-  if (s.sent) {
+  if (s.sent[week.key]) {
     return (
       <>
         <Card>
           <T v="bodyStrong">Sent to your fleet manager</T>
           <Gap h={8} />
           <T v="bodySmall">Docket will remind you if next week’s settlement still leaves these out.</T>
+          <Gap h={8} />
+          <T v="bodyTiny">
+            <Fake /> No reminder is set in the prototype.
+          </T>
         </Card>
         <Card>
           <T v="bodyStrong">Was your detention paid this week?</T>
@@ -245,8 +262,8 @@ function Summary({ week }: { week: PayWeek }) {
           <Seg<AnonAnswer>
             label="Was your detention paid this week?"
             options={(['Paid', 'Partly', 'Not paid'] as const).map((x) => ({ key: x, label: x }))}
-            value={s.anon}
-            onChange={a.setAnon}
+            value={s.anon[week.key]}
+            onChange={(k) => a.setAnon(week.key, k)}
           />
           <Gap h={8} />
           <T v="bodyTiny">
@@ -285,8 +302,16 @@ function Summary({ week }: { week: PayWeek }) {
   return null;
 }
 
+/** An amount typed for "Less" that isn't less than what's owed. */
+function notLess(amt: string | undefined, owed: number) {
+  const got = parseFloat(amt ?? '');
+  return Number.isFinite(got) && got >= owed;
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  notLess: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
+  link: { textDecorationLine: 'underline' },
   weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   weekPressed: { backgroundColor: color.line },
   weekBtn: {

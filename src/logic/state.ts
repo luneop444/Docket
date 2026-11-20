@@ -82,8 +82,10 @@ export interface AppState {
   now: number;
   stop: Stop;
   marks: Marks;
-  sent: boolean;
-  anon: AnonAnswer | null;
+  /** Pay weeks (PayWeek.key) whose claim went to the fleet manager. */
+  sent: Record<string, true>;
+  /** The anonymous "was it paid" answer, per pay week. */
+  anon: Record<string, AnonAnswer>;
   sort: CompanySort;
   islandAlerted: boolean;
   /** Stops logged with the real clock, newest first. */
@@ -108,8 +110,8 @@ export const freshState = (): AppState => ({
   now: START_NOW,
   stop: freshStop(),
   marks: {},
-  sent: false,
-  anon: null,
+  sent: {},
+  anon: {},
   sort: 'wait',
   islandAlerted: false,
   history: [],
@@ -120,7 +122,10 @@ export const freshState = (): AppState => ({
 export function parseState(raw: string | null): AppState {
   try {
     const s = raw ? JSON.parse(raw) : null;
-    return s && s.rules ? { ...freshState(), ...s } : freshState();
+    if (!s || !s.rules) return freshState();
+    // Saved before these were kept per week (a single true/false and one answer): start clean.
+    const perWeek = (v: unknown) => (v && typeof v === 'object' ? v : {});
+    return { ...freshState(), ...s, sent: perWeek(s.sent), anon: perWeek(s.anon) };
   } catch {
     return freshState();
   }

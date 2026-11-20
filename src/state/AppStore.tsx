@@ -13,7 +13,7 @@ import {
 import { ASK_AFTER_MIN, demoState, type DemoState } from '../logic/demo';
 import type { Rules } from '../logic/detention';
 import type { LatLon } from '../logic/geo';
-import { toLogged, upsert, type PayWeek } from '../logic/history';
+import { payWeeks, toLogged, upsert, type PayWeek } from '../logic/history';
 import { COMPANIES, SAMPLE_SETTLEMENT, SIM_MINUTES_PER_SECOND, START_NOW, type Marks } from '../logic/sampleData';
 import { claimText, cleanAmount, weekTotals } from '../logic/settlement';
 import {
@@ -23,6 +23,7 @@ import {
   placeOf,
   setsStopsOnce,
   STORAGE_KEY,
+  type AnonAnswer,
   type AppState,
   type LocationMode,
 } from '../logic/state';
@@ -30,7 +31,7 @@ import { applyFix, type BolTimes, freshStop, startLiveStop, stepFix, stopCalc, s
 import { clockBare } from '../logic/format';
 
 export type Sheet =
-  | { kind: 'message'; text: string }
+  | { kind: 'message'; text: string; week: string }
   | { kind: 'fix'; draft: FixDraft }
   /** Location says the driver drove away from a live stop: confirm the time (epoch ms). */
   | { kind: 'left'; at: number }
@@ -61,6 +62,15 @@ function saveToHistory(s: AppState): AppState {
 }
 
 const remember = (places: string[], name: string) => (places.includes(name) ? places : [...places, name]);
+
+/** Marking a load reopens its own week's claim only (it may change what's short); other weeks stay sent. */
+function unsent(s: AppState, ids: string[]): AppState['sent'] {
+  const weeks = payWeeks(s.history).filter((w) => w.loads.some((l) => ids.includes(l.id)));
+  if (!weeks.length) return s.sent;
+  const sent = { ...s.sent };
+  for (const w of weeks) delete sent[w.key];
+  return sent;
+}
 
 const freshUi = (): Ui => ({ expanded: false, lock: false, sheet: null, toast: null, undo: null, siri: false, photoUri: null, leftSnooze: 0 });
 
@@ -260,28 +270,31 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
       /* paycheck */
       mark: (id: string, m: 'paid' | 'less' | 'none') => {
         tick();
-        setS((s) => ({ ...s, marks: { ...s.marks, [id]: { ...(s.marks[id] ?? {}), m } }, sent: false }));
+        setS((s) => ({ ...s, marks: { ...s.marks, [id]: { ...(s.marks[id] ?? {}), m } }, sent: unsent(s, [id]) }));
       },
       setAmt: (id: string, v: string) =>
         setS((s) => ({ ...s, marks: { ...s.marks, [id]: { ...(s.marks[id] ?? { m: 'less' }), amt: cleanAmount(v) } } })),
       /** Marks read off a real settlement; the driver's own marks on other loads stay. */
-      applySettlement: (marks: Marks) => setS((s) => ({ ...s, marks: { ...s.marks, ...marks }, sent: false })),
+      applySettlement: (marks: Marks) => setS((s) => ({ ...s, marks: { ...s.marks, ...marks }, sent: unsent(s, Object.keys(marks)) })),
       scanSample: () => {
-        setS((s) => ({ ...s, marks: JSON.parse(JSON.stringify(SAMPLE_SETTLEMENT)), sent: false }));
+        setS((s) => {
+          const { sample: _gone, ...sent } = s.sent;
+          return { ...s, marks: JSON.parse(JSON.stringify(SAMPLE_SETTLEMENT)), sent };
+        });
         toast('Sample settlement read. Check each load.');
       },
       openMessage: (week: PayWeek) => {
         const s = sRef.current;
         const text = claimText(weekTotals(week.loads, s.rules, s.marks), s.rules, week.label);
-        setUi((u) => ({ ...u, sheet: { kind: 'message', text } }));
+        setUi((u) => ({ ...u, sheet: { kind: 'message', text, week: week.key } }));
       },
-      markSent: () => {
-        setS((s) => ({ ...s, sent: true }));
+      markSent: (week: string) => {
+        setS((s) => ({ ...s, sent: { ...s.sent, [week]: true } }));
         done();
         setUi((u) => ({ ...u, sheet: null }));
       },
-      setAnon: (anon: AppState['anon']) => {
-        setS((s) => ({ ...s, anon }));
+      setAnon: (week: string, answer: AnonAnswer) => {
+        setS((s) => ({ ...s, anon: { ...s.anon, [week]: answer } }));
         toast('Thanks. Added anonymously.');
       },
       /** Take a logged stop out of the paycheck check (a test tap, a stop that wasn't one). */
