@@ -9,6 +9,10 @@ import type { TextStyle } from 'react-native';
 
 export const color = {
   bg: '#FFFFFF',
+  /** Figma color/canvas: the flat cool grey behind every screen, so glass cards lift off it. */
+  canvas: '#E9ECF0',
+  /** Figma color/glass: white at 62%, the surface of every card and the tab bar. */
+  glass: 'rgba(255,255,255,0.62)',
   raise: '#F2F4F6',
   raise2: '#E5E8EC',
   line: '#D7DBE0',
@@ -23,10 +27,11 @@ export const color = {
   signalInk: '#000000',
   onSignal: '#000000',
   /**
-   * Inactive onboarding progress segment. Not a Figma variable: the reference
-   * uses a very light gray, darkened here to 3.06:1 on white (WCAG 1.4.11).
+   * Inactive onboarding progress segment, radio and choice rings, switch off. Not a Figma
+   * variable: the reference uses a very light gray, darkened to pass WCAG 1.4.11 (3:1) on the
+   * grey canvas: 3.02:1 on canvas, 3.37:1 on glass, 3.58:1 on white.
    */
-  track: '#8E949B',
+  track: '#82888F',
   /**
    * Bar segment for time inside free time. Darkened from the Figma #B9C2C8
    * (1.64:1 on raise) to pass WCAG 1.4.11: 3.09:1 on raise, 3.33:1 on white,
@@ -97,6 +102,23 @@ export const radius = {
   option: 20,
   sheet: 24,
 } as const;
+
+/**
+ * Figma effect style "Glass", the one glass for every card and the tab bar: a 0.5 black 10%
+ * edge outside, a soft lift (0 6 20 at 8%), a bright top rim (white 90%, 1 down) and a light
+ * edge all round (white 45%, 1 spread). Spread onto any surface that was `raise`.
+ * Figma's liquid-glass refraction is left out: over the flat canvas there is nothing behind a
+ * card for it to bend.
+ */
+export const glassEdge = '0 0 0 0.5px rgba(0,0,0,0.10)';
+export const glassLift = '0 6px 20px rgba(0,0,0,0.08)';
+export const glassRim = 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 0 1px rgba(255,255,255,0.45)';
+export const glass = {
+  backgroundColor: color.glass,
+  boxShadow: `${glassEdge}, ${glassLift}, ${glassRim}`,
+} as const;
+/** A glass card with its own ring (flagged red, selected black): Figma drops the thin edge and keeps the lift. */
+export const glassRing = (c: string, w = 1.5) => ({ boxShadow: `${glassLift}, inset 0 0 0 ${w}px ${c}` });
 
 /** Font family names registered with expo-font in the root layout. */
 export const fontFamily = {

@@ -7,7 +7,7 @@ import { INDEX_LETTERS, LetterIndex } from '../components/LetterIndex';
 import { Gap, noFocusRing, Option, T } from '../components/ui';
 import { COMPANIES, SUGGESTED } from '../logic/sampleData';
 import { useStore } from '../state/AppStore';
-import { color, type } from '../theme/tokens';
+import { color, glass, type } from '../theme/tokens';
 
 /**
  * Logos for the six popular carriers, from the team's Figma (Onboarding v3, E1 Pick company,
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     height: 50,
     paddingHorizontal: 16,
     borderRadius: 25, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
   },
   fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
   // One squircle per carrier: 16 padding, the logo then its name. The logos are transparent,
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
     borderRadius: 20, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
   },
   tilePressed: { backgroundColor: color.line },
   // The tallest logo is 34; every logo sits in the same 36 band so the names line up.

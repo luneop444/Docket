@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { DEMO_STATES, type DemoState } from '../logic/demo';
 import { placeOf } from '../logic/state';
 import { useStore } from '../state/AppStore';
-import { color, protoColor, radius } from '../theme/tokens';
+import { color, glass, protoColor, radius } from '../theme/tokens';
 import { Button, Gap, T } from './ui';
 
 const STATE_LABEL: Record<DemoState, string> = {
@@ -138,6 +138,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderCurve: 'continuous',
     justifyContent: 'center',
-    backgroundColor: color.raise,
+    ...glass,
   },
 });

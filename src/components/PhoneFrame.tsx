@@ -126,7 +126,7 @@ function Aside() {
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: color.bg },
+  fill: { flex: 1, backgroundColor: color.canvas },
   desk: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: protoColor.desk },
   stage: { flexDirection: 'row', alignItems: 'center', gap: GAP },
   phone: {
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     height: device.height,
     borderRadius: 54, borderCurve: 'continuous',
     overflow: 'hidden',
-    backgroundColor: color.bg,
+    backgroundColor: color.canvas,
     boxShadow: `0 0 0 10px ${protoColor.bezel}, 0 0 0 11px ${protoColor.bezelEdge}, 0 30px 80px ${protoColor.frameShadow}`,
   },
   statusbar: {

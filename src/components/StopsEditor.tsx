@@ -4,7 +4,7 @@ import { clock, parseClock } from '../logic/format';
 import { tick } from '../logic/haptics';
 import type { LoadStop } from '../logic/sampleData';
 import { shiftStop } from '../logic/stop';
-import { color, radius, type } from '../theme/tokens';
+import { color, glass, radius, type } from '../theme/tokens';
 import { MinusIcon, PlusIcon } from './Icons';
 import { Button, noFocusRing, press, Seg, T } from './ui';
 import { useRepeat } from './useRepeat';
@@ -160,14 +160,14 @@ function TimeField({ at, onChange, label }: { at: number; onChange: (m: number) 
 }
 
 const styles = StyleSheet.create({
-  stop: { backgroundColor: color.raise, borderRadius: 14, borderCurve: 'continuous', padding: 14, gap: 10 },
+  stop: { ...glass, borderRadius: 14, borderCurve: 'continuous', padding: 14, gap: 10 },
   stopHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   input: {
     ...type.body,
     height: 48,
     paddingHorizontal: 14,
     borderRadius: radius.chip, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
     color: color.ink,
     ...noFocusRing,
   },

@@ -15,7 +15,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import { color, fontFamily, protoColor, radius, type, type TypeToken } from '../theme/tokens';
+import { color, fontFamily, glass, glassRing, protoColor, radius, type, type TypeToken } from '../theme/tokens';
 import { noWidow } from '../logic/text';
 import { CheckIcon, ChevronRight } from './Icons';
 import { tick } from '../logic/haptics';
@@ -132,7 +132,7 @@ export function Button({
   const bg: Record<ButtonVariant, string | undefined> = {
     primary: color.ink,
     signal: color.signal,
-    quiet: color.raise,
+    quiet: color.glass,
     text: undefined,
     white: color.bg,
   };
@@ -145,6 +145,7 @@ export function Button({
       style={({ pressed }) => [
         styles.btn,
         { backgroundColor: bg[variant] },
+        variant === 'quiet' && styles.btnGlass,
         small && styles.btnSmall,
         variant === 'text' && styles.btnText,
         disabled && styles.disabled,
@@ -349,7 +350,7 @@ export function IconTile({ icon, tone = 'raise', size = 40 }: { icon: IconFn; to
     <View
       // Web: keep this tile's own squircle instead of the concentric inner corner (Squircles.web.tsx).
       {...({ dataSet: { squircle: 'own' } } as object)}
-      style={[styles.iconTile, sized, { backgroundColor: bg }]}
+      style={[styles.iconTile, sized, tone === 'raise' ? glass : { backgroundColor: bg }]}
     >
       {icon(fg)}
     </View>
@@ -474,6 +475,7 @@ const styles = StyleSheet.create({
   flexGap1: { flex: 1, minWidth: 0, gap: 1 },
   flexGap2: { flex: 1, minWidth: 0, gap: 2 },
   iconTile: { borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center' },
+  btnGlass: { boxShadow: glass.boxShadow },
   tile40: { width: 40, height: 40, borderRadius: 12 },
   tile44: { width: 44, height: 44, borderRadius: 13 },
   tile48: { width: 48, height: 48, borderRadius: 14 },
@@ -484,11 +486,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: radius.option,
     borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
   },
   // Figma E1 Pick company: 14 around a 40 tile, 20 corners (14 + 40/2 keeps it concentric with the tile's 11).
   optionIcon: { padding: 14, borderRadius: 20, justifyContent: 'flex-start' },
-  choiceOn: { backgroundColor: color.signal },
+  choiceOn: { backgroundColor: color.signal, boxShadow: 'none' },
   choiceRing: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: color.track },
   choiceSlot: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   choiceCheck: {
@@ -509,13 +511,13 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
   },
   actionPrimary: { backgroundColor: color.ink },
-  actionSecondary: { backgroundColor: color.bg, borderWidth: 1.5, borderColor: color.line },
+  actionSecondary: { ...glass },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   rowBase: { alignItems: 'baseline' },
   hr: { height: 1, backgroundColor: color.line, marginVertical: 14 },
-  card: { backgroundColor: color.raise, borderRadius: radius.card, borderCurve: 'continuous', padding: 20 },
-  cardSignal: { backgroundColor: color.signal },
-  cardFlagged: { boxShadow: `inset 0 0 0 1.5px ${color.flag}` },
+  card: { ...glass, borderRadius: radius.card, borderCurve: 'continuous', padding: 20 },
+  cardSignal: { backgroundColor: color.signal, boxShadow: 'none' },
+  cardFlagged: glassRing(color.flag),
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -549,7 +551,7 @@ const styles = StyleSheet.create({
     // Even 20 on every side, equal to the corner radius; 62px tall with one line.
     padding: 20,
     borderRadius: radius.option, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
   },
   optionOn: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
   optionRadio: { justifyContent: 'flex-start', gap: 14 },
@@ -578,7 +580,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
     alignItems: 'center',
     justifyContent: 'center',
   },

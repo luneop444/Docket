@@ -13,7 +13,7 @@ import { isFlagged, weekTotals } from '../../logic/settlement';
 import type { AnonAnswer } from '../../logic/state';
 import { useStore } from '../../state/AppStore';
 import { DocReadError, DocReadingOff, pickFile, pickScreenshot, postDoc, type DocFile } from '../../state/readDoc';
-import { color, fontFamily, radius } from '../../theme/tokens';
+import { color, fontFamily, glass, radius } from '../../theme/tokens';
 
 /** v1 14–17: Paycheck check */
 export default function Paycheck() {
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radius.chip, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
     alignItems: 'center',
     justifyContent: 'center',
   },

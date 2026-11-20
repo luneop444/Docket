@@ -14,7 +14,6 @@ import {
   Linking,
   Platform,
   Pressable,
-  ScrollView,
   Share,
   StyleSheet,
   Text,
@@ -29,7 +28,8 @@ import { placeOf } from '../logic/state';
 import { islandCopy } from '../logic/island';
 import { apptOf, stopCalc, type FixDraft } from '../logic/stop';
 import { useStore } from '../state/AppStore';
-import { color, fontFamily, protoColor, radius, type } from '../theme/tokens';
+import { color, fontFamily, glass, protoColor, radius, type } from '../theme/tokens';
+import { BandScrollView } from './BandScrollView';
 import { useFramed, useInsets, useIslandStage } from './Chrome';
 import { MinusIcon, PlusIcon, TruckIcon } from './Icons';
 import { useReduceMotion } from './stepMotion';
@@ -92,9 +92,9 @@ export function SheetShell({
         >
           <View style={styles.grab} />
           {scroll ? (
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
+            <BandScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
               {children}
-            </ScrollView>
+            </BandScrollView>
           ) : (
             children
           )}
@@ -609,10 +609,10 @@ const styles = StyleSheet.create({
     color: color.ink,
     minHeight: 260,
     borderRadius: 18, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
     padding: 14,
   },
-  times: { backgroundColor: color.raise, borderRadius: radius.control, borderCurve: 'continuous', paddingHorizontal: 18, paddingVertical: 4 },
+  times: { ...glass, borderRadius: radius.control, borderCurve: 'continuous', paddingHorizontal: 18, paddingVertical: 4 },
   timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, paddingVertical: 6 },
   timeRowLine: { borderBottomWidth: 1, borderBottomColor: color.line },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepValue: { minWidth: 80, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  details: { backgroundColor: color.raise, borderRadius: 14, borderCurve: 'continuous', padding: 14 },
+  details: { ...glass, borderRadius: 14, borderCurve: 'continuous', padding: 14 },
   undo: {
     position: 'absolute',
     left: 16,

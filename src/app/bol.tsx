@@ -10,7 +10,7 @@ import { placeOf } from '../logic/state';
 import { bolFromReading } from '../logic/stop';
 import { useStore } from '../state/AppStore';
 import { BolReadError, BolReadingOff, readBol } from '../state/readBol';
-import { color, protoColor } from '../theme/tokens';
+import { color, glass, protoColor } from '../theme/tokens';
 
 /** Opens the camera (phone) or file picker (desktop). Falls back to the photo library. */
 async function takePhoto(): Promise<string | null> {
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 4 / 3,
     borderRadius: 24, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

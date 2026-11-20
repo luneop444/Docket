@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ReactElement } from 'react';
 import { CheckIcon, ClockIcon, DollarIcon, HourglassIcon, PinIcon } from './Icons';
-import { color, fontFamily, type } from '../theme/tokens';
+import { color, fontFamily, glass, type } from '../theme/tokens';
 
 export type EventState = 'done' | 'current' | 'upcoming';
 /** The rail below the event: free time, paid detention, not reached yet, or nothing (last event). */
@@ -78,7 +78,7 @@ export function Timeline({ events }: { events: TimelineEvent[] }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: color.raise,
+    ...glass,
     borderRadius: 24,
     borderCurve: 'continuous',
     paddingTop: 20,
