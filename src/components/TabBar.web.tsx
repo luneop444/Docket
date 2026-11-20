@@ -95,7 +95,7 @@ export function TabBar() {
   // One frame: where the page, the bar and the pill are now.
   const frame = useCallback(() => {
     const g = gls.current, p = pic.current, bar = barRef.current, pill = pillRef.current;
-    if (!g || !p || !bar || !pill || !g.bar.ready()) return;
+    if (!g || !p || !bar || !pill) return;
     const cr = p.p.el.getBoundingClientRect(), br = bar.getBoundingClientRect(), pr = pill.getBoundingClientRect();
     // The slice holding the bar and everything its rim reads.
     const reach = glassReach(TAB_PILL);
@@ -106,6 +106,9 @@ export function TabBar() {
       g.pill.setPage(f);
       p.slice = sl;
     }
+    // Ready once both the page (just above) and the lens maps are in. Checking before handing
+    // the page over (19 Nov) meant it never drew, and the bar showed its plain stand-in.
+    if (!g.bar.ready() || !g.pill.ready()) return;
     const base = {
       pageOrigin: [cr.left, cr.top + sl.top] as [number, number],
       pageSize: [p.p.width, sl.height] as [number, number],
