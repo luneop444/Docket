@@ -24,14 +24,23 @@ import { MOVE_EVENT } from './contentMove';
  * (content fits, scrolling off) don't stretch, as on iOS.
  */
 const C = 0.55;
-const MASS = 0.5;
-const STIFF = 100;
-const DAMP = 1.1 * 2 * Math.sqrt(STIFF * MASS);
 /**
- * A trackpad keeps sending events while fingers move and through its drift after they lift;
- * the gesture is over once none comes for this long.
+ * Snap back: WebKit's rubber band (Chromium's macOS InputScrollElasticityController), which
+ * damps by e^(−t·stiffness/period) with stiffness 20 and period 1.6: a critically damped
+ * spring at ω = 12.5/s. As a spring (mass 1): stiffness ω², damping 2ω.
  */
-const RELEASE_MS = 80;
+const OMEGA = 20 / 1.6;
+const MASS = 1;
+const STIFF = OMEGA * OMEGA;
+const DAMP = 2 * OMEGA;
+/** A trackpad gesture is over once no event comes for this long. */
+const RELEASE_MS = 50;
+/**
+ * After fingers lift, a trackpad's drift arrives as more wheel events, each smaller than the
+ * last. WebKit snaps back as soon as that drift starts and ignores it while pinned at the
+ * edge; this many shrinking events in a row is taken as the drift starting.
+ */
+const DRIFT_RUN = 3;
 
 const band = (x: number, d: number) => (1 - 1 / ((x * C) / d + 1)) * d;
 /** The pull that gives a stretch of b: the curve solved for x. */
@@ -81,9 +90,21 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
     let raf = 0;
     let last = 0;
     let idle = 0;
-    // A wheel click that crosses an edge: the browser scrolls up to the edge, the rest is a push.
-    let carry = 0;
-    let carryUntil = 0;
+    // Trackpad drift: how big the last event was, how many shrank in a row, and whether the
+    // drift is being ignored.
+    let lastSize = 0;
+    let shrinking = 0;
+    let ignoring = false;
+    const endGestureSoon = () => {
+      clearTimeout(idle);
+      idle = window.setTimeout(() => {
+        held = false;
+        ignoring = false;
+        shrinking = 0;
+        lastSize = 0;
+        if (shown !== 0) run();
+      }, RELEASE_MS);
+    };
 
     const d = () => node.clientHeight || 1;
     const content = () => node.firstElementChild as HTMLElement | null;
@@ -130,16 +151,6 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       vel += (Math.sign(dy) * band(Math.abs(dy), h) * room) / REACH_PER_SPEED;
       run();
     };
-    const onScroll = () => {
-      if (!carry) return;
-      if (performance.now() > carryUntil) return void (carry = 0);
-      const max = node.scrollHeight - node.clientHeight;
-      const at = carry < 0 ? node.scrollTop <= 0 : node.scrollTop >= max - 0.5;
-      if (!at) return;
-      const c = carry;
-      carry = 0;
-      push(c, d());
-    };
 
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey) return; // pinch-zoom on a trackpad
@@ -151,14 +162,14 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       const pastTop = dy < 0 && top <= 0;
       const pastBottom = dy > 0 && top >= max - 0.5;
       // Mid-list: the browser scrolls, nothing to do here, unless this click runs past the
-      // edge: then what's left over pushes once the scroll gets there (onScroll below).
+      // edge: then what's left over pushes straight away.
       if (!stretched && !pastTop && !pastBottom) {
         if (isMouseWheel(e)) {
+          // The browser eases the last of the scroll into the edge, reaching it visually well
+          // before the position reads exactly 0, so waiting for that lags. The overshoot pushes
+          // now, carried on top of the browser's own scroll into the edge.
           const over = dy < 0 ? -(top + dy) : top + dy - max;
-          if (over > 0) {
-            carry = Math.sign(dy) * over;
-            carryUntil = performance.now() + 600;
-          }
+          if (over > 0) push(Math.sign(dy) * over, d());
         }
         return;
       }
@@ -174,34 +185,48 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       }
 
       if (isMouseWheel(e)) {
-        carry = 0;
         push(dy, h);
         return;
       }
 
-      // A trackpad: the content follows the fingers through the curve.
+      // A trackpad: the content follows the fingers through the curve, until they lift.
+      const size = Math.abs(dy);
+      if (ignoring) {
+        // Drift pinned at the edge: ignored (WebKit does the same). A push bigger than the
+        // drift is the fingers again.
+        if (size <= lastSize * 1.2) {
+          lastSize = size;
+          endGestureSoon();
+          return;
+        }
+        ignoring = false;
+        shrinking = 0;
+      }
+      shrinking = size < lastSize * 0.97 ? shrinking + 1 : 0;
+      lastSize = size;
+      if (shrinking >= DRIFT_RUN) {
+        // The fingers lifted and this is drift: let go now.
+        ignoring = true;
+        held = false;
+        run();
+        endGestureSoon();
+        return;
+      }
       if (!held) {
         cancelAnimationFrame(raf);
         raf = 0;
         held = true;
         vel = 0;
-        pull = Math.sign(shown) * unband(Math.abs(shown), h);
+        pull = Math.sign(shown || dy) * unband(Math.abs(shown), h);
       }
-      const next = pull + dy;
-      pull = next;
+      pull += dy;
       shown = Math.sign(pull) * band(Math.abs(pull), h);
       paint();
-      clearTimeout(idle);
-      idle = window.setTimeout(() => {
-        held = false;
-        if (shown !== 0) run();
-      }, RELEASE_MS);
+      endGestureSoon();
     };
 
     node.addEventListener('wheel', onWheel, { passive: true });
-    node.addEventListener('scroll', onScroll, { passive: true });
     return () => {
-      node.removeEventListener('scroll', onScroll);
       node.style.removeProperty('overscroll-behavior-y');
       node.removeEventListener('wheel', onWheel);
       cancelAnimationFrame(raf);
