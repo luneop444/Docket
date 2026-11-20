@@ -12,6 +12,9 @@ import { clock, dur, money, rateShort } from '../../logic/format';
 import { placeOf, watchedStop } from '../../logic/state';
 import { dockTimeline, stopCalc, stopTime } from '../../logic/stop';
 import { useStore } from '../../state/AppStore';
+import { currentClaimId } from '../../state/currentClaim';
+import { useClaims } from '../../state/useClaims';
+import { PaydayCard } from '../../components/PaydayCard';
 import { color, type } from '../../theme/tokens';
 
 /** "Sunday, Nov 15": the title is the day, not the app's name. */
@@ -49,6 +52,7 @@ export default function Today() {
     >
       <Gap h={16} />
       <Current />
+      <PaydayCard />
       <Gap h={40} />
       <Stops />
     </Screen>
@@ -237,6 +241,9 @@ function AtStop() {
     : `Detention starts at ${clock(c.freeEnd)}, ${rate}`;
 
   const checkIn = st.phase === 'dock' && dockTimeline(st, s.now, s.rules).some((e) => e.canCheckIn);
+  const id = currentClaimId(s);
+  const claim = useClaims().find((x) => x.id === id);
+  const toClaim = () => router.push(`/claim-sheet?id=${encodeURIComponent(id ?? '')}`);
 
   // One spoken summary for the figure (from main's v2 accessibility pass), so VoiceOver
   // reads "Detention owed. $43.67. 2h 11m past free time, at $20/hr" in one go.
@@ -267,6 +274,24 @@ function AtStop() {
           <Button label="Snap your BOL" onPress={() => router.push('/bol')} />
           <Gap h={16} />
         </>
+      ) : null}
+      {/* Done and owed detention: the claim goes to dispatch now, with the proof. */}
+      {st.phase === 'logged' && claim ? (
+        claim.stage === 'unsent' ? (
+          <>
+            <Button label="Send claim to dispatch" onPress={toClaim} />
+            <Gap h={8} />
+            <T v="bodyTiny">Many companies set a 24 to 48 hour deadline for detention claims.</T>
+            <Gap h={16} />
+          </>
+        ) : (
+          <>
+            <Pressable accessibilityRole="button" onPress={() => router.push(`/claim?id=${encodeURIComponent(claim.id)}`)} style={({ pressed }) => pressed && press.link}>
+              <T v="labelSmall">Claim sent · see it in Claims</T>
+            </Pressable>
+            <Gap h={16} />
+          </>
+        )
       ) : null}
       {st.live && st.phase === 'dock' ? (
         <>

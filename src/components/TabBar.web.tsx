@@ -14,7 +14,7 @@ export { mapData, scrollerUnder };
 
 const TABS = [
   { href: '/today', label: 'Today', Icon: TabTodayIcon },
-  { href: '/paycheck', label: 'Paycheck', Icon: TabPaycheckIcon },
+  { href: '/paycheck', label: 'Claims', Icon: TabPaycheckIcon },
   { href: '/companies', label: 'Companies', Icon: TabCompaniesIcon },
 ] as const;
 
