@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react';
 import { glassEdge, glassLift, glassRim } from '../theme/tokens';
-import { GLASS_MAP } from './glassMap';
-import { AAVE, BEND, frosted } from './glassPicture';
+import { BEND, frosted } from './glassPicture';
 import type { Slice } from './pagePicture';
 
 /**
@@ -41,8 +40,32 @@ export const GLASS_STANDIN: CSSProperties = {
 };
 /** The rims drawn over the lens: the design system's glass rims, so every glass surface shares them. */
 export const GLASS_RIM = glassRim;
-/** Bend for glass of this height, scaled from Aave's 40-tall lens the way the bar does. */
-export const glassK = (h: number): [number, number] => [REFRACT * AAVE.x * (h / AAVE.h), REFRACT * 0.5556 * AAVE.y * (h / AAVE.h)];
+/** A number tried from the address (?bezel=0.5), kept for the tab, else the default. */
+function tryNum(key: string, def: number, min: number, max: number) {
+  if (typeof window === 'undefined') return def;
+  try {
+    const q = new URLSearchParams(window.location.search).get(key);
+    if (q === 'reset') sessionStorage.removeItem(key);
+    else if (q) sessionStorage.setItem(key, q);
+    const v = parseFloat(sessionStorage.getItem(key) ?? '');
+    return v >= min && v <= max ? v : def;
+  } catch {
+    return def;
+  }
+}
+/**
+ * The rim that bends, as a share of the glass's height. Aave's map bent only its outer ~15%
+ * (about 9px on the 64px bar), so more refraction only pushed a thin line harder. Apple's
+ * glass bends a wide rim that magnifies what's under its edges. Try ?bezel=0.3 … 0.5.
+ */
+export const BEZEL = tryNum('bezel', 0.42, 0.05, 0.5);
+/** How far the very edge reads in from the page, as a share of the glass's height, at REFRACT 1. Try ?lens=. */
+export const LENS = tryNum('lens', 0.32, 0.05, 2);
+/** Bend for glass of this height: the map's strongest value (0.45 off neutral) reads LENS × height in. */
+export const glassK = (h: number): [number, number] => {
+  const k = (REFRACT * LENS * h) / 0.45;
+  return [k, k];
+};
 /** How far past its edge glass of this height reads the page: Aave's strongest bend (red 243), split included, plus room. */
 export const glassReach = (h: number) => Math.ceil(((243 - 128) / 255) * glassK(h)[0] * GLASS_CHROMA[0]) + 8;
 
@@ -94,26 +117,51 @@ export function mapData(src: string | Promise<string>, w: number, h: number, box
   );
 }
 
-/** Aave's map 9-sliced onto a bar: its ends at lens size for the bar's height, its middle column stretched. */
-export function sliceMap(w: number, h: number): Promise<string> {
-  return new Promise((res) => {
-    const img = new Image();
-    img.onload = () => {
-      const W = Math.round(w), Hh = Math.round(h);
-      const cap = Math.min(W / 2, Math.round((AAVE.w / 2) * (Hh / AAVE.h)));
-      const c = document.createElement('canvas');
-      c.width = W;
-      c.height = Hh;
-      const ctx = c.getContext('2d')!;
-      const half = img.width / 2;
-      ctx.drawImage(img, 0, 0, half, img.height, 0, 0, cap, Hh);
-      ctx.drawImage(img, half - 1, 0, 2, img.height, cap, 0, W - cap * 2, Hh);
-      ctx.drawImage(img, half, 0, half, img.height, W - cap, 0, cap, Hh);
-      res(c.toDataURL());
-    };
-    img.src = GLASS_MAP;
-  });
+/**
+ * The lens for a capsule of w × h (a circle when w = h), drawn rather than stretched from
+ * Aave's image. Red bends across and green down, 128 is none: across the rim (BEZEL of the
+ * height) each point reads the page further in toward the middle, steepest at the edge and
+ * fading to flat, the same falloff as Aave's (their strongest 243 included). Blue darkens
+ * the outer 3px a touch, as theirs does.
+ */
+export function lensMap(w: number, h: number): Promise<string> {
+  const W = Math.max(1, Math.round(w)), H = Math.max(1, Math.round(h));
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext('2d')!;
+  const img = ctx.createImageData(W, H);
+  const R = Math.min(W, H) / 2;
+  const B = Math.max(3, BEZEL * H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const px = x + 0.5, py = y + 0.5;
+      const cx = Math.min(Math.max(px, R), W - R);
+      const cy = Math.min(Math.max(py, R), H - R);
+      const dx = px - cx, dy = py - cy;
+      const dist = Math.hypot(dx, dy);
+      const inside = R - dist;
+      let r = 128, g = 128, b = 128;
+      if (inside >= 0 && dist > 0.001) {
+        const t = Math.max(0, 1 - inside / B);
+        const m = 0.9 * t * t;
+        // Toward the middle: the opposite of the way out.
+        r = 128 - (dx / dist) * m * 127.5;
+        g = 128 - (dy / dist) * m * 127.5;
+        b = 128 + 15 * Math.max(0, 1 - inside / 3);
+      }
+      const i = (y * W + x) * 4;
+      img.data[i] = Math.round(r);
+      img.data[i + 1] = Math.round(g);
+      img.data[i + 2] = Math.round(b);
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return Promise.resolve(c.toDataURL());
 }
+/** Kept for anything still asking for the old name. */
+export const sliceMap = lensMap;
 
 
 /** A slice of the screen's picture, frosted by FROST, made once and shared by every glass. */

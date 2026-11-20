@@ -3,11 +3,10 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { createGlass, type Glass } from './glassGL';
 import { color, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
-import { GLASS_MAP } from './glassMap';
-import { BAR_TINT_GL, GLASS_CHROMA, frostSlice, GLASS_RIM, GLASS_STANDIN, REFRACT, glassK, glassReach, mapData, scrollerUnder, sliceMap } from './glassLook';
+import { BAR_TINT_GL, GLASS_CHROMA, frostSlice, GLASS_RIM, GLASS_STANDIN, glassK, glassReach, lensMap, mapData, scrollerUnder } from './glassLook';
 import { MOVE_EVENT } from './contentMove';
 import { isStale, pictureOf, sliceAt, type PagePicture, type Slice } from './pagePicture';
-import { AAVE, BEND, SPEC } from './glassPicture';
+import { BEND, SPEC } from './glassPicture';
 import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
 
 export { mapData, scrollerUnder };
@@ -118,7 +117,7 @@ export function TabBar() {
       pillSize: [pr.width, pr.height] as [number, number],
       scale,
       barK: glassK(TAB_PILL),
-      lensK: [REFRACT * AAVE.x * (pr.width / AAVE.w), REFRACT * 0.5556 * AAVE.y * (pr.height / AAVE.h)] as [number, number],
+      lensK: glassK(pr.height),
       chroma: GLASS_CHROMA,
       spec: SPEC,
       barTint: BAR_TINT_GL,
@@ -181,8 +180,8 @@ export function TabBar() {
     const g = gls.current;
     let alive = true;
     Promise.all([
-      mapData(sliceMap(width, TAB_PILL), width, TAB_PILL, { x: 0, y: 0, w: width, h: TAB_PILL }, scale),
-      mapData(GLASS_MAP, tabW, PILL_H, { x: 0, y: 0, w: tabW, h: PILL_H }, scale),
+      mapData(lensMap(width, TAB_PILL), width, TAB_PILL, { x: 0, y: 0, w: width, h: TAB_PILL }, scale),
+      mapData(lensMap(tabW, PILL_H), tabW, PILL_H, { x: 0, y: 0, w: tabW, h: PILL_H }, scale),
     ]).then(([bm, lm]) => {
       if (!alive) return;
       g.bar.setMaps(bm, lm);
