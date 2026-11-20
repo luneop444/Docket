@@ -13,10 +13,11 @@ import { MOVE_EVENT } from './contentMove';
  * (An earlier version used iOS's finger tuning, 0.55 of the travel with no cap: 88–136 pt
  * stretches that took ~1 s to come back, which read as stuck at the edge.)
  *
- * Only a fallback now. Chrome 145+ (and Edge), Firefox and Safari all bounce nested scroll areas
- * natively, from the OS's own trackpad phases (they know when fingers lift; a page can't), on
- * the compositor. Faking it on top of them, with overscroll-behavior: none switching theirs off,
- * is what felt stuck and choppy. So this runs only in older Chromium.
+ * On a Mac, Safari, Chrome 145+ and Firefox bounce nested scroll areas natively, so this steps
+ * aside there. Chrome on Windows doesn't bounce them, so it runs there. A Windows touchpad marks
+ * the moment the fingers lift with a wheel event of size 0 (recorded on a real one): the edge
+ * lets go on that, and the momentum after it can't grab the edge again. Without that marker,
+ * the lift is guessed from shrinking events and a quiet gap.
  *
  * The wheel listener is passive, so it never holds up the browser's own scrolling. At an
  * edge there's nothing left to scroll, so the stretch is only drawn on top (a transform on
@@ -28,31 +29,43 @@ const CAP = 36;
 const K = 0.0866;
 const stretchFor = (travel: number) => CAP * (1 - 1 / (1 + (K * travel) / CAP));
 const travelFor = (s: number) => (CAP / K) * (Math.min(s, CAP - 0.01) / (CAP - Math.min(s, CAP - 0.01)));
+/** How fast the stretch moves per point of travel, at a given travel. */
+const slopeAt = (travel: number) => K / (1 + (K * Math.abs(travel)) / CAP) ** 2;
 /** AppKit's release: x(t) = (x0 + A·v0·t)·e^(−R·t). */
 const A = 0.31;
 const R = 12.5;
+/** A throw's peak is A·v/(R·e): this speed peaks right at CAP, and faster throws ease toward it
+ * instead of flattening against the cap (a flat top reads as stuck). */
+const VMAX = (CAP * R * Math.E) / A;
+const soften = (v: number) => VMAX * Math.tanh(v / VMAX);
 /** Speed is read over the last 50 ms of wheel events (as gpui-kit does). */
 const WINDOW_MS = 50;
-/** A trackpad gesture is over once no event comes for this long. */
-const RELEASE_MS = 100;
-/** After a trackpad lifts, its drift arrives as shrinking events; this many decreases is drift.
- * The OS repeats sizes in the tail (3, 3, 2, 2, 1, 1, 1), so a repeat neither counts nor resets. */
+/** The wheel stream is over once no event comes for this long. */
+const GAP_MS = 100;
+/** With lift markers, a held edge waits for the lift; if none comes in this long, it lets go. */
+const SAFETY_MS = 1500;
+/** Without lift markers: after a trackpad lifts, its drift arrives as shrinking events; this many
+ * decreases is drift. Repeats (3, 3, 2, 2, 1) neither count nor reset. */
 const DRIFT_RUN = 3;
-/** A new trackpad gesture inside the same wheel stream: an event this much bigger than the last, and over NEW_MIN pt. */
-const NEW_JUMP = 1.5;
-const NEW_MIN = 4;
 /** A fling, not a pull: arriving at the edge faster than this (pt/s). */
 const FLING = 800;
+/** A new gesture inside momentum: the speed (over the last 50 ms, so uneven event timing evens
+ * out) rises this much above its lowest since the lift, with events over NEW_MIN pt. */
+const NEW_JUMP = 1.5;
+const NEW_MIN = 4;
 
-/** A mouse wheel clicks (whole notches, 120 in the old wheel units); a trackpad streams small moves. */
+/** A mouse wheel clicks (whole notches, 120 in the old wheel units); a trackpad streams small moves.
+ * Windows touchpads report wheelDeltaY as exactly −deltaY, so a 120 there is still a trackpad. */
 function isMouseWheel(e: WheelEvent) {
   if (e.deltaMode !== 0) return true;
   const w = (e as unknown as { wheelDeltaY?: number }).wheelDeltaY;
-  return typeof w === 'number' && w !== 0 && w % 120 === 0;
+  return typeof w === 'number' && w !== 0 && w % 120 === 0 && w !== -e.deltaY;
 }
 
-/** Safari, Firefox and Chromium 145+ rubber-band nested scroll areas themselves. */
+/** Only Apple platforms bounce nested scroll areas natively (Safari; Chrome 145+ and Firefox on a
+ * Mac). Chrome on Windows doesn't, so it gets this. */
 export function bouncesNatively(ua: string) {
+  if (!/Macintosh|Mac OS X|iPhone|iPad/.test(ua)) return false;
   if (/Firefox\/|FxiOS/.test(ua)) return true;
   const chrome = /(?:Chrome|Chromium|CriOS)\/(\d+)/.exec(ua);
   if (chrome) return +chrome[1] >= 145;
@@ -73,12 +86,19 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
 
     let x = 0; // stretch on screen: < 0 past the top (content moves down), > 0 past the bottom
     let anim: { x0: number; v0: number; t0: number } | null = null; // a release or a throw
-    let held = false; // a trackpad is pulling at the edge
+    let held = false; // fingers are pulling at the edge
     let travel = 0; // that pull's travel past the edge
-    let thrown = false; // this gesture already threw the edge: the latch, its later events don't stretch
+    let thrown = false; // this gesture has let the edge go: its later events don't stretch it
+    // Windows touchpads mark the lift with a wheel event of size 0; after it, the rest is momentum.
+    let markers = /Windows/.test(navigator.userAgent);
+    let momentum = false;
+    let liftAt = 0;
     let raf = 0;
+    let paintRaf = 0;
     let idle = 0;
+    let safety = 0;
     let lastSize = 0;
+    let slowest = Infinity; // momentum's lowest speed since the lift
     let shrinking = 0;
     const recent: [number, number][] = []; // [time, dy] of wheel events, for speed
 
@@ -86,6 +106,10 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       const c = content();
       if (c) c.style.transform = x ? `translate3d(0, ${-x}px, 0)` : '';
       document.dispatchEvent(new Event(MOVE_EVENT));
+    };
+    // Wheel events come at up to ~165 Hz; draw once per frame.
+    const paintSoon = () => {
+      if (!paintRaf) paintRaf = requestAnimationFrame(() => ((paintRaf = 0), paint()));
     };
     const capped = (v: number) => Math.max(-CAP, Math.min(CAP, v));
 
@@ -116,7 +140,14 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
         v0 += (speed + R * x) / A;
       }
       anim = { x0: x, v0, t0: performance.now() };
+      cancelAnimationFrame(paintRaf);
+      paintRaf = 0;
       if (!raf) raf = requestAnimationFrame(step);
+    };
+    const letGo = (v = 0) => {
+      held = false;
+      clearTimeout(safety);
+      release(v);
     };
     const speedNow = (now: number) => {
       while (recent.length && now - recent[0][0] > WINDOW_MS) recent.shift();
@@ -125,39 +156,64 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
     const endSoon = () => {
       clearTimeout(idle);
       idle = window.setTimeout(() => {
-        // Gesture over: a held edge is let go, and the next gesture may throw again.
+        // The stream went quiet: the next events are a new gesture.
         thrown = false;
+        momentum = false;
         shrinking = 0;
         lastSize = 0;
-        if (held) {
-          held = false;
-          release();
-        }
-      }, RELEASE_MS);
+        slowest = Infinity;
+        // Without lift markers, quiet is the only sign the fingers lifted.
+        if (held && !markers) letGo();
+      }, GAP_MS);
+      if (held && markers) {
+        // Fingers held still send nothing for a while (up to ~0.6 s measured); wait for the lift.
+        clearTimeout(safety);
+        safety = window.setTimeout(() => {
+          if (!held) return;
+          markers = false; // no lift marker came: don't count on them
+          letGo();
+        }, SAFETY_MS);
+      }
     };
 
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey) return; // pinch-zoom on a trackpad
-      const h = node.clientHeight || 1;
-      const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * h : e.deltaY;
-      if (!dy) return;
       const now = performance.now();
-      recent.push([now, dy]);
       const mouse = isMouseWheel(e);
-      const size = Math.abs(dy);
-      if (!mouse) {
-        // A clearly new gesture (a jump in size) lifts the latch before the idle gap would.
-        if (thrown && lastSize > 0 && size > lastSize * NEW_JUMP && size > NEW_MIN) thrown = false;
-        shrinking = size < lastSize ? shrinking + 1 : size > lastSize ? 0 : shrinking;
-      } else shrinking = 0;
-      lastSize = size;
-      if (!mouse && thrown) {
-        // Latched: the edge was let go for this gesture. Its momentum tail never re-stretches it
-        // or stops the spring; it only keeps the gesture alive until the stream goes idle.
+      if (!mouse && e.deltaY === 0 && e.deltaX === 0) {
+        // The fingers lifted. Let a held edge go now, carrying the fingers' last speed.
+        markers = true;
+        momentum = true;
+        liftAt = now;
+        slowest = Infinity;
+        if (held) {
+          thrown = true;
+          letGo(soften(speedNow(now) * slopeAt(travel)));
+        }
         endSoon();
         return;
       }
-      const drift = shrinking >= DRIFT_RUN;
+      const h = node.clientHeight || 1;
+      const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * h : e.deltaY;
+      if (!dy) return;
+      recent.push([now, dy]);
+      const size = Math.abs(dy);
+      if (!mouse) {
+        // Fingers back on the pad during momentum: the speed climbs again, or the direction turns.
+        const turned = recent.length > 1 && Math.sign(recent[recent.length - 2][1]) !== Math.sign(dy);
+        if (momentum && now - liftAt > WINDOW_MS + 10) {
+          const speed = Math.abs(speedNow(now));
+          if (turned || (speed > slowest * NEW_JUMP && size > NEW_MIN)) {
+            momentum = false;
+            thrown = false;
+          } else slowest = Math.min(slowest, speed);
+        } else if (momentum && turned) {
+          momentum = false;
+          thrown = false;
+        }
+        shrinking = size < lastSize ? shrinking + 1 : size > lastSize ? 0 : shrinking;
+      } else shrinking = 0;
+      lastSize = size;
 
       const max = node.scrollHeight - node.clientHeight;
       const top = node.scrollTop;
@@ -167,8 +223,7 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
 
       // Back toward the content while stretched: the browser scrolls it, the edge lets go.
       if (stretched && Math.sign(dy) !== Math.sign(x || travel)) {
-        held = false;
-        release();
+        letGo();
         endSoon();
         return;
       }
@@ -176,7 +231,7 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
         // Mid-list. A wheel click that runs past the edge throws it now, for what's left over.
         if (mouse && max > 0.5) {
           const over = dy < 0 ? -(top + dy) : top + dy - max;
-          if (over > 0) release(Math.sign(dy) * Math.max(Math.abs(speedNow(now)), size / 0.1) * (over / size));
+          if (over > 0) release(soften(Math.sign(dy) * Math.max(Math.abs(speedNow(now)), size / 0.1) * (over / size)));
         }
         endSoon();
         return;
@@ -185,16 +240,17 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
 
       if (mouse) {
         // A click into the edge: a throw at the click's speed (a notch over ~100 ms, or faster).
-        release(Math.sign(dy) * Math.max(Math.abs(speedNow(now)), size / 0.1));
+        release(soften(Math.sign(dy) * Math.max(Math.abs(speedNow(now)), size / 0.1)));
         endSoon();
         return;
       }
-      if (drift || (!held && Math.abs(speedNow(now)) > FLING)) {
-        // A fling arriving at the edge: one throw per gesture, at its speed. Later drift doesn't throw again.
+      const coasting = momentum || (!markers && (shrinking >= DRIFT_RUN || (!held && Math.abs(speedNow(now)) > FLING)));
+      if (coasting || thrown) {
+        // Momentum reaching the edge throws it once, at its speed; the rest of it never re-stretches
+        // the edge or stops the spring.
         if (!thrown) {
           thrown = true;
-          held = false;
-          release(speedNow(now));
+          letGo(soften(speedNow(now)));
         }
         endSoon();
         return;
@@ -209,7 +265,7 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       }
       travel += dy;
       x = Math.sign(travel) * stretchFor(Math.abs(travel));
-      paint();
+      paintSoon();
       endSoon();
     };
 
@@ -218,7 +274,9 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       node.style.removeProperty('overscroll-behavior-y');
       node.removeEventListener('wheel', onWheel);
       cancelAnimationFrame(raf);
+      cancelAnimationFrame(paintRaf);
       clearTimeout(idle);
+      clearTimeout(safety);
       const c = content();
       if (c) c.style.transform = '';
     };
