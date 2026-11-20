@@ -6,7 +6,8 @@ import { MOVE_EVENT } from './contentMove';
  * driven by a desktop mouse wheel or trackpad, and NSScrollView is what that input does
  * natively. Numbers from a model fitted to NSScrollView and AppKit's own functions
  * (gpui-kit #3500), checked against its measurements:
- * - Stretch: about 0.075 of the travel past the end, eased into a 36 pt cap (7 pt for 100 pt).
+ * - Stretch: about 0.1 of the travel past the end, eased into a 44 pt cap (9 pt for 100 pt).
+ *   (A little more than the Mac's 7 pt and 36 pt, by request.)
  * - Release: AppKit's `(x + 0.31·v·t)·e^(−12.5t)`, so a released edge halves in 55 ms.
  * - A throw (a fling or a wheel click into the edge) hits once, in proportion to its speed:
  *   1500 pt/s peaks ≈14 pt, ≈80 ms after impact. Later momentum doesn't throw again.
@@ -24,9 +25,9 @@ import { MOVE_EVENT } from './contentMove';
  * the content). Safari (macOS, iOS) bounces scroll areas natively and is left to it. Touch
  * screens are left to the platform. Areas that can't scroll don't stretch.
  */
-const CAP = 36;
-/** Eased so 100 pt past the end stretches 7 pt, and nothing passes CAP. */
-const K = 0.0866;
+const CAP = 44;
+/** Eased so 100 pt past the end stretches 9 pt, and nothing passes CAP. */
+const K = 0.1131;
 const stretchFor = (travel: number) => CAP * (1 - 1 / (1 + (K * travel) / CAP));
 const travelFor = (s: number) => (CAP / K) * (Math.min(s, CAP - 0.01) / (CAP - Math.min(s, CAP - 0.01)));
 /** How fast the stretch moves per point of travel, at a given travel. */
@@ -37,7 +38,9 @@ const R = 12.5;
 /** A throw's peak is A·v/(R·e): this speed peaks right at CAP, and faster throws ease toward it
  * instead of flattening against the cap (a flat top reads as stuck). */
 const VMAX = (CAP * R * Math.E) / A;
-const soften = (v: number) => VMAX * Math.tanh(v / VMAX);
+/** Throws land 1.3x AppKit's size (asked for a little more bounce than the Mac default). */
+const THROW = 1.3;
+const soften = (v: number) => VMAX * Math.tanh((THROW * v) / VMAX);
 /** Speed is read over the last 50 ms of wheel events (as gpui-kit does). */
 const WINDOW_MS = 50;
 /** The wheel stream is over once no event comes for this long. */
