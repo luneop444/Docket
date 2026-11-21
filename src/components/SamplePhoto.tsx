@@ -9,8 +9,11 @@ const CAB = require('../../assets/sample-cab.jpg');
 /** Camera grain, as an SVG noise tile (web only; the native camera has its own). */
 const GRAIN =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")";
-/** The paper's tilt: a little away from the lens, a slight turn. */
-const TILT = [{ perspective: 700 }, { rotateX: '12deg' }, { rotateZ: '-2.2deg' }] as const;
+/**
+ * The paper's turn. Flat (no perspective tilt) so the result sheet's glass, which bends a
+ * picture of this photo, sees the page exactly where it is: the picture can't do 3D.
+ */
+const TILT = [{ rotateZ: '-2.2deg' }] as const;
 const web = (s: object) => (Platform.OS === 'web' ? s : null);
 
 /**
@@ -41,11 +44,11 @@ export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: n
         ))}
         {/* Evening light through the window, crossing the page like it crosses the seat. */}
         <LinearGradient
-          colors={['rgba(255,170,90,0)', 'rgba(255,170,90,0.22)', 'rgba(255,170,90,0.22)', 'rgba(255,170,90,0)', 'rgba(255,170,90,0)', 'rgba(255,170,90,0.16)', 'rgba(255,170,90,0)']}
+          colors={['rgba(255,170,90,0)', 'rgba(255,170,90,0.16)', 'rgba(255,170,90,0.16)', 'rgba(255,170,90,0)', 'rgba(255,170,90,0)', 'rgba(255,170,90,0.12)', 'rgba(255,170,90,0)']}
           locations={[0.12, 0.2, 0.34, 0.42, 0.6, 0.68, 0.78]}
           start={{ x: 0.85, y: 0.05 }}
           end={{ x: 0.15, y: 0.95 }}
-          style={[StyleSheet.absoluteFill, web({ mixBlendMode: 'multiply' })]}
+          style={StyleSheet.absoluteFill}
         />
         {/* The left edge lifts off the seat a little, so it catches less light. */}
         <LinearGradient colors={['rgba(40,30,20,0.18)', 'rgba(40,30,20,0)']} locations={[0, 0.12]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
@@ -75,7 +78,8 @@ export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: n
       />
       {/* The whole frame: a soft vignette and grain, so the page and the seat read as one photo. */}
       <LinearGradient colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.45)']} locations={[0, 0.22, 0.7, 1]} style={StyleSheet.absoluteFill} />
-      {Platform.OS === 'web' ? <View style={[StyleSheet.absoluteFill, styles.grain]} /> : null}
+      {/* Grain is the camera's, not the scene's: the glass's picture of the photo leaves it out. */}
+      {Platform.OS === 'web' ? <View style={[StyleSheet.absoluteFill, styles.grain]} {...({ dataSet: { noglass: '1' } } as object)} /> : null}
     </View>
   );
 }
@@ -91,7 +95,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 18,
     shadowOffset: { width: 4, height: 12 },
-    ...web({ boxShadow: '0 1px 2px rgba(0,0,0,0.55), 3px 10px 18px rgba(0,0,0,0.45), 8px 26px 40px rgba(0,0,0,0.35)', filter: 'contrast(0.96) saturate(0.9)' }),
+    ...web({ boxShadow: '0 1px 2px rgba(0,0,0,0.55), 3px 10px 18px rgba(0,0,0,0.45), 8px 26px 40px rgba(0,0,0,0.35)', }),
   },
   found: { position: 'absolute', borderWidth: 3, borderColor: color.signal, backgroundColor: 'rgba(212,245,76,0.10)' },
   crease: { position: 'absolute', left: 0, right: 0, height: 2 },

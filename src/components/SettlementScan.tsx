@@ -8,7 +8,8 @@ import { loadNo } from '../logic/sampleData';
 import { cleanAmount } from '../logic/settlement';
 import { useStore } from '../state/AppStore';
 import { DocReadError, DocReadingOff, pickFile, postDoc, shrinkPhoto, type DocFile } from '../state/readDoc';
-import { color, fontFamily, glass, glassDense, radius } from '../theme/tokens';
+import { color, fontFamily, glass } from '../theme/tokens';
+import { LiquidSheet } from './LiquidSheet';
 import { BackBar, Screen } from './Chrome';
 import { Chip } from './Chip';
 import { DocIcon } from './Icons';
@@ -330,6 +331,16 @@ function Review({
   );
 }
 
+/**
+ * The sheet's glass tint: Glass / Dense (82% white), so red text over the dark photo passes
+ * contrast. The nav bar's exact 62% can be tried with ?sheettint=0.62.
+ */
+const SHEET_TINT = (() => {
+  if (typeof window === 'undefined') return 0.82;
+  const v = parseFloat(new URLSearchParams(window.location.search).get('sheettint') ?? '');
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.82;
+})();
+
 const READING = ['Reading the page', 'Finding your loads', 'Matching detention', 'Matching detention'];
 
 /**
@@ -372,7 +383,7 @@ function Found({
   const shortOn = found.filter((c) => (got[c.id] ?? 0) < c.left - 0.005);
   const which = shortOn.length === 1 ? (loadNo(shortOn[0].load) ? `load ${loadNo(shortOn[0].load)}` : shortOn[0].load.name) : `${shortOn.length} loads`;
   return (
-    <View style={styles.sheet}>
+    <LiquidSheet tint={SHEET_TINT}>
       <T v="bodyStrong">{label} settlement</T>
       <T v="bodyTiny">Detention read from the page</T>
       <Gap h={14} />
@@ -422,7 +433,7 @@ function Found({
         <Button label="Fix a row" variant="white" style={styles.flex} onPress={onFix} />
         <Button label="Looks right" style={styles.flex} onPress={onConfirm} />
       </Row>
-    </View>
+    </LiquidSheet>
   );
 }
 
@@ -452,8 +463,6 @@ const styles = StyleSheet.create({
   edit: { paddingBottom: 14, gap: 10 },
   pair: { gap: 8 },
   missNote: { paddingBottom: 12 },
-  // The app's sheet (24 squircle, 20 padding) in dense glass, so it reads over the photo.
-  sheet: { ...glassDense, borderRadius: radius.sheet, borderCurve: 'continuous', padding: 20 },
   hero: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 10 },
   heroNote: { flexShrink: 1 },
   sheetRows: { maxHeight: 210, flexGrow: 0 },

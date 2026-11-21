@@ -7,6 +7,7 @@ import { useInsets } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { Button } from './ui';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
+import { BackdropCtx } from './LiquidSheet';
 import { SamplePhoto } from './SamplePhoto';
 import { useReduceMotion } from './stepMotion';
 
@@ -66,6 +67,8 @@ export function Scanner({
   const { width, height } = useWindowDimensions();
   const reduce = useReduceMotion();
   const cam = useRef<Viewfinder>(null);
+  // What the result sheet's glass bends: the photo, not the controls over it.
+  const backdrop = useRef<HTMLElement | null>(null);
   const [state, setState] = useState<CamState>('starting');
   // The sample's page is found once; it stays found after the photo.
   const [found, setFound] = useState(false);
@@ -142,16 +145,19 @@ export function Scanner({
   const last = pages[pages.length - 1];
 
   return (
+    <BackdropCtx.Provider value={backdrop}>
     <View style={styles.root}>
+      <View ref={backdrop as never} style={StyleSheet.absoluteFill} pointerEvents="none">
       {sample ? (
-        <SamplePhoto page={samplePage} x={gx + 10} y={gy + 10} w={gw - 20} h={gh - 20} found={locked && stage === 'capture'} />
-      ) : stage !== 'capture' && last?.preview ? (
-        <Image source={{ uri: last.preview }} style={styles.still} resizeMode="cover" accessibilityLabel="Your settlement page" />
-      ) : stage !== 'capture' ? (
-        <View style={styles.desk} />
-      ) : (
-        <ScanViewfinder ref={cam} onState={setState} />
-      )}
+          <SamplePhoto page={samplePage} x={gx + 10} y={gy + 10} w={gw - 20} h={gh - 20} found={locked && stage === 'capture'} />
+        ) : stage !== 'capture' && last?.preview ? (
+          <Image source={{ uri: last.preview }} style={styles.still} resizeMode="cover" accessibilityLabel="Your settlement page" />
+        ) : stage !== 'capture' ? (
+          <View style={styles.desk} />
+        ) : (
+          <ScanViewfinder ref={cam} onState={setState} />
+        )}
+      </View>
 
       {stage === 'reading' ? <Beam x={gx} y={gy} w={gw} h={gh} /> : null}
 
@@ -248,6 +254,7 @@ export function Scanner({
 
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, { opacity: flash }]} />
     </View>
+    </BackdropCtx.Provider>
   );
 }
 
