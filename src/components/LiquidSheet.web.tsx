@@ -1,8 +1,8 @@
 import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { BackdropCtx } from './backdrop';
-import { glassEdge, glassLift, radius } from '../theme/tokens';
+import { glassEdge, radius } from '../theme/tokens';
 import { createGlass, type Glass } from './glassGL';
-import { BAR_TINT_GL, FROST, GLASS_CHROMA, GLASS_RIM, glassK, mapData } from './glassLook';
+import { BAR_TINT_GL, FROST, GLASS_CHROMA, glassK, mapData } from './glassLook';
 import { frosted, SPEC } from './glassPicture';
 import { squircleExtent, squirclePath } from '../logic/squircle';
 
@@ -24,9 +24,26 @@ export { BackdropCtx };
  * so it bends like 120-point glass: about 47 points at the very edge, across a 50-point rim.
  */
 const RIM_H = 120;
-const BEZEL_PX = 0.42 * RIM_H;
+/**
+ * The big card's own tuning (21 Nov, asked for on this card only, not the system's glass):
+ * way more splay (the bend spreads across a 100-point rim, twice the 50 it had), way more
+ * refraction (twice the bend: about 94 points at the very edge), the colour split cut so its
+ * fringe ends up slightly smaller than before (85%) despite the stronger bend, less white
+ * (52%), and more depth (a deeper lift and lower rim).
+ */
+const BEZEL_PX = 100;
+const SHEET_BEND = 2;
+const SHEET_SPLIT = 0.425;
+export const SHEET_TINT = 0.52;
+const SHEET_LIFT = '0 16px 40px rgba(0,0,0,0.16)';
+const SHEET_RIM = 'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(0,0,0,0.08), inset 0 0 0 1px rgba(255,255,255,0.45)';
+const sheetK = (): [number, number] => {
+  const [k] = glassK(RIM_H);
+  return [k * SHEET_BEND, k * SHEET_BEND];
+};
+const SHEET_CHROMA: [number, number, number] = [1 + (GLASS_CHROMA[0] - 1) * SHEET_SPLIT, 1 + (GLASS_CHROMA[1] - 1) * SHEET_SPLIT, 1];
 
-export function LiquidSheet({ children, tint = BAR_TINT_GL[3] }: { children: ReactNode; tint?: number }) {
+export function LiquidSheet({ children, tint = SHEET_TINT }: { children: ReactNode; tint?: number }) {
   const backdrop = useContext(BackdropCtx);
   const box = useRef<HTMLDivElement>(null);
   const cv = useRef<HTMLCanvasElement>(null);
@@ -63,9 +80,9 @@ export function LiquidSheet({ children, tint = BAR_TINT_GL[3] }: { children: Rea
         outOrigin: at,
         outSize: sz,
         scale,
-        barK: glassK(RIM_H),
-        lensK: glassK(RIM_H),
-        chroma: GLASS_CHROMA,
+        barK: sheetK(),
+        lensK: sheetK(),
+        chroma: SHEET_CHROMA,
         spec: SPEC,
         barTint: [BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2], tint],
         pillTint: [0, 0, 0, 0],
@@ -106,7 +123,7 @@ export function LiquidSheet({ children, tint = BAR_TINT_GL[3] }: { children: Rea
         {/* Stand-in while the picture loads, or where WebGL can't run: the same tint, flat. */}
         <div style={{ ...S.fill, background: `rgba(255,255,255,${tint})`, opacity: live ? 0 : 1 }} />
         <canvas key={size ? `${size.w}x${size.h}` : 'none'} ref={cv} aria-hidden style={{ ...S.fill, opacity: live ? 1 : 0 }} />
-        <div style={{ ...S.fill, boxShadow: GLASS_RIM, borderRadius: radius.sheet }} />
+        <div style={{ ...S.fill, boxShadow: SHEET_RIM, borderRadius: radius.sheet }} />
         <div style={S.content}>{children}</div>
       </div>
     </div>
@@ -173,7 +190,7 @@ function sheetLens(w: number, h: number): Promise<string> {
 
 const S: Record<string, CSSProperties> = {
   // Edge and lift outside the clip, so the squircle clip doesn't cut the shadow off.
-  wrap: { position: 'relative', borderRadius: radius.sheet, boxShadow: `${glassEdge}, ${glassLift}` },
+  wrap: { position: 'relative', borderRadius: radius.sheet, boxShadow: `${glassEdge}, ${SHEET_LIFT}` },
   box: { position: 'relative', overflow: 'hidden', borderRadius: radius.sheet },
   fill: { position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', transition: 'opacity 160ms' },
   content: { position: 'relative', padding: 20, display: 'flex', flexDirection: 'column' },
