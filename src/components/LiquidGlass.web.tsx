@@ -2,9 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { createGlass, type Glass } from './glassGL';
 import { SPEC } from './glassPicture';
 import { BAR_TINT_GL, chromaTimes, frostSlice, GLASS_RIM, GLASS_STANDIN, glassK, glassReach, lensMap, mapData, rimWith, scrollerUnder } from './glassLook';
-import { isStale, pictureOf, sliceAt, type PagePicture, type Slice } from './pagePicture';
+import { forget, isStale, pictureOf, sliceAt, type PagePicture, type Slice } from './pagePicture';
 import { MOVE_EVENT } from './contentMove';
-import { BackdropCtx, GlassTuneCtx } from './backdrop';
+import { BackdropCtx, GlassTuneCtx, REPICTURE_EVENT } from './backdrop';
 
 /**
  * The nav bar's liquid glass (TabBar.web.tsx) for small floating pills: the onboarding back
@@ -110,6 +110,19 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
     t = window.setTimeout(go, 300);
     return () => clearTimeout(t);
   }, [load]);
+
+  // A new picture when the backdrop has moved and settled (backdrop.ts); the old one stays
+  // until it's in.
+  useEffect(() => {
+    if (!backdrop) return;
+    const again = () => {
+      const c = content.current;
+      if (c) forget(c);
+      load();
+    };
+    document.addEventListener(REPICTURE_EVENT, again);
+    return () => document.removeEventListener(REPICTURE_EVENT, again);
+  }, [backdrop, load]);
 
   // A new picture when the content changes size; the old one stays until it's in.
   useEffect(() => {

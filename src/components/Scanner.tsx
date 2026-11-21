@@ -6,7 +6,7 @@ import { color, colorDark, protoColor, radius, type as typo } from '../theme/tok
 import { useInsets, useTabSpace } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
-import { BackdropCtx, GlassTuneCtx, NO_TUNE, RiseCtx, SCAN_BEND, SCAN_SPLIT } from './backdrop';
+import { BackdropCtx, GlassTuneCtx, NO_TUNE, repicture, RiseCtx, SCAN_BEND, SCAN_SPLIT } from './backdrop';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
 import { map, quad } from './paperGeometry';
 import { SamplePhoto } from './SamplePhoto';
@@ -116,7 +116,8 @@ export function Scanner({
   const [onPaper] = useState(() => () => setPaperReady(true));
   useEffect(() => {
     if (!sample || reduce || !paperReady) return;
-    Animated.timing(hand, { toValue: 1, duration: HAND_MS, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }).start();
+    // At rest, the glass re-pictures the scene: its first picture was taken mid-motion.
+    Animated.timing(hand, { toValue: 1, duration: HAND_MS, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }).start(({ finished }) => finished && repicture());
   }, [sample, reduce, hand, paperReady]);
 
   // How far the scene drops for the result card: just enough that about 150 points of the
@@ -129,8 +130,10 @@ export function Scanner({
   const dropping = stage === 'found';
   useEffect(() => {
     const to = dropping ? dropBy : 0;
-    if (reduce) drop.setValue(to);
-    else Animated.timing(drop, { toValue: to, duration: 480, easing: Easing.inOut(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
+    if (reduce) {
+      drop.setValue(to);
+      repicture();
+    } else Animated.timing(drop, { toValue: to, duration: 480, easing: Easing.inOut(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start(({ finished }) => finished && repicture());
   }, [dropping, dropBy, reduce, drop]);
 
   // The sample's page is found once the hand has settled.
@@ -326,7 +329,11 @@ export function Scanner({
             ) : null}
           </GlassPill>
           <View style={[styles.side, styles.sideRight]}>
-            <GlassPill h={THUMB} minW={THUMB} pad={L.gapL + 4}>
+            {/* A text pill, at the app's text-pill height (44, like the title and File), so it's a
+                true capsule with a flat middle under its label. At the 60 of the circles beside
+                it, "Done" made it nearly round: all rim, so the glass bent everything behind the
+                label. */}
+            <GlassPill h={44} minW={44} pad={L.gapL}>
               <Pressable accessibilityRole="button" accessibilityLabel={pages.length ? `Done, read ${pages.length} page${pages.length === 1 ? '' : 's'}` : 'Done'} accessibilityState={{ disabled: !pages.length }} disabled={!pages.length} onPress={onDone} style={({ pressed }) => [styles.doneHit, pressed && styles.pressed]}>
                 <Text style={[styles.doneText, !pages.length && styles.doneOff]}>Done</Text>
               </Pressable>
@@ -664,7 +671,7 @@ const styles = StyleSheet.create({
   shutterIn: { width: DISC, height: DISC, borderRadius: DISC / 2, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },
   flash: { backgroundColor: WHITE },
   scrimSvg: { position: 'absolute', left: 0 },
-  doneHit: { height: THUMB, justifyContent: 'center' },
+  doneHit: { height: 44, justifyContent: 'center' },
   doneText: { ...typo.labelControl, color: color.ink },
   doneOff: { color: color.faint },
   ring: { position: 'absolute', top: 0, left: 0 },

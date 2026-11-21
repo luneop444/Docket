@@ -39,6 +39,15 @@ export const NO_TUNE: GlassTune = { bend: 1, bezel: null, split: 1, tint: null, 
 export const SCAN_BEND = 0.65;
 /** Colour split (splay) on the scan pages, times the system's. Shared the same way. */
 export const SCAN_SPLIT = 0.4;
+/**
+ * Sent on document when what's behind the glass has moved and come to rest (the scanner's hand
+ * settling, the scene dropping for the card): glass over a backdrop takes a new picture of it,
+ * so it bends what's there now, not where things were mid-motion.
+ */
+export const REPICTURE_EVENT = 'docket:glass-repicture';
+export const repicture = () => {
+  if (typeof document !== 'undefined') document.dispatchEvent(new Event(REPICTURE_EVENT));
+};
 export const GlassTuneCtx = createContext<GlassTune>(NO_TUNE);
 
 /**
