@@ -20,7 +20,7 @@ export default function YourRules() {
       <T v="h2">Your rules</T>
       <Gap h={8} />
       <T v="bodySmall">
-        {s.company || 'your company'}. You entered these rules. Changing a rule recalculates your paycheck check and
+        {s.company || 'your company'}. You entered these rules. Changing a rule recalculates your claims and
         today’s stop.
       </T>
       <RuleEditor />
@@ -93,7 +93,7 @@ export default function YourRules() {
         <T v="bodySmall">
           Prototype v2 for AIxD Project 3. Real: your rules and the detention math, loads you type in, stops timed
           with your phone’s clock and location (with the app closed on the iPhone build), reminders, Claude reading your
-          rate con, BOL and settlement, the paycheck check and the message to your fleet manager. Simulated: the
+          rate con, BOL and settlement, the claims and the messages to your fleet manager. Simulated: the
           prototype controls, sharing a rate con into the app, and company data.
         </T>
         <Gap h={12} />

@@ -30,7 +30,7 @@ export default function Welcome() {
       <View style={{ gap: 18 }}>
         <IconRow icon={(c) => <LocationIcon c={c} />} label="Notices your stops" sub="When you pull in and leave. You just confirm" />
         <IconRow icon={(c) => <ChecklistIcon c={c} />} label="Applies your company’s rules" sub="Free time, rate and breaks, on every wait" />
-        <IconRow icon={(c) => <DocIcon c={c} size={20} />} label="Checks your paycheck" sub="Which loads to look for, and how much" />
+        <IconRow icon={(c) => <DocIcon c={c} size={20} />} label="Follows each claim until it’s paid" sub="Checks your settlement and asks for what’s missing" />
       </View>
       <Gap h={24} />
       {/* Audit #1: the old line ("stays on your phone") wasn't true once BOL and settlement scans went to the AI reader. */}
