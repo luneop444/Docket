@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { BackdropCtx, RiseCtx, SCAN_BEND } from './backdrop';
+import { BackdropCtx, RiseCtx, SCAN_BEND, SCAN_SPLIT } from './backdrop';
 import { glassEdge, glassLift, radius } from '../theme/tokens';
 import { createGlass, type Glass } from './glassGL';
 import { BAR_TINT_GL, BEZEL, chromaTimes, FROST, GLASS_RIM, glassK, mapData } from './glassLook';
@@ -28,7 +28,7 @@ export { BackdropCtx };
 const RIM_H = 64;
 const BEZEL_PX = BEZEL * RIM_H;
 const SHEET_BEND = SCAN_BEND;
-const SHEET_SPLIT = 1;
+const SHEET_SPLIT = SCAN_SPLIT;
 export const SHEET_TINT = BAR_TINT_GL[3];
 const SHEET_LIFT = glassLift;
 const SHEET_RIM = GLASS_RIM;

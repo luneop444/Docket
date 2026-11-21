@@ -36,7 +36,9 @@ export const NO_TUNE: GlassTune = { bend: 1, bezel: null, split: 1, tint: null, 
  * a photo of a printed page and the bent text competes with the pills' and card's own text.
  * Shared by the pills and the result card so they stay one material.
  */
-export const SCAN_BEND = 0.8;
+export const SCAN_BEND = 0.65;
+/** Colour split (splay) on the scan pages, times the system's. Shared the same way. */
+export const SCAN_SPLIT = 0.8;
 export const GlassTuneCtx = createContext<GlassTune>(NO_TUNE);
 
 /**

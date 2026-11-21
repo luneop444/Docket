@@ -6,7 +6,7 @@ import { color, colorDark, protoColor, radius, type as typo } from '../theme/tok
 import { useInsets, useTabSpace } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
-import { BackdropCtx, GlassTuneCtx, NO_TUNE, RiseCtx, SCAN_BEND } from './backdrop';
+import { BackdropCtx, GlassTuneCtx, NO_TUNE, RiseCtx, SCAN_BEND, SCAN_SPLIT } from './backdrop';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
 import { map, quad } from './paperGeometry';
 import { SamplePhoto } from './SamplePhoto';
@@ -537,7 +537,7 @@ const HAND_MS = 1800;
  * Everything else about the glass stays the system's. The result card isn't a pill and keeps
  * the system's white: it carries numbers over a printed page.
  */
-const PILL_TUNE = { ...NO_TUNE, bend: SCAN_BEND, tint: 0.5, adapt: { ink: color.ink, min: 0.3, max: 0.62 } };
+const PILL_TUNE = { ...NO_TUNE, bend: SCAN_BEND, split: SCAN_SPLIT, tint: 0.5, adapt: { ink: color.ink, min: 0.3, max: 0.62 } };
 
 /**
  * A hand's path into the frame, as the camera sees it, worked out once as motion rather than
