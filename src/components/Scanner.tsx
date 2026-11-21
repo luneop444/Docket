@@ -6,7 +6,7 @@ import { color, colorDark, protoColor, radius, type as typo } from '../theme/tok
 import { useInsets, useTabSpace } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
-import { BackdropCtx, RiseCtx } from './backdrop';
+import { BackdropCtx, GlassTuneCtx, NO_TUNE, RiseCtx } from './backdrop';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
 import { map, quad } from './paperGeometry';
 import { SamplePhoto } from './SamplePhoto';
@@ -192,6 +192,7 @@ export function Scanner({
 
   return (
     <BackdropCtx.Provider value={backdrop}>
+    <GlassTuneCtx.Provider value={PILL_TUNE}>
     <View style={styles.root} onLayout={(e) => {
       const { width: w, height: h } = e.nativeEvent.layout;
       if (!box || Math.abs(box.width - w) > 0.5 || Math.abs(box.height - h) > 0.5) setBox({ width: w, height: h });
@@ -351,6 +352,7 @@ export function Scanner({
 
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, { opacity: flash }]} />
     </View>
+    </GlassTuneCtx.Provider>
     </BackdropCtx.Provider>
   );
 }
@@ -515,6 +517,15 @@ const THUMB = 60;
 
 /** How long the hand takes to bring the sample page into the frame. */
 const HAND_MS = 1800;
+/**
+ * The pills' white. The system's 0.62 is set for glass over the app's light pages; over a dark
+ * camera scene it turns the pills into pale grey slabs with nothing showing through. The labels
+ * are dark, so the white can only drop as far as they stay readable: 4.5:1 for the label over
+ * the darkest backdrop a pill sits on (the footwell behind File, about 17 grey under the scrim)
+ * needs a white of 0.5. Everything else about the glass stays the system's. The result card
+ * isn't a pill and keeps the system's white: it carries numbers over a printed page.
+ */
+const PILL_TUNE = { ...NO_TUNE, tint: 0.5 };
 
 /**
  * A hand's path into the frame, as the camera sees it, worked out once as motion rather than
