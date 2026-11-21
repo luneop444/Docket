@@ -38,7 +38,7 @@ export const NO_TUNE: GlassTune = { bend: 1, bezel: null, split: 1, tint: null, 
  */
 export const SCAN_BEND = 0.65;
 /** Colour split (splay) on the scan pages, times the system's. Shared the same way. */
-export const SCAN_SPLIT = 0.8;
+export const SCAN_SPLIT = 0.4;
 export const GlassTuneCtx = createContext<GlassTune>(NO_TUNE);
 
 /**
