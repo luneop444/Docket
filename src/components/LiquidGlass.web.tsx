@@ -23,6 +23,8 @@ interface Rec {
   g: Glass;
   /** The slice this glass has loaded, so a new one is only uploaded when it moves to another. */
   slice: Slice | null;
+  /** Its own white, when the screen adapts it, and where that was measured. */
+  tint?: { at: string; t: number };
 }
 
 interface Group {
@@ -70,7 +72,11 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
         lensK: [glassK(r.h)[0] * tune.bend, glassK(r.h)[1] * tune.bend],
         chroma: chromaTimes(tune.split),
         spec: SPEC,
-        barTint: tune.tint == null ? BAR_TINT_GL : [BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2], tune.tint],
+        barTint: tune.adapt
+          ? [BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2], whiteFor(r, s, p.scale, b.left - cr.left, b.top - cr.top - s.top, b.width, b.height, tune.adapt)]
+          : tune.tint == null
+            ? BAR_TINT_GL
+            : [BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2], tune.tint],
         pillTint: [0, 0, 0, 0],
         isPill: false,
       });
@@ -203,3 +209,46 @@ const S: Record<string, CSSProperties> = {
   rim: { position: 'absolute', inset: 0, pointerEvents: 'none', boxShadow: GLASS_RIM },
   content: { position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
 };
+
+/** Relative luminance of an sRGB grey or colour, 0 to 1. */
+const lin = (v: number) => {
+  const c = v / 255;
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+};
+const lumOf = (r: number, g: number, b: number) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+const hexLum = (hex: string) => {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return lumOf((n >> 16) & 255, (n >> 8) & 255, n & 255);
+};
+const probe = typeof document === 'undefined' ? null : document.createElement('canvas');
+
+/**
+ * The least white this glass needs. It looks at the picture under it, takes the darkest tenth
+ * (a label can sit anywhere on the glass), and finds the white that lifts that to 4.5:1 against
+ * the ink, the same mix the shader does: white over the backdrop at strength t. Measured again
+ * only when the glass sits over a different part of the picture.
+ */
+function whiteFor(r: Rec, s: Slice, scale: number, x: number, y: number, w: number, h: number, a: { ink: string; min: number; max: number }) {
+  const at = `${s.canvas.width}:${s.top}:${Math.round(x / 4)}:${Math.round(y / 4)}:${Math.round(w)}`;
+  if (r.tint && r.tint.at === at) return r.tint.t;
+  let t = a.max;
+  const g = probe?.getContext('2d', { willReadFrequently: true });
+  if (probe && g) {
+    const PW = 32, PH = 12;
+    probe.width = PW;
+    probe.height = PH;
+    g.drawImage(s.canvas, x * scale, y * scale, w * scale, h * scale, 0, 0, PW, PH);
+    const d = g.getImageData(0, 0, PW, PH).data;
+    const L: number[] = [];
+    for (let i = 0; i < d.length; i += 4) L.push(lumOf(d[i], d[i + 1], d[i + 2]));
+    L.sort((m, n) => m - n);
+    const dark = L[Math.floor(L.length * 0.1)];
+    const need = 4.5 * (hexLum(a.ink) + 0.05) - 0.05;
+    // The shader mixes in sRGB: out = t·255 + (1 − t)·bg. Solve for t on the grey channel.
+    const toS = (l: number) => 255 * (l <= 0.0031308 ? 12.92 * l : 1.055 * Math.pow(l, 1 / 2.4) - 0.055);
+    const bg = toS(dark), goal = toS(need);
+    t = Math.min(a.max, Math.max(a.min, bg >= goal ? 0 : (goal - bg) / (255 - bg)));
+  }
+  r.tint = { at, t };
+  return t;
+}

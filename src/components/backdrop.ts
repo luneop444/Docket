@@ -23,8 +23,14 @@ export interface GlassTune {
   lift: string | null;
   /** The shade on the lower inner rim, 0 to 1. Null keeps the system's. */
   rimShade: number | null;
+  /**
+   * Each glass sets its own white from what's behind it: the least that keeps a label in
+   * `ink` readable (4.5:1) over the darkest part of its backdrop, between min and max. `tint`
+   * is then what it shows before its picture is in. Null keeps one white for all.
+   */
+  adapt: { ink: string; min: number; max: number } | null;
 }
-export const NO_TUNE: GlassTune = { bend: 1, bezel: null, split: 1, tint: null, lift: null, rimShade: null };
+export const NO_TUNE: GlassTune = { bend: 1, bezel: null, split: 1, tint: null, lift: null, rimShade: null, adapt: null };
 export const GlassTuneCtx = createContext<GlassTune>(NO_TUNE);
 
 /**

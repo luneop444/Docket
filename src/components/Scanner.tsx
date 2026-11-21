@@ -519,13 +519,15 @@ const THUMB = 60;
 const HAND_MS = 1800;
 /**
  * The pills' white. The system's 0.62 is set for glass over the app's light pages; over a dark
- * camera scene it turns the pills into pale grey slabs with nothing showing through. The labels
- * are dark, so the white can only drop as far as they stay readable: 4.5:1 for the label over
- * the darkest backdrop a pill sits on (the footwell behind File, about 17 grey under the scrim)
- * needs a white of 0.5. Everything else about the glass stays the system's. The result card
- * isn't a pill and keeps the system's white: it carries numbers over a printed page.
+ * camera scene it makes pale grey slabs with nothing showing through. So here each pill finds
+ * its own: the least white that keeps its dark label at 4.5:1 over the darkest part of what's
+ * behind it (LiquidGlass adapt). Over the seat that's about a third; over the dark footwell
+ * about a half. It never goes past the system's 0.62, and never under 0.3, so the glass still
+ * reads as a body over something bright. 0.5 is what it shows before it has measured.
+ * Everything else about the glass stays the system's. The result card isn't a pill and keeps
+ * the system's white: it carries numbers over a printed page.
  */
-const PILL_TUNE = { ...NO_TUNE, tint: 0.5 };
+const PILL_TUNE = { ...NO_TUNE, tint: 0.5, adapt: { ink: color.ink, min: 0.3, max: 0.62 } };
 
 /**
  * A hand's path into the frame, as the camera sees it, worked out once as motion rather than
