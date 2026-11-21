@@ -6,7 +6,7 @@ import { color } from '../theme/tokens';
 
 /**
  * A made-up settlement statement, drawn, for the sample week: what a driver would
- * photograph. No carrier's name or branding, and marked as a sample on the page.
+ * photograph. No carrier's name or branding.
  * Its detention lines are the ones the sample scan reads back.
  */
 /** The statement's lines, shared by the drawn page and the photographed one (SamplePaper). */
@@ -42,7 +42,6 @@ export function SampleSettlementPage({ label, claims, paid, highlight }: { label
           <Text style={styles.title}>DRIVER SETTLEMENT STATEMENT</Text>
           <Text style={styles.meta}>Pay date {label}    Driver no. 20417    Direct deposit</Text>
         </View>
-        <Text style={styles.stamp}>SAMPLE</Text>
       </View>
       <View style={styles.rule} />
       <View style={[styles.row, styles.headRow]}>
@@ -110,7 +109,6 @@ const styles = StyleSheet.create({
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   title: { fontFamily: SANS, fontWeight: '700', fontSize: 9, letterSpacing: 0.3, color: toner },
   meta: { fontFamily: SANS, fontSize: 7, color: ink, marginTop: 2 },
-  stamp: { fontFamily: SANS, fontWeight: '700', fontSize: 7.5, letterSpacing: 1, color: color.flag, borderWidth: 1, borderColor: color.flag, borderRadius: 2, paddingHorizontal: 4, paddingVertical: 1, transform: [{ rotate: '-4deg' }], opacity: 0.85 },
   rule: { height: 0.75, backgroundColor: toner, opacity: 0.55, marginVertical: 3 },
   row: { flexDirection: 'row', paddingVertical: 1.5 },
   headRow: { paddingVertical: 2.5, backgroundColor: 'rgba(18,18,18,0.07)', borderTopWidth: 0.75, borderBottomWidth: 0.75, borderColor: 'rgba(18,18,18,0.45)' },

@@ -5,9 +5,9 @@ import { quad } from './paperGeometry';
 import { SamplePaper, type Statement } from './SamplePaper';
 import { Animated, Image, Platform, StyleSheet, View } from 'react-native';
 import { color } from '../theme/tokens';
+import { CAB, CAB_OVER } from './sampleCab';
 import { useReduceMotion } from './stepMotion';
 
-const CAB = require('../../assets/sample-cab.jpg');
 
 /** Camera grain, as an SVG noise tile (web only; the native camera has its own). */
 const GRAIN =
@@ -129,7 +129,7 @@ export function SamplePhoto({ page, x, y, w, h, found, onReady }: { page: ReactN
       {Platform.OS === 'web' ? (
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: on }]}>
           <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
-            <Polygon points={quad(x, y, w, h).map((p) => p.join(',')).join(' ')} fill={color.signal} fillOpacity={0.1} stroke={color.signal} strokeWidth={3} strokeLinejoin="miter" />
+            <Polygon points={quad(x, y, w, h).map((p) => p.join(',')).join(' ')} fill="none" stroke={color.signal} strokeWidth={3} strokeLinejoin="miter" />
           </Svg>
         </Animated.View>
       ) : (
@@ -157,7 +157,7 @@ export function SamplePhoto({ page, x, y, w, h, found, onReady }: { page: ReactN
 
 const styles = StyleSheet.create({
   // Bigger than the screen, so the hand's drift never shows an edge.
-  cab: { position: 'absolute', top: '-15%', left: '-15%', width: '130%', height: '130%' },
+  cab: { position: 'absolute', top: `${-CAB_OVER * 100}%`, left: `${-CAB_OVER * 100}%`, width: `${100 + CAB_OVER * 200}%`, height: `${100 + CAB_OVER * 200}%` },
   paper: {
     position: 'absolute',
     overflow: 'hidden',
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     // lifted parts; and a hairline edge, the paper's own thickness catching light.
     ...web({ boxShadow: '0 0 0 0.5px rgba(0,0,0,0.12), 0 1px 1.5px rgba(0,0,0,0.35), 2px 6px 12px rgba(0,0,0,0.16), 6px 18px 32px rgba(0,0,0,0.12)' }),
   },
-  found: { position: 'absolute', borderWidth: 3, borderColor: color.signal, backgroundColor: 'rgba(212,245,76,0.10)' },
+  found: { position: 'absolute', borderWidth: 3, borderColor: color.signal },
   fibre: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 1 },
   panel: { position: 'absolute', left: 0, right: 0, backgroundColor: 'rgba(40,32,24,0.035)' },
   fold: { position: 'absolute', left: 0, right: 0, height: 14 },

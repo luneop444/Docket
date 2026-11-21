@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { Claim } from '../logic/claims';
 import { money } from '../logic/format';
 import { DEDUCTIONS, statementLines, YTD } from './SampleSettlementPage';
-import { map, shade } from './paperGeometry';
+import { lift, map, shade } from './paperGeometry';
+import { CAB_OVER, cabUri } from './sampleCab';
 
 /** Room around the page on the canvas, for the shadow and the corner curl. */
 const PAD = 40;
@@ -36,7 +37,11 @@ export function SamplePaper({ statement, x, y, w, h, onReady }: { statement: Sta
       await (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready;
       if (gone) return;
       const scale = Math.min(3, Math.max(2, window.devicePixelRatio || 1));
-      draw(c, printed(statement, w, h, scale), w, h, scale);
+      const parent = c.parentElement;
+      const seat = await photo();
+      if (gone) return;
+      const light = seat && parent ? lightOf(seat, parent.offsetWidth, parent.offsetHeight, x, y, w, h) : null;
+      draw(c, printed(statement, w, h, scale), w, h, scale, light);
       setReady(true);
       onReady?.();
     })();
@@ -45,7 +50,7 @@ export function SamplePaper({ statement, x, y, w, h, onReady }: { statement: Sta
     };
     // key stands for the statement's content.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, w, h]);
+  }, [key, x, y, w, h]);
 
   return (
     <canvas
@@ -79,19 +84,6 @@ function printed(st: Statement, w: number, h: number, scale: number) {
   g.fillText('DRIVER SETTLEMENT STATEMENT', L, y);
   g.font = `7px ${SANS}`;
   g.fillText(`Pay date ${st.label}    Driver no. 20417    Direct deposit`, L, y + 10);
-  // The SAMPLE stamp: red, a little crooked and faded.
-  g.save();
-  g.translate(R - 26, y - 3);
-  g.rotate((-4 * Math.PI) / 180);
-  g.globalAlpha = 0.8;
-  g.strokeStyle = '#C9311F';
-  g.fillStyle = '#C9311F';
-  g.lineWidth = 1;
-  g.strokeRect(-24, -8, 48, 13);
-  g.font = `700 7.5px ${SANS}`;
-  g.textAlign = 'center';
-  g.fillText('S A M P L E', 0, 2);
-  g.restore();
   const rule = (yy: number, a = 0.55) => {
     g.fillStyle = `rgba(20,20,20,${a})`;
     g.fillRect(L, yy, R - L, 0.75);
@@ -171,7 +163,7 @@ function printed(st: Statement, w: number, h: number, scale: number) {
   return c;
 }
 
-function draw(c: HTMLCanvasElement, flat: HTMLCanvasElement, w: number, h: number, scale: number) {
+function draw(c: HTMLCanvasElement, flat: HTMLCanvasElement, w: number, h: number, scale: number, light: Light | null) {
   const W = w + PAD * 2, H = h + PAD * 2;
   c.width = Math.round(W * scale);
   c.height = Math.round(H * scale);
@@ -247,12 +239,10 @@ function draw(c: HTMLCanvasElement, flat: HTMLCanvasElement, w: number, h: numbe
       k.fill();
     }
   }
-  // Daylight's colour on paper: a touch cool, like the grey seat around it.
-  k.fillStyle = 'rgba(205,214,226,0.12)';
-  k.fillRect(0, 0, W, H);
   k.globalCompositeOperation = 'source-over';
   // The camera: a little soft, and the sensor's grain, on the paper only.
   const img = k.getImageData(0, 0, p.width, p.height);
+  if (light) relight(img, light, scale);
   soften(img);
   const d = img.data;
   let seed = 11;
@@ -266,21 +256,42 @@ function draw(c: HTMLCanvasElement, flat: HTMLCanvasElement, w: number, h: numbe
   }
   k.putImageData(img, 0, 0);
 
-  // 2. Shadows on the seat, then the paper over them.
+  // 2. Shadows on the seat. A sheet lying on a seat isn't held above it, so there's no drop
+  //    shadow: only the thin dark line where its edge meets the fabric, a faint soft one
+  //    around it (the paper blocks a little of the sky light), and real shadow only where
+  //    the paper stands up: under the curled corner.
   g.setTransform(scale, 0, 0, scale, 0, 0);
   g.save();
   g.fillStyle = '#000';
-  g.shadowColor = 'rgba(0,0,0,0.22)';
-  g.shadowBlur = 20;
-  g.shadowOffsetX = 3;
-  g.shadowOffsetY = 10;
   outline(g);
+  g.shadowColor = 'rgba(10,12,18,0.16)';
+  g.shadowBlur = 7;
+  g.shadowOffsetY = 1.5;
   g.fill();
-  g.shadowColor = 'rgba(0,0,0,0.35)';
-  g.shadowBlur = 2;
-  g.shadowOffsetX = 0;
-  g.shadowOffsetY = 1;
+  g.shadowColor = 'rgba(10,12,18,0.42)';
+  g.shadowBlur = 1.2;
+  g.shadowOffsetY = 0.4;
   g.fill();
+  g.restore();
+  // Under the curl: the lifted corner's own outline, cast a little down and right, soft in
+  // proportion to how high it stands.
+  g.save();
+  g.beginPath();
+  const N = 10;
+  for (let i = 0; i <= N; i++) {
+    for (let j = 0; j <= N; j++) {
+      const u = 0.72 + (0.28 * i) / N, v = 0.8 + (0.2 * j) / N;
+      const z = lift(u, v);
+      if (z < 0.5) continue;
+      const [px, py] = at(u, v);
+      g.moveTo(px + z * 0.35 + z * 0.45, py + z * 0.9);
+      g.arc(px + z * 0.35, py + z * 0.9, z * 0.45, 0, Math.PI * 2);
+    }
+  }
+  g.fillStyle = 'rgba(10,12,18,0.05)';
+  g.filter = 'blur(3px)';
+  g.fill();
+  g.filter = 'none';
   g.restore();
   g.save();
   g.globalCompositeOperation = 'destination-out';
@@ -313,6 +324,101 @@ function soften(img: ImageData) {
         }
         if (n) d[o + ch] = t / n;
       }
+    }
+  }
+}
+
+/** The light on the seat where the page lies, as a blurred brightness map (linear). */
+interface Light {
+  map: Float32Array;
+  mw: number;
+  mh: number;
+  /** Canvas points per map cell. */
+  cell: number;
+}
+
+const LIN = Array.from({ length: 256 }, (_, i) => {
+  const c = i / 255;
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+});
+const toSRGB = (l: number) => {
+  const c = l <= 0.0031308 ? 12.92 * l : 1.055 * Math.pow(l, 1 / 2.4) - 0.055;
+  return Math.max(0, Math.min(255, c * 255));
+};
+
+let seatPhoto: Promise<HTMLImageElement | null> | null = null;
+function photo() {
+  if (!seatPhoto) {
+    const uri = cabUri();
+    seatPhoto = uri
+      ? new Promise((done) => {
+          const im = new window.Image();
+          im.onload = () => done(im);
+          im.onerror = () => done(null);
+          im.src = uri;
+        })
+      : Promise.resolve(null);
+  }
+  return seatPhoto;
+}
+
+/**
+ * The seat photo's light under the page. The photo sits as it does on screen (cover, CAB_OVER
+ * past each edge); this draws the part under the canvas, blurred wide so it keeps the light's
+ * falloff and loses the weave, and keeps its brightness.
+ */
+function lightOf(im: HTMLImageElement, pw: number, ph: number, x: number, y: number, w: number, h: number): Light | null {
+  if (!pw || !ph) return null;
+  const cell = 4;
+  const W = w + PAD * 2, H = h + PAD * 2;
+  const mw = Math.ceil(W / cell), mh = Math.ceil(H / cell);
+  const c = document.createElement('canvas');
+  c.width = mw;
+  c.height = mh;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  if (!g) return null;
+  const bw = pw * (1 + CAB_OVER * 2), bh = ph * (1 + CAB_OVER * 2);
+  const s = Math.max(bw / im.naturalWidth, bh / im.naturalHeight);
+  const ix = -pw * CAB_OVER + (bw - im.naturalWidth * s) / 2;
+  const iy = -ph * CAB_OVER + (bh - im.naturalHeight * s) / 2;
+  g.filter = 'blur(5px)';
+  g.setTransform(1 / cell, 0, 0, 1 / cell, -(x - PAD) / cell, -(y - PAD) / cell);
+  g.drawImage(im, ix, iy, im.naturalWidth * s, im.naturalHeight * s);
+  const d = g.getImageData(0, 0, mw, mh).data;
+  const map = new Float32Array(mw * mh);
+  for (let i = 0; i < mw * mh; i++) map[i] = 0.2126 * LIN[d[i * 4]] + 0.7152 * LIN[d[i * 4 + 1]] + 0.0722 * LIN[d[i * 4 + 2]];
+  return { map, mw, mh, cell };
+}
+
+/**
+ * Light the paper with the seat's own light. The seat's fabric reflects about this much;
+ * dividing its brightness by that gives the light falling there, and the paper, reflecting
+ * far more, shows that light at its own whiteness. So the page is exactly as bright as white
+ * paper would be in that photo, brighter toward the windshield and dimmer toward the back,
+ * and never a white cut-out laid over a grey picture. The tint is daylight's, a hair cool.
+ */
+const FABRIC = 0.43;
+const TINT = [0.975, 1, 1.03];
+function relight(img: ImageData, L: Light, scale: number) {
+  const { width: W, height: H, data: d } = img;
+  const per = scale * L.cell;
+  // Smoothly between map cells, so the light has no steps.
+  const at = (fx: number, fy: number) => {
+    const x0 = Math.max(0, Math.min(L.mw - 1, Math.floor(fx))), y0 = Math.max(0, Math.min(L.mh - 1, Math.floor(fy)));
+    const x1 = Math.min(L.mw - 1, x0 + 1), y1 = Math.min(L.mh - 1, y0 + 1);
+    const tx = Math.max(0, Math.min(1, fx - x0)), ty = Math.max(0, Math.min(1, fy - y0));
+    const m = L.map, r0 = y0 * L.mw, r1 = y1 * L.mw;
+    return (m[r0 + x0] * (1 - tx) + m[r0 + x1] * tx) * (1 - ty) + (m[r1 + x0] * (1 - tx) + m[r1 + x1] * tx) * ty;
+  };
+  for (let py = 0; py < H; py++) {
+    const fy = py / per - 0.5;
+    for (let px = 0; px < W; px++) {
+      const o = (py * W + px) * 4;
+      if (d[o + 3] === 0) continue;
+      const e = at(px / per - 0.5, fy) / FABRIC;
+      d[o] = toSRGB(LIN[d[o]] * e * TINT[0]);
+      d[o + 1] = toSRGB(LIN[d[o + 1]] * e * TINT[1]);
+      d[o + 2] = toSRGB(LIN[d[o + 2]] * e * TINT[2]);
     }
   }
 }
