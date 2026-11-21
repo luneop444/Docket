@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, G, Path } from 'react-native-svg';
 import { squircleExtent, squirclePath } from '../logic/squircle';
 import { color, colorDark, protoColor, radius, type as typo } from '../theme/tokens';
 import { useInsets, useTabSpace } from './Chrome';
@@ -8,7 +8,7 @@ import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
 import { BackdropCtx, RiseCtx } from './backdrop';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
-import { quad } from './paperGeometry';
+import { map, quad } from './paperGeometry';
 import { SamplePhoto } from './SamplePhoto';
 import { useReduceMotion } from './stepMotion';
 
@@ -226,7 +226,7 @@ export function Scanner({
 
       {stage === 'reading' ? (
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { transform: [{ translateY: drop }] }]}>
-          <Beam x={gx} y={gy} w={gw} h={gh} />
+          <Beam x={gx} y={gy} w={gw} h={gh} paper={sample ? { x: gx + 10, y: gy + 10, w: gw - 20, h: gh - 20 } : undefined} />
         </Animated.View>
       ) : null}
 
@@ -375,27 +375,73 @@ function GlassPill({ h, minW, pad = 0, fixed, children }: { h: number; minW: num
   );
 }
 
-/** The read passing down the page: a lime line with a soft wash trailing it. */
-function Beam({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
+/**
+ * The read passing down the page. It's light on the paper, not a bar over the screen:
+ * - it lies on the page: across the page's own width at its keystone and turn, bending over
+ *   the folds, and clipped to the paper, so it never spills onto the seat;
+ * - it's built like light: a near-white core, a lime falloff either side, and a short wash
+ *   trailing behind it that fades out, so you see where it has been;
+ * - it reads one way, top to bottom, eased in and out, fading in at the top edge and out at
+ *   the bottom, then a breath before the next pass. A bar bouncing back and forth looks like
+ *   a loading spinner; a pass that starts over looks like reading.
+ * Without a sample page it does the same over the frame.
+ */
+// The sample reads in 2.3s; one pass covers it, so you never see a pass cut off halfway.
+const PASS_MS = 1900;
+const REST_MS = 300;
+const TRAIL = 0.16; // of the page height
+function Beam({ x, y, w, h, paper }: { x: number; y: number; w: number; h: number; paper?: { x: number; y: number; w: number; h: number } }) {
   const reduce = useReduceMotion();
-  const [t] = useState(() => new Animated.Value(0));
+  const [v, setV] = useState(reduce ? 0.5 : 0);
   useEffect(() => {
     if (reduce) return;
-    const run = Animated.loop(
-      Animated.sequence([
-        Animated.timing(t, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: Platform.OS !== 'web' }),
-        Animated.timing(t, { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: Platform.OS !== 'web' }),
-      ]),
-    );
-    run.start();
-    return () => run.stop();
-  }, [reduce, t]);
-  const ty = t.interpolate({ inputRange: [0, 1], outputRange: [h * 0.08, h * 0.92] });
+    let raf = 0;
+    const t0 = Date.now();
+    const tick = () => {
+      const p = ((Date.now() - t0) % (PASS_MS + REST_MS)) / PASS_MS;
+      setV(p >= 1 ? -1 : p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [reduce]);
+  if (v < 0) return null;
+
+  const at = (u: number, vv: number): [number, number] =>
+    paper ? map(u, vv, paper.x, paper.y, paper.w, paper.h) : [x + 10 + u * (w - 20), y + 10 + vv * (h - 20)];
+  const N = 24;
+  const line = (vv: number) => {
+    const c = Math.min(1, Math.max(0, vv));
+    return Array.from({ length: N + 1 }, (_, i) => at(i / N, c));
+  };
+  const d = (pts: [number, number][]) => pts.map(([px, py], i) => `${i ? 'L' : 'M'}${px.toFixed(1)} ${py.toFixed(1)}`).join('');
+  const outline = d([...line(0), ...line(1).reverse()]) + 'Z';
+  // Fade in over the first tenth of the pass and out over the last.
+  const edge = Math.min(1, v / 0.1, (1 - v) / 0.1);
+  // The trail: thin bands behind the line, each fainter the further back it is.
+  const bands = 10;
+  const trail = Array.from({ length: bands }, (_, i) => {
+    const a = v - (TRAIL * i) / bands, b = v - (TRAIL * (i + 1)) / bands;
+    if (a <= 0) return null;
+    const f = 1 - i / bands;
+    return <Path key={i} d={d([...line(b), ...line(a).reverse()]) + 'Z'} fill={color.signal} opacity={0.24 * f * f * edge} />;
+  });
+  const core = d(line(v));
   return (
-    <Animated.View pointerEvents="none" style={{ position: 'absolute', left: x - 6, width: w + 12, top: y, transform: [{ translateY: reduce ? h / 2 : ty }] }}>
-      <View style={styles.wash} />
-      <View style={styles.beam} />
-    </Animated.View>
+    <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Defs>
+        <ClipPath id="beamPaper">
+          <Path d={outline} />
+        </ClipPath>
+      </Defs>
+      <G clipPath="url(#beamPaper)">
+        {trail}
+        <Path d={core} stroke={color.signal} strokeWidth={18} strokeOpacity={0.12 * edge} fill="none" strokeLinejoin="round" />
+        <Path d={core} stroke={color.signal} strokeWidth={7} strokeOpacity={0.32 * edge} fill="none" strokeLinejoin="round" />
+        <Path d={core} stroke={color.signal} strokeWidth={2.5} strokeOpacity={0.9 * edge} fill="none" strokeLinejoin="round" />
+        <Path d={core} stroke="#F6FFD9" strokeWidth={1} strokeOpacity={edge} fill="none" strokeLinejoin="round" />
+      </G>
+    </Svg>
   );
 }
 
@@ -602,8 +648,6 @@ const styles = StyleSheet.create({
   bracket: { position: 'absolute' },
   still: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   circleSpace: { width: 44, height: 44 },
-  beam: { height: 3, borderRadius: 2, backgroundColor: color.signal, ...(Platform.OS === 'web' ? ({ boxShadow: `0 0 18px ${color.signal}` } as object) : null) },
-  wash: { position: 'absolute', left: 0, right: 0, bottom: 3, height: 44, backgroundColor: color.signal, opacity: 0.16 },
   progressRow: { position: 'absolute', left: L.edge, right: L.edge, alignItems: 'center' },
   progress: { flex: 1, height: 72, flexDirection: 'row', alignItems: 'center', paddingHorizontal: L.edge + 4, gap: L.gap },
   pct: { ...typo.numberS, color: color.ink, minWidth: 48, fontVariant: ['tabular-nums'] },
