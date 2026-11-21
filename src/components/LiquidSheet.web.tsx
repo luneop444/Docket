@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { BackdropCtx } from './backdrop';
+import { BackdropCtx, RiseCtx } from './backdrop';
 import { glassEdge, radius } from '../theme/tokens';
 import { createGlass, type Glass } from './glassGL';
 import { BAR_TINT_GL, chromaTimes, FROST, glassK, mapData, rimWith } from './glassLook';
@@ -45,6 +45,7 @@ const SHEET_CHROMA = chromaTimes(SHEET_SPLIT);
 
 export function LiquidSheet({ children, tint = SHEET_TINT }: { children: ReactNode; tint?: number }) {
   const backdrop = useContext(BackdropCtx);
+  const rise = useContext(RiseCtx);
   const box = useRef<HTMLDivElement>(null);
   const cv = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -109,7 +110,9 @@ export function LiquidSheet({ children, tint = SHEET_TINT }: { children: ReactNo
       tall = sl.height;
       g.setPage(frosted(sl.canvas, p.scale, FROST));
       setLive(true);
-      follow(performance.now() + 900);
+      // Now the card can rise, with its glass drawn the whole way up.
+      rise?.();
+      follow(performance.now() + 1600);
     });
     const kick = () => draw();
     window.addEventListener('resize', kick);
@@ -119,7 +122,7 @@ export function LiquidSheet({ children, tint = SHEET_TINT }: { children: ReactNo
       window.removeEventListener('resize', kick);
       (c.getContext('webgl') as WebGLRenderingContext | null)?.getExtension('WEBGL_lose_context')?.loseContext();
     };
-  }, [backdrop, size, tint]);
+  }, [backdrop, size, tint, rise]);
 
   return (
     <div style={S.wrap}>
@@ -154,7 +157,9 @@ function sheetLens(w: number, h: number): Promise<string> {
   const ctx = c.getContext('2d')!;
   const img = ctx.createImageData(W, H);
   const B = BEZEL_PX;
-  const R = r2;
+  // The normal comes from the rim's own width (not the corner's), so it turns smoothly round
+  // the corners: no seams along the diagonals.
+  const R = Math.min(Math.max(r2, B), W / 2, H / 2);
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const i = (y * W + x) * 4;

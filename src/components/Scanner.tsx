@@ -7,7 +7,7 @@ import { useInsets } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { Button } from './ui';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
-import { BackdropCtx } from './backdrop';
+import { BackdropCtx, RiseCtx } from './backdrop';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
 import { SamplePhoto } from './SamplePhoto';
 import { useReduceMotion } from './stepMotion';
@@ -358,18 +358,31 @@ function Dots() {
   );
 }
 
-/** The found sheet rising over the page. */
+/**
+ * The found sheet rising over the page, like a sheet: up from below the screen, no fade. It
+ * waits for its glass to be ready (RiseCtx), so the glass rides up with it; if the glass can't
+ * draw, it goes anyway after a moment with the flat stand-in.
+ */
 function Rise({ children }: { children: ReactNode }) {
   const reduce = useReduceMotion();
+  const { height } = useWindowDimensions();
   const [t] = useState(() => new Animated.Value(reduce ? 1 : 0));
+  const [go, setGo] = useState(false);
+  const [ready] = useState(() => () => setGo(true));
   useEffect(() => {
-    if (reduce) return;
-    Animated.spring(t, { toValue: 1, friction: 9, tension: 70, useNativeDriver: Platform.OS !== 'web' }).start();
-  }, [reduce, t]);
+    const id = setTimeout(() => setGo(true), 1500);
+    return () => clearTimeout(id);
+  }, []);
+  useEffect(() => {
+    if (reduce || !go) return;
+    Animated.spring(t, { toValue: 1, friction: 10, tension: 60, useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [reduce, go, t]);
   return (
-    <Animated.View style={[styles.sheetWrap, { opacity: t, transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }] }]}>
-      {children}
-    </Animated.View>
+    <RiseCtx.Provider value={ready}>
+      <Animated.View style={[styles.sheetWrap, { transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [height, 0] }) }] }]}>
+        {children}
+      </Animated.View>
+    </RiseCtx.Provider>
   );
 }
 

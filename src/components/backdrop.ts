@@ -26,3 +26,9 @@ export interface GlassTune {
 }
 export const NO_TUNE: GlassTune = { bend: 1, bezel: null, split: 1, tint: null, lift: null, rimShade: null };
 export const GlassTuneCtx = createContext<GlassTune>(NO_TUNE);
+
+/**
+ * For glass that rises into place: the glass says when it can draw (its picture is taken), so
+ * the rise starts then and the glass is there the whole way up, not popping in at the end.
+ */
+export const RiseCtx = createContext<(() => void) | null>(null);
