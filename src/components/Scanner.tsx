@@ -35,7 +35,16 @@ export function Scanner({
   onFile,
   onDone,
   onClose,
+  stage = 'capture',
+  progress,
+  sheet,
 }: {
+  /** Capture: the camera. Reading: the page stays up while it's read. Found: a sheet over it. */
+  stage?: 'capture' | 'reading' | 'found';
+  /** While reading: how far along, and what it's doing. */
+  progress?: { pct: number; text: string };
+  /** When found: the light sheet that rises over the page. */
+  sheet?: ReactNode;
   title: string;
   sample: boolean;
   /** The made-up page, drawn, for the sample. */
@@ -109,17 +118,25 @@ export function Scanner({
         <View style={styles.desk}>
           <View style={[styles.paper, { left: gx + 6, top: gy + 6, width: gw - 12, height: gh - 12 }]}>{samplePage}</View>
         </View>
+      ) : stage !== 'capture' && last?.preview ? (
+        <Image source={{ uri: last.preview }} style={styles.still} resizeMode="cover" accessibilityLabel="Your settlement page" />
+      ) : stage !== 'capture' ? (
+        <View style={styles.desk} />
       ) : (
         <ScanViewfinder ref={cam} onState={setState} />
       )}
 
+      {stage === 'reading' ? <Beam x={gx} y={gy} w={gw} h={gh} /> : null}
+
       {/* The corners: where the page goes; lime once the page is found. */}
+      {stage === 'capture' ? (
       <Animated.View pointerEvents="none" style={[styles.guide, { left: gx, top: gy, width: gw, height: gh, transform: [{ scale: snap }] }]}>
         <Corner at="tl" c={tint} />
         <Corner at="tr" c={tint} />
         <Corner at="bl" c={tint} />
         <Corner at="br" c={tint} />
       </Animated.View>
+      ) : null}
 
       {/* Top: close, what's being scanned, a file instead. */}
       <View style={[styles.top, { paddingTop: top + 8 }]} pointerEvents="box-none">
@@ -129,11 +146,16 @@ export function Scanner({
         <View style={[styles.titlePill, DARK_GLASS]}>
           <Text style={styles.title} numberOfLines={1}>{title}</Text>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Choose a PDF or screenshot instead" onPress={onFile} style={({ pressed }) => [styles.filePill, DARK_GLASS, pressed && styles.pressed]}>
-          <DocIcon c={WHITE} size={16} />
-          <Text style={styles.fileText}>File</Text>
-        </Pressable>
+        {stage === 'capture' ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Choose a PDF or screenshot instead" onPress={onFile} style={({ pressed }) => [styles.filePill, DARK_GLASS, pressed && styles.pressed]}>
+            <DocIcon c={WHITE} size={16} />
+            <Text style={styles.fileText}>File</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.circleSpace} />
+        )}
       </View>
+      {stage !== 'capture' ? null : <>
       <View style={[styles.chipRow, { top: top + 8 + 44 + 12 }]} pointerEvents="none">
         <View style={[styles.chip, DARK_GLASS, locked && styles.chipLocked]}>
           {locked ? <View style={styles.lockDot} /> : null}
@@ -183,8 +205,83 @@ export function Scanner({
         </View>
       </View>
 
+      </>}
+
+      {stage === 'reading' && progress ? (
+        <View style={[styles.progressRow, { bottom: footerBottom + 40 }]} pointerEvents="none">
+          <View style={[styles.progress, DARK_GLASS]} accessibilityRole="progressbar" accessibilityLabel={`${progress.text}, ${progress.pct}%`}>
+            <Text style={styles.pct}>{progress.pct}%</Text>
+            <Text style={styles.progressText} numberOfLines={1}>{progress.text}</Text>
+            <Dots />
+          </View>
+        </View>
+      ) : null}
+
+      {stage === 'found' && sheet ? <Rise>{sheet}</Rise> : null}
+
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, { opacity: flash }]} />
     </View>
+  );
+}
+
+/** The read passing down the page: a lime line with a soft wash trailing it. */
+function Beam({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
+  const reduce = useReduceMotion();
+  const [t] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    if (reduce) return;
+    const run = Animated.loop(
+      Animated.sequence([
+        Animated.timing(t, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(t, { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: Platform.OS !== 'web' }),
+      ]),
+    );
+    run.start();
+    return () => run.stop();
+  }, [reduce, t]);
+  const ty = t.interpolate({ inputRange: [0, 1], outputRange: [h * 0.08, h * 0.92] });
+  return (
+    <Animated.View pointerEvents="none" style={{ position: 'absolute', left: x - 6, width: w + 12, top: y, transform: [{ translateY: reduce ? h / 2 : ty }] }}>
+      <View style={styles.wash} />
+      <View style={styles.beam} />
+    </Animated.View>
+  );
+}
+
+/** Three dots that breathe, like the reference's "scanning" pill. */
+function Dots() {
+  const reduce = useReduceMotion();
+  const [t] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    if (reduce) return;
+    const run = Animated.loop(Animated.timing(t, { toValue: 3, duration: 1200, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }));
+    run.start();
+    return () => run.stop();
+  }, [reduce, t]);
+  return (
+    <View style={styles.dots}>
+      {[0, 1, 2].map((i) => (
+        <Animated.View
+          key={i}
+          style={[styles.dot, { opacity: reduce ? 1 - i * 0.3 : t.interpolate({ inputRange: [0, 1, 2, 3], outputRange: i === 0 ? [1, 0.3, 0.55, 1] : i === 1 ? [0.55, 1, 0.3, 0.55] : [0.3, 0.55, 1, 0.3] }) }]}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** The found sheet rising over the page. */
+function Rise({ children }: { children: ReactNode }) {
+  const reduce = useReduceMotion();
+  const [t] = useState(() => new Animated.Value(reduce ? 1 : 0));
+  useEffect(() => {
+    if (reduce) return;
+    Animated.spring(t, { toValue: 1, friction: 9, tension: 70, useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [reduce, t]);
+  return (
+    <Animated.View style={[styles.sheetWrap, { opacity: t, transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }] }]}>
+      {children}
+    </Animated.View>
   );
 }
 
@@ -239,4 +336,15 @@ const styles = StyleSheet.create({
   doneText: { fontFamily: fontFamily.semibold, fontSize: 16, color: color.ink },
   doneTextOff: { color: WHITE },
   flash: { backgroundColor: WHITE },
+  still: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  circleSpace: { width: 44, height: 44 },
+  beam: { height: 3, borderRadius: 2, backgroundColor: color.signal, ...(Platform.OS === 'web' ? ({ boxShadow: `0 0 18px ${color.signal}` } as object) : null) },
+  wash: { position: 'absolute', left: 0, right: 0, bottom: 3, height: 44, backgroundColor: color.signal, opacity: 0.16 },
+  progressRow: { position: 'absolute', left: 24, right: 24, alignItems: 'center' },
+  progress: { width: '100%', maxWidth: 360, height: 72, borderRadius: 36, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, gap: 16 },
+  pct: { fontFamily: fontFamily.medium, fontSize: 19, color: WHITE, minWidth: 44, fontVariant: ['tabular-nums'] },
+  progressText: { flex: 1, fontFamily: fontFamily.medium, fontSize: 19, color: WHITE },
+  dots: { flexDirection: 'row', gap: 5 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: WHITE },
+  sheetWrap: { position: 'absolute', left: 8, right: 8, bottom: 8 },
 });

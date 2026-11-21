@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
-import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { gotFromSettlement, sampleScan, type Claim } from '../logic/claims';
 import { sameLoad, type SettlementReading } from '../logic/documents';
 import { money } from '../logic/format';
@@ -8,13 +8,12 @@ import { loadNo } from '../logic/sampleData';
 import { cleanAmount } from '../logic/settlement';
 import { useStore } from '../state/AppStore';
 import { DocReadError, DocReadingOff, pickFile, postDoc, shrinkPhoto, type DocFile } from '../state/readDoc';
-import { color, fontFamily, glass, protoColor } from '../theme/tokens';
+import { color, fontFamily, glass } from '../theme/tokens';
 import { BackBar, Screen } from './Chrome';
 import { Chip } from './Chip';
-import { CheckIcon, DocIcon } from './Icons';
+import { DocIcon } from './Icons';
 import { SampleSettlementPage } from './SampleSettlementPage';
 import { Scanner } from './Scanner';
-import { useReduceMotion } from './stepMotion';
 import { Button, Card, Gap, noFocusRing, press, Row, T } from './ui';
 
 /** One page to read: the file sent, and what to show of it (a PDF has no picture here). */
@@ -24,7 +23,7 @@ interface Page {
   preview: string | null;
 }
 
-type Step = 'capture' | 'reading' | 'review';
+type Step = 'capture' | 'reading' | 'found' | 'review';
 
 /**
  * Scanning a settlement, in three steps like the BOL's: photograph each page (or pick the
@@ -94,7 +93,7 @@ export function SettlementScan({
       setGot(samplePaid);
       setUnmatched([]);
       await wait(350);
-      setStep('review');
+      setStep('found');
       return;
     }
     try {
@@ -119,14 +118,15 @@ export function SettlementScan({
       setGot(m.got);
       setUnmatched(m.unmatched);
       setDone(3);
-      setStep('review');
+      await wait(350);
+      setStep('found');
     } catch (e) {
       a.toast(e instanceof DocReadingOff || e instanceof DocReadError ? e.message : 'Couldn’t read the settlement. Try again, or type the total.');
       setStep('capture');
     }
   }
 
-  const n = Math.max(1, pages.length);
+  const shown = usePercent(step === 'reading' ? done : 3);
   const pageArt = (highlight = false) =>
     sample ? (
       <SampleSettlementPage label={label} claims={claims} paid={samplePaid} highlight={highlight} />
@@ -134,30 +134,34 @@ export function SettlementScan({
       <PageView page={pages[pages.length - 1]} />
     ) : null;
 
-  if (step === 'reading') {
-    const steps = [`Reading ${n} page${n === 1 ? '' : 's'}`, 'Finding your load numbers', 'Matching detention to your claims'];
+  if (step === 'reading' || step === 'found') {
     return (
-      <Screen header={<BackBar label="Back" onPress={() => setStep('capture')} />}>
-        <T v="h2">Reading your settlement</T>
-        <Gap h={8} />
-        <T v="body" c={color.sub}>Looking for the detention on each load you claimed.</T>
-        <Gap h={20} />
-        <View style={[styles.frame, styles.portraitSmall]}>
-          {pageArt()}
-          <ScanLine />
-        </View>
-        <Gap h={16} />
-        <Card>
-          {steps.map((t, i) => (
-            <View key={t} style={styles.stepRow}>
-              <View style={[styles.dot, i < done && styles.dotDone, i === done && styles.dotNow]}>
-                {i < done ? <CheckIcon c={color.ink} size={12} /> : null}
-              </View>
-              <T v="bodySmall" c={i <= done ? color.ink : color.sub}>{t}</T>
-            </View>
-          ))}
-        </Card>
-      </Screen>
+      <Scanner
+        stage={step}
+        title={`${label} settlement`}
+        sample={sample}
+        samplePage={<SampleSettlementPage label={label} claims={claims} paid={samplePaid} highlight={step === 'found'} />}
+        pages={pages}
+        progress={{ pct: shown, text: READING[Math.min(done, READING.length - 1)] }}
+        sheet={
+          <Found
+            label={label}
+            claims={claims}
+            got={got}
+            unmatched={unmatched}
+            onFix={() => setStep('review')}
+            onConfirm={() => onConfirm(got, unmatched)}
+          />
+        }
+        onShot={() => {}}
+        onFallback={() => {}}
+        onFile={() => {}}
+        onDone={() => {}}
+        onClose={() => {
+          setPages([]);
+          setStep('capture');
+        }}
+      />
     );
   }
 
@@ -171,6 +175,7 @@ export function SettlementScan({
         art={pageArt(true)}
         sample={sample}
         onFix={(id, v) => setGot((g) => ({ ...g, [id]: v }))}
+        onBack={() => setStep('found')}
         onAgain={() => {
           setPages([]);
           setStep('capture');
@@ -205,6 +210,7 @@ function Review({
   art,
   sample,
   onFix,
+  onBack,
   onAgain,
   onConfirm,
 }: {
@@ -215,6 +221,7 @@ function Review({
   art: React.ReactNode;
   sample: boolean;
   onFix: (id: string, v: number) => void;
+  onBack: () => void;
   onAgain: () => void;
   onConfirm: () => void;
 }) {
@@ -232,7 +239,7 @@ function Review({
   };
   return (
     <Screen
-      header={<BackBar label="Back" onPress={onAgain} />}
+      header={<BackBar label="Back" onPress={onBack} />}
       footer={
         <>
           <Button label="Looks right" onPress={onConfirm} />
@@ -323,6 +330,102 @@ function Review({
   );
 }
 
+const READING = ['Reading the page', 'Finding your loads', 'Matching detention', 'Matching detention'];
+
+/**
+ * A percent that keeps moving while the read works: it creeps toward the end of the current
+ * step and jumps when a step finishes, so it never sits still and never claims 100 early.
+ */
+function usePercent(done: number) {
+  const [pct, setPct] = useState(0);
+  useEffect(() => {
+    const cap = done >= 3 ? 100 : Math.round(((done + 1) / 3) * 100) - 4;
+    const id = setInterval(() => setPct((p) => (done === 0 && p > cap ? 0 : p >= cap ? p : Math.min(cap, p + Math.max(1, Math.round((cap - p) / 6))))), 60);
+    return () => clearInterval(id);
+  }, [done]);
+  return pct;
+}
+
+/**
+ * What the read found, on a light sheet over the page: the answer first (how much short, or
+ * all paid), then each load as read, so the driver can hold it against the paper. Nothing
+ * counts until "Looks right".
+ */
+function Found({
+  label,
+  claims,
+  got,
+  unmatched,
+  onFix,
+  onConfirm,
+}: {
+  label: string;
+  claims: Claim[];
+  got: Record<string, number>;
+  unmatched: string[];
+  onFix: () => void;
+  onConfirm: () => void;
+}) {
+  const found = claims.filter((c) => !unmatched.includes(c.id));
+  const paid = found.reduce((t, c) => t + Math.min(got[c.id] ?? 0, c.left), 0);
+  const short = Math.round(found.reduce((t, c) => t + Math.max(0, c.left - (got[c.id] ?? 0)), 0) * 100) / 100;
+  const shortOn = found.filter((c) => (got[c.id] ?? 0) < c.left - 0.005);
+  const which = shortOn.length === 1 ? (loadNo(shortOn[0].load) ? `load ${loadNo(shortOn[0].load)}` : shortOn[0].load.name) : `${shortOn.length} loads`;
+  return (
+    <View style={styles.sheet}>
+      <T v="bodyStrong">{label} settlement</T>
+      <T v="bodyTiny">Detention read from the page</T>
+      <Gap h={14} />
+      <View style={styles.hero}>
+        {short > 0 ? (
+          <>
+            <T v="numberL">{money(short)}</T>
+            <T v="bodySmall" c={color.flag} style={styles.heroNote}>short on {which}</T>
+          </>
+        ) : (
+          <>
+            <T v="numberL">{money(paid)}</T>
+            <T v="bodySmall" style={styles.heroNote}>all paid</T>
+          </>
+        )}
+      </View>
+      <Gap h={14} />
+      <ScrollView style={styles.sheetRows} bounces={false}>
+        {claims.map((c, i) => {
+          const miss = unmatched.includes(c.id);
+          const v = got[c.id] ?? 0;
+          const no = loadNo(c.load);
+          return (
+            <View key={c.id}>
+              {i ? <View style={styles.rule} /> : null}
+              <Row base style={styles.foundRow}>
+                <View style={styles.flex}>
+                  <T v="bodyStrong" numberOfLines={1}>{c.load.name}</T>
+                  <T v="bodyTiny">{no ? `Load ${no} · ` : ''}claimed {money(c.left)}</T>
+                </View>
+                {miss ? (
+                  <Chip text="No load number" />
+                ) : v >= c.left - 0.005 ? (
+                  <Chip text={money(v)} tone="lime" />
+                ) : v > 0 ? (
+                  <Chip text={`${money(v)} of ${money(c.left)}`} tone="flag" />
+                ) : (
+                  <Chip text="Not on it" tone="flag" />
+                )}
+              </Row>
+            </View>
+          );
+        })}
+      </ScrollView>
+      <Gap h={16} />
+      <Row style={styles.pair}>
+        <Button label="Fix a row" variant="white" style={styles.flex} onPress={onFix} />
+        <Button label="Looks right" style={styles.flex} onPress={onConfirm} />
+      </Row>
+    </View>
+  );
+}
+
 /** A page as picked: the photo or screenshot, or a PDF tile. */
 function PageView({ page }: { page: Page }) {
   return page.preview ? (
@@ -331,32 +434,6 @@ function PageView({ page }: { page: Page }) {
     <View style={styles.pdf}>
       <DocIcon />
       <T v="bodyTiny">PDF</T>
-    </View>
-  );
-}
-
-/** The read passing down the page. Still, for reduced motion. */
-function ScanLine() {
-  const reduce = useReduceMotion();
-  const [y] = useState(() => new Animated.Value(0));
-  const [h, setH] = useState(0);
-  useEffect(() => {
-    if (reduce || !h) return;
-    const run = Animated.loop(
-      Animated.sequence([
-        Animated.timing(y, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: Platform.OS !== 'web' }),
-        Animated.timing(y, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: Platform.OS !== 'web' }),
-      ]),
-    );
-    run.start();
-    return () => run.stop();
-  }, [reduce, h, y]);
-  return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none" onLayout={(e) => setH(e.nativeEvent.layout.height)}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: protoColor.scrim, opacity: 0.18 }]} />
-      {reduce ? null : (
-        <Animated.View style={[styles.beam, { transform: [{ translateY: y.interpolate({ inputRange: [0, 1], outputRange: [0, Math.max(0, h - 3)] }) }] }]} />
-      )}
     </View>
   );
 }
@@ -370,16 +447,25 @@ const styles = StyleSheet.create({
   portraitSmall: { aspectRatio: 4 / 3 },
   img: { width: '100%', height: '100%', resizeMode: 'cover' },
   pdf: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: color.raise },
-  beam: { position: 'absolute', left: 0, right: 0, top: 0, height: 3, backgroundColor: color.signal },
-  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
-  dot: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: color.line, alignItems: 'center', justifyContent: 'center' },
-  dotNow: { borderColor: color.ink },
-  dotDone: { backgroundColor: color.signal, borderColor: color.signal },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line },
   loadRow: { paddingVertical: 12 },
   edit: { paddingBottom: 14, gap: 10 },
   pair: { gap: 8 },
   missNote: { paddingBottom: 12 },
+  sheet: {
+    borderRadius: 36,
+    borderCurve: 'continuous',
+    padding: 22,
+    paddingBottom: 18,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    ...(Platform.OS === 'web'
+      ? ({ backdropFilter: 'blur(24px) saturate(160%)', WebkitBackdropFilter: 'blur(24px) saturate(160%)', boxShadow: '0 -8px 40px rgba(0,0,0,0.28), inset 0 0 0 0.5px rgba(255,255,255,0.6)' } as object)
+      : null),
+  },
+  hero: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 10 },
+  heroNote: { flexShrink: 1 },
+  sheetRows: { maxHeight: 210, flexGrow: 0 },
+  foundRow: { paddingVertical: 10 },
   amount: {
     flexDirection: 'row',
     alignItems: 'center',
