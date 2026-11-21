@@ -8,6 +8,8 @@ import { CAB_OVER, cabUri } from './sampleCab';
 /** Room around the page on the canvas, for the shadow and the corner curl. */
 const PAD = 40;
 const COLS = 18;
+/** Off-canvas distance for shapes drawn only for their shadow. */
+const FAR = 10000;
 const ROWS = 28;
 
 export interface Statement {
@@ -284,14 +286,17 @@ function draw(c: HTMLCanvasElement, flat: HTMLCanvasElement, w: number, h: numbe
       const z = lift(u, v);
       if (z < 0.5) continue;
       const [px, py] = at(u, v);
-      g.moveTo(px + z * 0.35 + z * 0.45, py + z * 0.9);
-      g.arc(px + z * 0.35, py + z * 0.9, z * 0.45, 0, Math.PI * 2);
+      g.moveTo(px + z * 0.35 + z * 0.45 - FAR, py + z * 0.9);
+      g.arc(px + z * 0.35 - FAR, py + z * 0.9, z * 0.45, 0, Math.PI * 2);
     }
   }
-  g.fillStyle = 'rgba(10,12,18,0.05)';
-  g.filter = 'blur(3px)';
+  // Drawn far off to the left and cast back by its shadow, so only the soft shadow lands
+  // (shadowBlur works everywhere; ctx.filter doesn't in Safari).
+  g.fillStyle = '#000';
+  g.shadowColor = 'rgba(10,12,18,0.05)';
+  g.shadowBlur = 3 * scale;
+  g.shadowOffsetX = FAR * scale;
   g.fill();
-  g.filter = 'none';
   g.restore();
   g.save();
   g.globalCompositeOperation = 'destination-out';
@@ -353,7 +358,8 @@ function photo() {
     seatPhoto = uri
       ? new Promise((done) => {
           const im = new window.Image();
-          im.onload = () => done(im);
+          // Decoded before use: WebKit can fire load and still draw nothing for a moment.
+          im.onload = () => (im.decode ? im.decode().then(() => done(im), () => done(im)) : done(im));
           im.onerror = () => done(null);
           im.src = uri;
         })
@@ -381,13 +387,44 @@ function lightOf(im: HTMLImageElement, pw: number, ph: number, x: number, y: num
   const s = Math.max(bw / im.naturalWidth, bh / im.naturalHeight);
   const ix = -pw * CAB_OVER + (bw - im.naturalWidth * s) / 2;
   const iy = -ph * CAB_OVER + (bh - im.naturalHeight * s) / 2;
-  g.filter = 'blur(5px)';
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = 'high';
   g.setTransform(1 / cell, 0, 0, 1 / cell, -(x - PAD) / cell, -(y - PAD) / cell);
   g.drawImage(im, ix, iy, im.naturalWidth * s, im.naturalHeight * s);
   const d = g.getImageData(0, 0, mw, mh).data;
   const map = new Float32Array(mw * mh);
   for (let i = 0; i < mw * mh; i++) map[i] = 0.2126 * LIN[d[i * 4]] + 0.7152 * LIN[d[i * 4 + 1]] + 0.0722 * LIN[d[i * 4 + 2]];
+  // Blurred here, not with the canvas's filter: Safari ignores ctx.filter, and the weave
+  // would come through as blocky noise on the page. Three box passes each way are about
+  // a gaussian of ~20pt: the light's falloff stays, the fabric's texture goes.
+  blur(map, mw, mh, 3);
+  blur(map, mw, mh, 3);
+  blur(map, mw, mh, 3);
+  // If the photo didn't draw (blank map), leave the paper unlit rather than black.
+  let lo = Infinity;
+  for (let i = 0; i < map.length; i++) lo = Math.min(lo, map[i]);
+  if (!(lo > 0.02)) return null;
   return { map, mw, mh, cell };
+}
+
+/** One box-blur pass of radius r, across then down, clamped at the edges. */
+function blur(m: Float32Array, w: number, h: number, r: number) {
+  const t = new Float32Array(m.length);
+  const n = r * 2 + 1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let a = 0;
+      for (let k = -r; k <= r; k++) a += m[y * w + Math.max(0, Math.min(w - 1, x + k))];
+      t[y * w + x] = a / n;
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let a = 0;
+      for (let k = -r; k <= r; k++) a += t[Math.max(0, Math.min(h - 1, y + k)) * w + x];
+      m[y * w + x] = a / n;
+    }
+  }
 }
 
 /**
