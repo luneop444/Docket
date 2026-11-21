@@ -1,0 +1,28 @@
+import { createContext, type RefObject } from 'react';
+
+/**
+ * What glass on a screen bends when it isn't over a scrolling page: the photo behind the
+ * scanner. Liquid glass (the pills and the result sheet) takes its picture from this element.
+ */
+export const BackdropCtx = createContext<RefObject<HTMLElement | null> | null>(null);
+
+/**
+ * A screen's own tuning of the liquid glass, on top of the system's (glassLook.ts). The default
+ * changes nothing; the scanner asks for more (see Scanner.tsx).
+ */
+export interface GlassTune {
+  /** Times the system's refraction. */
+  bend: number;
+  /** The bending rim, as a share of the glass's height (the system's is BEZEL). Null keeps it. */
+  bezel: number | null;
+  /** Times the system's colour split. */
+  split: number;
+  /** The white, 0 to 1. Null keeps the system's. */
+  tint: number | null;
+  /** The lift under the glass (a CSS shadow). Null keeps the system's. */
+  lift: string | null;
+  /** The shade on the lower inner rim, 0 to 1. Null keeps the system's. */
+  rimShade: number | null;
+}
+export const NO_TUNE: GlassTune = { bend: 1, bezel: null, split: 1, tint: null, lift: null, rimShade: null };
+export const GlassTuneCtx = createContext<GlassTune>(NO_TUNE);

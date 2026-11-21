@@ -3,6 +3,7 @@
  */
 import { defaultRules, type Rules } from './detention';
 import { APPT, START_NOW, TODAY_STOP, type LoadStop, type Marks } from './sampleData';
+import type { ClaimLogs } from './claims';
 import type { LatLon } from './geo';
 import type { LoggedStop } from './history';
 import { freshStop, type Stop } from './stop';
@@ -82,14 +83,18 @@ export interface AppState {
   now: number;
   stop: Stop;
   marks: Marks;
-  sent: boolean;
-  anon: AnonAnswer | null;
+  /** Pay weeks (PayWeek.key) whose claim went to the fleet manager. */
+  sent: Record<string, true>;
+  /** The anonymous "was it paid" answer, per pay week. */
+  anon: Record<string, AnonAnswer>;
   sort: CompanySort;
   islandAlerted: boolean;
   /** Stops logged with the real clock, newest first. */
   history: LoggedStop[];
   /** Where each facility is, saved the first time the driver taps "I'm here" there. */
   placeCoords: Record<string, LatLon>;
+  /** Each claim's steps (sent, settlements checked, asked, payroll, paid), by load id. */
+  claims: ClaimLogs;
 }
 
 export const STORAGE_KEY = 'docket-v1';
@@ -108,19 +113,23 @@ export const freshState = (): AppState => ({
   now: START_NOW,
   stop: freshStop(),
   marks: {},
-  sent: false,
-  anon: null,
+  sent: {},
+  anon: {},
   sort: 'wait',
   islandAlerted: false,
   history: [],
   placeCoords: {},
+  claims: {},
 });
 
 /** Parse stored JSON, falling back to a fresh state if it's missing or broken. */
 export function parseState(raw: string | null): AppState {
   try {
     const s = raw ? JSON.parse(raw) : null;
-    return s && s.rules ? { ...freshState(), ...s } : freshState();
+    if (!s || !s.rules) return freshState();
+    // Saved before these were kept per week (a single true/false and one answer): start clean.
+    const perWeek = (v: unknown) => (v && typeof v === 'object' ? v : {});
+    return { ...freshState(), ...s, sent: perWeek(s.sent), anon: perWeek(s.anon), claims: perWeek(s.claims) as ClaimLogs };
   } catch {
     return freshState();
   }

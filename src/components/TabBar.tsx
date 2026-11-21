@@ -7,7 +7,7 @@ import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
 
 const TABS = [
   { href: '/today', label: 'Today', Icon: TabTodayIcon },
-  { href: '/paycheck', label: 'Paycheck', Icon: TabPaycheckIcon },
+  { href: '/paycheck', label: 'Claims', Icon: TabPaycheckIcon },
   { href: '/companies', label: 'Companies', Icon: TabCompaniesIcon },
 ] as const;
 
@@ -35,8 +35,9 @@ export function TabBar() {
               onPress={() => router.navigate(href)}
               style={[styles.tab, on && styles.tabOn]}
             >
-              <Icon on={on} c={on ? color.signal : color.ink} />
-              <Text style={[type.labelTab, { color: on ? color.signal : color.ink }]}>{label}</Text>
+              {/* As the web bar: black, filled when selected and outlined otherwise. */}
+              <Icon on={on} c={color.ink} />
+              <Text style={[type.labelTab, { color: color.ink }]}>{label}</Text>
             </Pressable>
           );
         })}

@@ -2,13 +2,13 @@
  * Screen chrome: safe areas, the Docket top bar, back bar, page header and the
  * scroll + footer scaffold every screen uses.
  */
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, usePathname } from 'expo-router';
-import { createContext, useContext, useEffect, useState, type ReactNode, type RefObject } from 'react';
+import { createContext, isValidElement, useContext, useEffect, useState, type ReactNode, type RefObject } from 'react';
 import {
   Animated,
   Easing,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -23,6 +23,8 @@ import { headerDate } from '../logic/history';
 import { islandStage } from '../logic/stop';
 import { useStore } from '../state/AppStore';
 import { color, fontFamily, type } from '../theme/tokens';
+import { BandScrollView } from './BandScrollView';
+import { LiquidGroup, LiquidPill } from './LiquidGlass';
 import { ChevronLeft, PersonIcon } from './Icons';
 import { BAR_MS, PUSH_MS, useReduceMotion, useStepMotion } from './stepMotion';
 import { T } from './ui';
@@ -106,51 +108,96 @@ export function ProfileTrailing({ noDate }: { noDate?: boolean } = {}) {
   );
 }
 
+/** The onboarding header row: back and step pills, centred in 52. */
+const BAR_H = 52;
+/** Room under a screen's content, above its footer. */
+const PAD_BOTTOM = 28;
+/** Content starts 10 under the header row; the 44 pills end (52 − 44) / 2 above its bottom. */
+const UNDER_AT = 10 + (BAR_H - 44) / 2;
+/** Whether content has scrolled under the onboarding header (its pills turn to glass). */
+const HeaderUnder = createContext(false);
+
+/**
+ * Back, on detail screens. It stays reachable from anywhere on the page, so it floats and
+ * the page scrolls under it: bare at rest, in a glass pill (the nav bar's glass) once
+ * something is under it. Same as the onboarding back button.
+ */
 export function BackBar({ onPress, label = 'Back' }: { onPress: () => void; label?: string }) {
+  const { top } = useInsets();
+  const under = useContext(HeaderUnder);
+  // The pill hugs the label: measured once it's laid out (a fair guess until then).
+  const [w, setW] = useState(Math.round(40 + label.length * 9.5));
   return (
-    <>
-      <TopSafe />
-      <View style={[styles.topbar, styles.backbar]}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onPress}
-          style={({ pressed }) => [styles.back, pressed && styles.pressedBg]}
-        >
-          <ChevronLeft />
-          <Text style={styles.backText}>{label}</Text>
-        </Pressable>
+    <View style={{ height: top + BAR_H }} pointerEvents="box-none">
+      <View style={{ height: top }} pointerEvents="none" />
+      <View style={styles.glassRow} pointerEvents="box-none">
+        <LiquidGroup>
+          <LiquidPill w={w} h={44} on={under}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onPress}
+              onLayout={(e) => setW(Math.ceil(e.nativeEvent.layout.width))}
+              style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
+            >
+              <ChevronLeft />
+              <Text style={styles.backText}>{label}</Text>
+            </Pressable>
+          </LiquidPill>
+        </LiquidGroup>
       </View>
-    </>
+    </View>
   );
 }
 
 export const ONBOARDING_STEPS = 4;
 
 /** v2 header: chevron back on the left, onboarding step dashes on the right (if a step is given). */
+/**
+ * Onboarding header: back and the step dashes. It floats and the screen scrolls under it;
+ * only while something is under it do they sit in glass (a circle and a capsule, the nav
+ * bar's liquid glass, LiquidGlass.web.tsx). At rest over the empty top they're bare.
+ */
 export function OnboardingBar({ step, onBack }: { step?: number; onBack: () => void }) {
+  const { top } = useInsets();
+  const under = useContext(HeaderUnder);
   return (
-    <>
-      <TopSafe />
-      <View style={[styles.topbar, styles.backbar]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={onBack}
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressedBg]}
-        >
-          <ChevronLeft />
-        </Pressable>
-        {step ? <StepDashes step={step} /> : null}
+    <View style={{ height: top + BAR_H }} pointerEvents="box-none">
+      <View style={{ height: top }} pointerEvents="none" />
+      <View style={styles.glassRow} pointerEvents="box-none">
+        <LiquidGroup>
+          <LiquidPill w={44} h={44} on={under}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              onPress={onBack}
+              style={({ pressed }) => [styles.iconBtn, pressed && styles.backPressed]}
+            >
+              <ChevronLeft />
+            </Pressable>
+          </LiquidPill>
+        </LiquidGroup>
+        {step ? (
+          <View style={styles.centerAbs} pointerEvents="box-none">
+            <LiquidGroup>
+              <LiquidPill w={DASHES_W + 32} h={44} on={under}>
+                <StepDashes step={step} inline />
+              </LiquidPill>
+            </LiquidGroup>
+          </View>
+        ) : null}
       </View>
-    </>
+    </View>
   );
 }
 
 /** Centered dashes; only the current step is long and dark (reference: Pinterest pin 737183032797648903). */
-const DASH = 18;
-const DASH_ON = 34;
+// Figma Onboarding v3 (E1 Progress): 40 for this step, 27 for the rest, 4 apart, #D7DBE0.
+const DASH = 27;
+const DASH_ON = 40;
+/** The four dashes end to end: one long, three short, 4 apart. */
+const DASHES_W = DASH_ON + DASH * (ONBOARDING_STEPS - 1) + 4 * (ONBOARDING_STEPS - 1);
 
-function StepDashes({ step }: { step: number }) {
+function StepDashes({ step, inline }: { step: number; inline?: boolean }) {
   const { from } = useStepMotion(step);
   const reduce = useReduceMotion();
   const animate = from != null && from !== step;
@@ -175,7 +222,7 @@ function StepDashes({ step }: { step: number }) {
   return (
     <View
       pointerEvents="none"
-      style={styles.dashRow}
+      style={inline ? styles.dashInline : styles.dashRow}
       accessibilityRole="progressbar"
       accessibilityLabel={`Step ${step} of ${ONBOARDING_STEPS}`}
     >
@@ -284,39 +331,72 @@ export function Screen({
 }) {
   const { footerBottom } = useInsets();
   const { space } = useTabSpace();
+  const { top } = useInsets();
+  // Headers with a control (back) float over the content, which scrolls under their glass.
+  // Title headers (a tab's title and date) are labels the tab bar already says: they scroll
+  // away with the page (Apple's large titles do too).
+  const over = isValidElement(header) && (header.type === OnboardingBar || header.type === BackBar);
+  const inline = !over;
+  // Scroll only when the content needs it: the room left under it (PAD_BOTTOM, or the tab
+  // pill's space) is not a reason to scroll when everything above it already fits.
+  const padBottom = tabs ? space : PAD_BOTTOM;
+  const [viewH, setViewH] = useState(0);
+  const [contentH, setContentH] = useState(0);
+  const needsScroll = !viewH || !contentH || contentH - padBottom > viewH + 0.5;
+  // Something is under the floating header once the first item scrolls up past its pills.
+  const [under, setUnder] = useState(false);
+  const onScroll = (y: number) => {
+    if (over) setUnder(y > UNDER_AT);
+    onScrollY?.(y);
+  };
   return (
     <View style={styles.screen}>
-      {header}
       <Push step={step}>
-        <ScrollView
-          ref={scrollRef}
+        <BandScrollView
+          scrollRef={scrollRef}
           style={styles.flex}
-          contentContainerStyle={[styles.scroll, step ? styles.stepTop : null, tabs ? { paddingBottom: space } : null, contentStyle]}
+          contentContainerStyle={[styles.scroll, step ? styles.stepTop : null, over ? { paddingTop: top + (step ? BAR_H + 10 : BAR_H) } : null, tabs ? { paddingBottom: space } : null, contentStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          onScroll={onScrollY ? (e) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}
-          scrollEventThrottle={onScrollY ? 32 : undefined}
+          scrollEnabled={needsScroll}
+          onLayout={(e) => setViewH(e.nativeEvent.layout.height)}
+          onContentSizeChange={(_, h) => setContentH(h)}
+          onScroll={onScrollY || over ? (e) => onScroll(e.nativeEvent.contentOffset.y) : undefined}
+          scrollEventThrottle={onScrollY || over ? 16 : undefined}
         >
+          {inline ? <View style={styles.inlineHead}>{header}</View> : null}
           {children}
-        </ScrollView>
+        </BandScrollView>
         {overlay}
         {footer ? <View style={[styles.footer, { paddingBottom: footerBottom }]}>{footer}</View> : null}
       </Push>
+      {/* Content passing under the status bar fades out instead of running into it. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[color.canvas, color.canvas, `${color.canvas}00`]}
+        locations={[0, 0.6, 1]}
+        style={[styles.topFade, { height: top + 14 }]}
+      />
+      {over ? (
+        <HeaderUnder.Provider value={under && needsScroll}>
+          <View style={styles.headOver} pointerEvents="box-none">{header}</View>
+        </HeaderUnder.Provider>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  screen: { flex: 1, backgroundColor: color.bg, overflow: 'hidden' },
-  scroll: { paddingHorizontal: 20, paddingBottom: 28 },
+  screen: { flex: 1, backgroundColor: color.canvas, overflow: 'hidden' },
+  scroll: { paddingHorizontal: 20, paddingBottom: PAD_BOTTOM },
   // Onboarding: 16 from the dashes to the title (6 from the bar's own padding + 10).
   stepTop: { paddingTop: 10 },
   footer: {
     paddingTop: 24,
     paddingHorizontal: 20,
     gap: 12,
-    backgroundColor: color.bg,
+    backgroundColor: color.canvas,
   },
   // Centered on the whole bar, not on the space beside the back button.
   dashRow: {
@@ -331,6 +411,15 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   dash: { height: 3, borderRadius: 2, borderCurve: 'continuous' },
+  dashInline: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  headOver: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5 },
+  // A title header inside the scroll: it brings its own 20 side padding.
+  inlineHead: { marginHorizontal: -20 },
+  topFade: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 4 },
+  glassRow: { height: BAR_H, flexDirection: 'row', alignItems: 'center', paddingLeft: 14 },
+  centerAbs: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
+  // Press: the glass stays, the chevron dims (press.link elsewhere uses 0.3; a back tap is brief).
+  backPressed: { opacity: 0.5 },
   topbar: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -3,7 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { OnboardingBar, Screen } from '../components/Chrome';
 import { resetStepMotion } from '../components/stepMotion';
 import { EyeSlashIcon, HandTapIcon, IslandIcon, LocationIcon } from '../components/Icons';
-import { ActionCard, Gap, IconRow, T } from '../components/ui';
+import { ActionCard, Fake, Gap, IconRow, T } from '../components/ui';
+import { keepLast } from '../logic/format';
 import type { LocationMode } from '../logic/state';
 import { useStore } from '../state/AppStore';
 import { color } from '../theme/tokens';
@@ -28,14 +29,11 @@ export default function LocationPermission() {
       header={<OnboardingBar step={4} onBack={() => router.navigate('/loads')} />}
       footer={
         <>
-          <View style={styles.web}>
-            <View style={styles.webPill}>
-              <T v="labelPill">WEB</T>
-            </View>
-            <T v="bodyTiny" style={styles.flex}>
-              In the browser, only while Docket is open
-            </T>
-          </View>
+          {/* A limit of the web prototype, so it wears the prototype's own tag, like every
+              other prototype note, not lime, which means selected or yours. */}
+          <T v="bodyTiny">
+            <Fake label="Web" /> {keepLast('In the browser, only while Docket is open')}
+          </T>
           <Gap h={2} />
           <ActionCard
             primary
@@ -69,8 +67,5 @@ export default function LocationPermission() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
   promises: { gap: 18 },
-  web: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  webPill: { backgroundColor: color.signal, borderRadius: 6, borderCurve: 'continuous', paddingHorizontal: 6, paddingVertical: 2 },
 });

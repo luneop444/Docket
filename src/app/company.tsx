@@ -1,23 +1,28 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View, type HostInstance, type ScrollViewInstance } from 'react-native';
+import { Image, Pressable, StyleSheet, TextInput, View, type HostInstance, type ScrollViewInstance, type ImageSourcePropType } from 'react-native';
 import { OnboardingBar, Screen } from '../components/Chrome';
-import { SearchIcon } from '../components/Icons';
+import { EyeSlashIcon, SearchIcon, TruckOutlineIcon } from '../components/Icons';
 import { INDEX_LETTERS, LetterIndex } from '../components/LetterIndex';
 import { Gap, noFocusRing, Option, T } from '../components/ui';
 import { COMPANIES, SUGGESTED } from '../logic/sampleData';
 import { useStore } from '../state/AppStore';
-import { color, radius, type } from '../theme/tokens';
+import { color, glass, type } from '../theme/tokens';
 
-/** "Swift Transportation" → "ST", "J.B. Hunt Transport" → "JH". Stand-in for a logo. */
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w.replace(/[^a-z]/gi, '')[0] ?? '')
-    .join('')
-    .toUpperCase();
-}
+/**
+ * Logos for the six popular carriers, from the team's Figma (Onboarding v3, E1 Pick company,
+ * component "Carrier logo"). Exported at 3x with transparent backgrounds; sizes are the Figma
+ * sizes in pt.
+ * Short names are the ones the Figma tiles use.
+ */
+const LOGOS: Record<string, { src: ImageSourcePropType; w: number; h: number; short: string }> = {
+  'Swift Transportation': { src: require('../../assets/carriers/swift.png'), w: 89, h: 29, short: 'Swift Transportation' },
+  'Schneider National': { src: require('../../assets/carriers/schneider.png'), w: 108, h: 24, short: 'Schneider National' },
+  'J.B. Hunt Transport': { src: require('../../assets/carriers/jbhunt.png'), w: 80, h: 32, short: 'J.B. Hunt' },
+  'FedEx Freight': { src: require('../../assets/carriers/fedex-freight.png'), w: 77, h: 34, short: 'FedEx Freight' },
+  'Werner Enterprises': { src: require('../../assets/carriers/werner.png'), w: 88, h: 30, short: 'Werner Enterprises' },
+  'Prime Inc.': { src: require('../../assets/carriers/prime.png'), w: 92, h: 28, short: 'Prime Inc.' },
+};
 
 /** v1 02 Pick company (onboarding step 1; v2 starts from the company's reported rules) */
 export default function PickCompany() {
@@ -81,17 +86,17 @@ export default function PickCompany() {
     >
       <T v="h2">Who do you drive for?</T>
       <Gap h={8} />
-      <T v="body" c={color.sub}>Every company pays detention its own way. Pick yours and you’ll check its rules next.</T>
-      <Gap h={24} />
+      <T v="body" c={color.sub}>Each company pays detention its own way.</T>
+      <Gap h={20} />
       <View style={[styles.field, focused && styles.fieldFocus]}>
-        <SearchIcon />
+        <SearchIcon c={color.faint} />
         <TextInput
           value={query}
           onChangeText={setQuery}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder="Search or add your company"
-          placeholderTextColor={color.sub}
+          placeholderTextColor={color.faint}
           autoCorrect={false}
           autoComplete="off"
           style={styles.input}
@@ -101,8 +106,8 @@ export default function PickCompany() {
       <Gap h={24} />
       {!q ? (
         <>
-          <T v="labelPill">Popular with drivers</T>
-          <Gap h={8} />
+          <T v="labelSmall">Popular with drivers</T>
+          <Gap h={10} />
           {/* Six visible before scrolling: Plaid found more visible choices meant fewer people had to search. */}
           <View style={styles.grid}>
             {SUGGESTED.map((c) => (
@@ -113,10 +118,22 @@ export default function PickCompany() {
                 onPress={() => pick(c.name, false)}
                 style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
               >
-                <View style={styles.mono}>
-                  <T v="labelPill">{initials(c.name)}</T>
+                {/* One card: the logo straight on the tile, the name under it, both centered. */}
+                <View style={styles.logoBox}>
+                  {LOGOS[c.name] ? (
+                    <Image
+                      source={LOGOS[c.name].src}
+                      style={{ width: LOGOS[c.name].w, height: LOGOS[c.name].h }}
+                      resizeMode="contain"
+                      accessibilityIgnoresInvertColors
+                    />
+                  ) : (
+                    <T v="labelPill">{c.name}</T>
+                  )}
                 </View>
-                <T v="labelSmall" numberOfLines={2}>{c.name}</T>
+                <T v="bodySmall" c={color.sub} numberOfLines={1} style={styles.tileName}>
+                  {LOGOS[c.name]?.short ?? c.name}
+                </T>
               </Pressable>
             ))}
           </View>
@@ -126,15 +143,17 @@ export default function PickCompany() {
         <>
           {/* Audit #3: not every driver has a company to name. These go straight to entering your own rules. */}
           <Gap h={16} />
-          <View style={{ gap: 8 }}>
+          <View style={{ gap: 10 }}>
             <Option
+              icon={(c) => <TruckOutlineIcon c={c} />}
               label="I’m an owner-operator"
-              sub="I book my own loads. You’ll enter your own rules."
+              sub="You’ll enter your own rules"
               onPress={() => pick('', true)}
             />
             <Option
+              icon={(c) => <EyeSlashIcon c={c} size={20} />}
               label="I’d rather not say"
-              sub="You’ll enter your rules. Nothing is counted under a company."
+              sub="Nothing is counted"
               onPress={() => pick('', true)}
             />
           </View>
@@ -191,25 +210,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    height: 56,
-    // Pill: radius is half the height; 20 inset keeps the icon clear of the round end.
-    paddingHorizontal: 20,
-    borderRadius: 28, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    // Figma E1 Search: 50 tall, a pill, 16 in, 10 between the glass and the text.
+    height: 50,
+    paddingHorizontal: 16,
+    borderRadius: 25, borderCurve: 'continuous',
+    ...glass,
   },
   fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  // One squircle per carrier: 16 padding, the logo then its name. The logos are transparent,
+  // so no plate is needed. Centered: logos run 77 to 108 wide, and a short single-line name
+  // under a centered logo reads as one unit in a two-column grid.
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile: {
-    width: '48.5%',
+    width: '48%',
     flexGrow: 1,
-    minHeight: 92,
-    padding: 20,
-    gap: 10,
-    borderRadius: radius.card, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    padding: 16,
+    gap: 12,
+    borderRadius: 20, borderCurve: 'continuous',
+    ...glass,
   },
   tilePressed: { backgroundColor: color.line },
-  mono: { width: 32, height: 32, borderRadius: 8, borderCurve: 'continuous', backgroundColor: color.raise2, alignItems: 'center', justifyContent: 'center' },
+  // The tallest logo is 34; every logo sits in the same 36 band so the names line up.
+  logoBox: { height: 36, justifyContent: 'center', alignItems: 'center' },
+  tileName: { textAlign: 'center' },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line, marginTop: 8, marginRight: 24 },
   // Compact like Contacts; right padding leaves room for the A–Z strip.
   row: {

@@ -45,7 +45,7 @@ export default function RootLayout() {
             screenOptions={{
               headerShown: false,
               animation: 'none',
-              contentStyle: { backgroundColor: color.bg },
+              contentStyle: { backgroundColor: color.canvas },
             }}
           />
           <Overlays />

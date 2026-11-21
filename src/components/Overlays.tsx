@@ -14,7 +14,6 @@ import {
   Linking,
   Platform,
   Pressable,
-  ScrollView,
   Share,
   StyleSheet,
   Text,
@@ -28,12 +27,14 @@ import { headerDate } from '../logic/history';
 import { placeOf } from '../logic/state';
 import { islandCopy } from '../logic/island';
 import { apptOf, stopCalc, type FixDraft } from '../logic/stop';
-import { useStore } from '../state/AppStore';
-import { color, fontFamily, protoColor, radius, type } from '../theme/tokens';
+import { useStore, type MessageStep } from '../state/AppStore';
+import { color, fontFamily, glass, protoColor, radius, type } from '../theme/tokens';
+import { BandScrollView } from './BandScrollView';
 import { useFramed, useInsets, useIslandStage } from './Chrome';
 import { MinusIcon, PlusIcon, TruckIcon } from './Icons';
 import { useReduceMotion } from './stepMotion';
-import { Button, Gap, Row, T } from './ui';
+import { useRepeat } from './useRepeat';
+import { Button, Gap, press, Row, T } from './ui';
 
 /* =========================================================
    Sheets
@@ -91,9 +92,9 @@ export function SheetShell({
         >
           <View style={styles.grab} />
           {scroll ? (
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
+            <BandScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
               {children}
-            </ScrollView>
+            </BandScrollView>
           ) : (
             children
           )}
@@ -103,8 +104,17 @@ export function SheetShell({
   );
 }
 
-function MessageSheet({ text }: { text: string }) {
+const SEND_TITLE: Record<MessageStep, string> = {
+  sent: 'Send your claim to dispatch',
+  asked: 'Message your fleet manager',
+  payroll: 'Write to payroll',
+};
+
+function MessageSheet({ text, ids, step }: { text: string; ids: string[]; step: MessageStep }) {
   const { a } = useStore();
+  // The message grows to its full length and the sheet scrolls, so there's one scroll area
+  // (with the rubber band) rather than a box scrolling inside a box.
+  const [boxH, setBoxH] = useState(0);
 
   async function send(how: 'sms' | 'share' | 'copy') {
     try {
@@ -121,12 +131,12 @@ function MessageSheet({ text }: { text: string }) {
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') return;
     }
-    a.markSent();
+    a.claimMessageSent(ids, step);
   }
 
   return (
-    <SheetShell onClose={a.closeSheet}>
-      <T v="h2">Message your fleet manager</T>
+    <SheetShell onClose={a.closeSheet} scroll>
+      <T v="h2">{SEND_TITLE[step]}</T>
       <Gap h={8} />
       <T v="bodySmall">
         Edit anything before you send. It opens your own messaging app, so it goes out from you, not from Docket.
@@ -136,7 +146,9 @@ function MessageSheet({ text }: { text: string }) {
         multiline
         value={text}
         onChangeText={a.setSheetText}
-        style={styles.textarea}
+        scrollEnabled={false}
+        onContentSizeChange={(e) => setBoxH(Math.ceil(e.nativeEvent.contentSize.height))}
+        style={[styles.textarea, boxH ? { height: Math.max(260, boxH) } : null]}
         textAlignVertical="top"
         accessibilityLabel="Message"
       />
@@ -148,6 +160,26 @@ function MessageSheet({ text }: { text: string }) {
         <Button label="Copy" variant="quiet" small style={styles.flex} onPress={() => send('copy')} />
       </Row>
     </SheetShell>
+  );
+}
+
+/** One time on Fix a time: − and + step it, and holding either keeps stepping. */
+function FixRow({ label, value, last, onStep }: { label: string; value: string; last: boolean; onStep: (dir: 1 | -1) => void }) {
+  const earlier = useRepeat(() => onStep(-1));
+  const later = useRepeat(() => onStep(1));
+  return (
+    <View style={[styles.timeRow, !last && styles.timeRowLine]}>
+      <T v="body" c={color.sub}>{label}</T>
+      <View style={styles.stepper}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${label} earlier`} {...earlier} style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}>
+          <MinusIcon size={24} />
+        </Pressable>
+        <T v="bodyStrong" style={styles.stepValue}>{value}</T>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${label} later`} {...later} style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}>
+          <PlusIcon size={24} />
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -167,18 +199,7 @@ function FixSheet({ draft }: { draft: FixDraft }) {
       <Gap h={16} />
       <View style={styles.times}>
         {rows.map(({ k, label, value }, i) => (
-          <View key={k} style={[styles.timeRow, i < rows.length - 1 && styles.timeRowLine]}>
-            <T v="body" c={color.sub}>{label}</T>
-            <View style={styles.stepper}>
-              <Pressable accessibilityRole="button" accessibilityLabel={`${label} earlier`} onPress={() => a.fixStep(k, -1)} style={styles.step}>
-                <MinusIcon size={24} />
-              </Pressable>
-              <T v="bodyStrong" style={styles.stepValue}>{value}</T>
-              <Pressable accessibilityRole="button" accessibilityLabel={`${label} later`} onPress={() => a.fixStep(k, 1)} style={styles.step}>
-                <PlusIcon size={24} />
-              </Pressable>
-            </View>
-          </View>
+          <FixRow key={k} label={label} value={value} last={i === rows.length - 1} onStep={(d) => a.fixStep(k, d)} />
         ))}
       </View>
       <Gap h={20} />
@@ -263,10 +284,10 @@ function UndoToast({ text }: { text: string }) {
       ]}
     >
       <Text style={[type.bodyStrong, styles.undoText]}>{text}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Fix the arrival time" onPress={a.openFix} hitSlop={10}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Fix the arrival time" onPress={a.openFix} hitSlop={10} style={({ pressed }) => pressed && press.link}>
         <Text style={[type.labelSmall, { color: protoColor.toastAction }]}>Fix</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="Undo, this isn't a stop" onPress={a.cancelArrival} hitSlop={10}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Undo, this isn't a stop" onPress={a.cancelArrival} hitSlop={10} style={({ pressed }) => pressed && press.link}>
         <Text style={[type.labelSmall, { color: color.signal }]}>Undo</Text>
       </Pressable>
     </Animated.View>
@@ -448,7 +469,7 @@ function LockActivity({
             key={b.label}
             accessibilityRole="button"
             onPress={b.onPress}
-            style={[styles.lockButton, { backgroundColor: b.primary ? color.signal : color.raise2 }]}
+            style={({ pressed }) => [styles.lockButton, { backgroundColor: b.primary ? color.signal : color.raise2 }, pressed && press.give]}
           >
             <Text style={[type.labelSmall, { color: b.primary ? color.signalInk : color.ink }]}>{b.label}</Text>
           </Pressable>
@@ -564,7 +585,7 @@ export function Overlays() {
     <>
       {/* Answered on the lock screen first; unlocking without answering leaves it here, unconfirmed. */}
       {s.stop.phase === 'arriving' && path === '/today' && !ui.lock ? <ArrivalSheet /> : null}
-      {ui.sheet?.kind === 'message' ? <MessageSheet text={ui.sheet.text} /> : null}
+      {ui.sheet?.kind === 'message' ? <MessageSheet text={ui.sheet.text} ids={ui.sheet.ids} step={ui.sheet.step} /> : null}
       {ui.sheet?.kind === 'fix' ? <FixSheet draft={ui.sheet.draft} /> : null}
       {ui.sheet?.kind === 'left' && !ui.lock ? <LeftSheet at={ui.sheet.at} /> : null}
       {ui.undo && !ui.sheet && !ui.lock ? <UndoToast key={ui.undo} text={ui.undo} /> : null}
@@ -599,13 +620,14 @@ const styles = StyleSheet.create({
     color: color.ink,
     minHeight: 260,
     borderRadius: 18, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
     padding: 14,
   },
-  times: { backgroundColor: color.raise, borderRadius: radius.control, borderCurve: 'continuous', paddingHorizontal: 18, paddingVertical: 4 },
+  times: { ...glass, borderRadius: radius.control, borderCurve: 'continuous', paddingHorizontal: 18, paddingVertical: 4 },
   timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, paddingVertical: 6 },
   timeRowLine: { borderBottomWidth: 1, borderBottomColor: color.line },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  stepPressed: { backgroundColor: color.line },
   step: {
     width: 44,
     height: 44,
@@ -616,7 +638,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepValue: { minWidth: 80, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  details: { backgroundColor: color.raise, borderRadius: 14, borderCurve: 'continuous', padding: 14 },
+  details: { ...glass, borderRadius: 14, borderCurve: 'continuous', padding: 14 },
   undo: {
     position: 'absolute',
     left: 16,

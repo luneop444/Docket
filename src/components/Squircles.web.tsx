@@ -25,14 +25,19 @@ import { squircleExtent, squirclePath } from '../logic/squircle';
  * Elements with an outer shadow are skipped, since a clip would cut it off.
  */
 const done = new WeakMap<HTMLElement, string>();
+/**
+ * The radius an element had inline before this script set 0 under the clip. React Native Web
+ * writes per-element radii (like an icon tile's) inline, so clearing to '' would erase them.
+ */
+const inlineRadius = new WeakMap<HTMLElement, string>();
 /** Radius each clipped element ended up with, per corner (tl, tr, br, bl), for its children. */
 const radii = new WeakMap<HTMLElement, number[]>();
 
 /**
  * Apple's concentric rule for nested shapes: when a rounded element's corner
- * sits inside its rounded parent's corner, inner radius = outer radius − gap,
- * so both curves share a center. Corners that sit further in than the
- * parent's radius keep their own radius.
+ * sits tight inside its rounded parent's corner, inner radius = outer radius − gap,
+ * so both curves share a center. It only ever widens a corner; elements set
+ * further in keep their own radius on every corner.
  */
 function concentric(el: HTMLElement, own: number[]) {
   // Controls (buttons, segmented choices, tabs) and objects that sit on a card (icon
@@ -53,7 +58,10 @@ function concentric(el: HTMLElement, own: number[]) {
     Math.max(a.right - b.right, a.bottom - b.bottom),
     Math.max(b.left - a.left, a.bottom - b.bottom),
   ];
-  return own.map((v, i) => (v > 0 && gaps[i] >= 0 && gaps[i] < pr[i] ? Math.max(pr[i] - gaps[i], 0) : v));
+  // Only ever widen a corner to stay concentric, never sharpen it: with a 20 inset
+  // inside a 24 card, 24 - 20 = 4 would leave a button with near-square outer corners
+  // and round inner ones. Every corner of an element keeps one shape.
+  return own.map((v, i) => (v > 0 && gaps[i] >= 0 && gaps[i] < pr[i] ? Math.max(pr[i] - gaps[i], v) : v));
 }
 
 function px(v: string) {
@@ -71,7 +79,7 @@ function release(el: HTMLElement) {
   if (!done.has(el)) return;
   el.style.clipPath = '';
   el.style.backgroundImage = '';
-  el.style.borderRadius = '';
+  el.style.borderRadius = inlineRadius.get(el) ?? '';
   done.delete(el);
   radii.delete(el);
 }
@@ -79,16 +87,18 @@ function release(el: HTMLElement) {
 function apply(el: HTMLElement) {
   // Read the element's own radius, not the 0 this script sets underneath the clip.
   const ours = done.has(el);
-  if (ours) el.style.borderRadius = '';
+  if (ours) el.style.borderRadius = inlineRadius.get(el) ?? '';
   const cs = getComputedStyle(el);
   const r = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius].map(px);
   const w = el.offsetWidth;
   const h = el.offsetHeight;
-    const rounded = r.some((v) => v > 0) && r.every((v) => !Number.isNaN(v));
+  const rounded = r.some((v) => v > 0) && r.every((v) => !Number.isNaN(v));
+  // Inline text (the SAMPLE DATA tag) has no box to clip; a clip there hides it.
+  const inline = cs.display === 'inline';
   // Circles and pills (every corner at least half the short side) keep their round ends.
   const circle = w > 0 && r.every((v) => v >= Math.min(w, h) / 2 - 0.5);
   const outerShadow = cs.boxShadow !== 'none' && !cs.boxShadow.includes('inset');
-  if (!rounded || circle || outerShadow || !w || !h) {
+  if (!rounded || inline || circle || outerShadow || !w || !h) {
     release(el);
     return;
   }
@@ -108,6 +118,7 @@ function apply(el: HTMLElement) {
     strokes.push(`<path d='${path}' fill='none' stroke='${cs.borderTopColor}' stroke-width='${bw * 2}'${dash}/>`);
   }
 
+  if (!ours) inlineRadius.set(el, el.style.borderRadius);
   el.style.borderRadius = '0px';
   const key = `${path}|${strokes.join('')}`;
   if (done.get(el) === key) return;

@@ -1,13 +1,12 @@
 /**
- * Every icon is an SF Symbol. On iPhone, expo-symbols draws Apple's real symbol.
- * Apple licenses SF Symbols only for apps on Apple platforms, so the web
- * prototype and Android draw the matching SVG below instead (ported from the
- * v1 prototype). The status bar pieces at the bottom are not icons.
+ * Every icon is an SF Symbol. On iPhone, expo-symbols draws Apple's real symbol;
+ * off iPhone (this web prototype of the iOS app) the same symbol is drawn from its
+ * outline in sfGlyphs.ts, at the same weight. The status bar pieces are not icons.
  */
 import { SymbolView, type SFSymbol, type SymbolWeight } from 'expo-symbols';
-import { useId, type ReactElement } from 'react';
-import Svg, { Circle, Defs, G, Mask, Path, Rect } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { color } from '../theme/tokens';
+import { SF_GLYPHS } from './sfGlyphs';
 
 /**
  * Every icon here is decorative: the button or row it sits in carries the
@@ -21,271 +20,27 @@ const HIDDEN = {
   'aria-hidden': true,
 } as const;
 
-function sf(name: SFSymbol, weight: SymbolWeight, c: string, size: number, fallback: ReactElement) {
-  return <SymbolView {...HIDDEN} name={name} weight={weight} tintColor={c} size={size} fallback={fallback} />;
+function sf(name: SFSymbol, weight: SymbolWeight, c: string, size: number) {
+  return <SymbolView {...HIDDEN} name={name} weight={weight} tintColor={c} size={size} fallback={<Glyph name={name} weight={weight} c={c} size={size} />} />;
+}
+
+/** The same symbol off iPhone: Apple's outline, fitted in a size × size box as SymbolView fits it. */
+function Glyph({ name, weight, c, size }: { name: string; weight: string; c: string; size: number }) {
+  const g = SF_GLYPHS[`${name}@${weight}`];
+  if (!g) return null;
+  const [w, h, d] = g;
+  const s = Math.max(w, h);
+  return (
+    <Svg {...HIDDEN} width={size} height={size} viewBox={`${(w - s) / 2} ${(h - s) / 2} ${s} ${s}`}>
+      <Path d={d} fill={c} />
+    </Svg>
+  );
 }
 
 type P = { c?: string; size?: number };
 
-const PersonIconSvg = ({ c = color.ink, size = 24 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Circle cx={12} cy={12} r={10} stroke={c} strokeWidth={1.8} />
-    <Circle cx={12} cy={10} r={3.4} fill={c} />
-    <Path d="M5.8 18.2c1.4-2.1 3.6-3.2 6.2-3.2s4.8 1.1 6.2 3.2" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
-  </Svg>
-);
-
-const ChevronLeftSvg = ({ c = color.ink, size = 22 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M15 5l-7 7 7 7" stroke={c} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
-const ChevronRightSvg = ({ c = color.sub, size = 18 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M9 5l7 7-7 7" stroke={c} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
-const PinIconSvg = ({ c = color.bg, size = 15 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill={c}>
-    <Path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.6A2.6 2.6 0 1 1 12 6.4a2.6 2.6 0 0 1 0 5.2z" />
-  </Svg>
-);
-
-const ClockIconSvg = ({ c = color.bg, size = 15 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Circle cx={12} cy={12} r={9} stroke={c} strokeWidth={2.6} />
-    <Path d="M12 7v5l3 2" stroke={c} strokeWidth={2.6} strokeLinecap="round" />
-  </Svg>
-);
-
-const CheckIconSvg = ({ c = color.bg, size = 15 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M5 12.5l4.5 4.5L19 7.5" stroke={c} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
-const HourglassIconSvg = ({ c = color.bg, size = 15 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill={c}>
-    <Path d="M6 2h12v2h-1v3.2c0 1.5-.8 2.8-2 3.6L13.6 12l1.4 1.2c1.2.8 2 2.1 2 3.6V20h1v2H6v-2h1v-3.2c0-1.5.8-2.8 2-3.6L10.4 12 9 10.8c-1.2-.8-2-2.1-2-3.6V4H6V2z" />
-  </Svg>
-);
-
-const DollarIconSvg = ({ c = color.ink, size = 15 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M12 3v18M16.5 7.5c-.8-1.4-2.5-2.2-4.5-2.2-2.6 0-4.4 1.3-4.4 3.2 0 4.5 9.2 2.3 9.2 7 0 2-2 3.4-4.8 3.4-2.2 0-4-.9-4.8-2.4"
-      stroke={c}
-      strokeWidth={2.6}
-      strokeLinecap="round"
-    />
-  </Svg>
-);
-
-const TruckIconSvg = ({ c = color.ink, size = 15 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill={c}>
-    <Path d="M2 6.5A1.5 1.5 0 0 1 3.5 5h10A1.5 1.5 0 0 1 15 6.5V8h3.2c.5 0 .9.2 1.2.6l2.3 3c.2.3.3.6.3.9V16a1 1 0 0 1-1 1h-1.1a2.9 2.9 0 0 1-5.8 0H9.9a2.9 2.9 0 0 1-5.8 0H3a1 1 0 0 1-1-1V6.5zM7 18.3a1.3 1.3 0 1 0 0-2.6 1.3 1.3 0 0 0 0 2.6zm10 0a1.3 1.3 0 1 0 0-2.6 1.3 1.3 0 0 0 0 2.6zM15 9.6V12h4.9l-1.8-2.4H15z" />
-  </Svg>
-);
-
-const CameraIconSvg = ({ c = color.sub, size = 22 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.3l1.4-2h5.6l1.4 2h1.3A2.5 2.5 0 0 1 20 8.5v9A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-9z" stroke={c} strokeWidth={2} />
-    <Circle cx={12} cy={12.5} r={3.5} stroke={c} strokeWidth={2} />
-  </Svg>
-);
-
-const DocIconSvg = ({ c = color.ink, size = 22 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M6 3h8l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke={c} strokeWidth={2} />
-    <Path d="M14 3v5h5M8.5 13h7M8.5 17h5" stroke={c} strokeWidth={2} strokeLinecap="round" />
-  </Svg>
-);
-
-const MinusIconSvg = ({ c = color.ink, size = 18 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Path d="M5 12h14" stroke={c} strokeWidth={2.6} strokeLinecap="round" />
-  </Svg>
-);
-
-const PlusIconSvg = ({ c = color.ink, size = 18 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Path d="M12 5v14M5 12h14" stroke={c} strokeWidth={2.6} strokeLinecap="round" />
-  </Svg>
-);
-
-const SearchIconSvg = ({ c = color.sub, size = 20 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Circle cx={11} cy={11} r={6.5} stroke={c} strokeWidth={2} />
-    <Path d="M16 16l4 4" stroke={c} strokeWidth={2} strokeLinecap="round" />
-  </Svg>
-);
-
-const ShieldIconSvg = ({ c = color.ink, size = 20 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M12 3l7 3v5.5c0 4.4-3 8.2-7 9.5-4-1.3-7-5.1-7-9.5V6l7-3z" stroke={c} strokeWidth={2} strokeLinejoin="round" />
-    <Path d="M9 12l2 2 4-4" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
-/* ---------- icon-tile icons (Onboarding v3, Figma 344:861) ---------- */
-
-const stroke = (c: string) => ({ stroke: c, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' }) as const;
-
-const RepeatIconSvg = ({ c = color.ink, size = 24 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Path d="M4.5 10.5A7.5 7.5 0 0 1 17.6 6.4L19.5 8.5M19.5 4v4.5H15" {...stroke(c)} />
-    <Path d="M19.5 13.5a7.5 7.5 0 0 1-13.1 4.1L4.5 15.5M4.5 20v-4.5H9" {...stroke(c)} />
-  </Svg>
-);
-
-const ShuffleIconSvg = ({ c = color.ink, size = 24 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Path d="M3 7h3.5c4.5 0 6.5 10 11 10H21M3 17h3.5c1.6 0 2.8-1.3 3.8-3M13.7 10c1-1.7 2.2-3 3.8-3H21" {...stroke(c)} />
-    <Path d="M18 4l3 3-3 3M18 14l3 3-3 3" {...stroke(c)} />
-  </Svg>
-);
-
-const CalendarPlusIconSvg = ({ c = color.ink, size = 24 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Path d="M20 11V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h6M4 9.5h16M8 3v4M16 3v4" {...stroke(c)} />
-    <Path d="M18 15v6M15 18h6" {...stroke(c)} />
-  </Svg>
-);
-
-const LocationIconSvg = ({ c = color.ink, size = 20, filled }: P & { filled?: boolean }) => (
-  // Shifted down-left so the arrow's weight, not its box, sits in the middle of the tile.
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0.8 -0.8 24 24">
-    <Path
-      d="M20.5 3.5L3.8 10.6c-.7.3-.6 1.3.1 1.5l7 1.9 1.9 7c.2.7 1.2.8 1.5.1l7.1-16.7c.2-.5-.4-1.1-.9-.9z"
-      stroke={c}
-      strokeWidth={2}
-      strokeLinejoin="round"
-      fill={filled ? c : 'none'}
-    />
-  </Svg>
-);
-
-const IslandIconSvg = ({ c = color.ink, size = 20 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Rect x={2.5} y={8} width={19} height={8} rx={4} {...stroke(c)} />
-    <Circle cx={17.5} cy={12} r={1.6} fill={c} />
-  </Svg>
-);
-
-const EyeSlashIconSvg = ({ c = color.ink, size = 20 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Path d="M2.5 12S6 5.5 12 5.5c1.6 0 3 .4 4.2 1M21.5 12S18 18.5 12 18.5c-1.6 0-3-.4-4.2-1" {...stroke(c)} />
-    <Path d="M9.2 14.8a4 4 0 0 1 5.6-5.6M4 20L20 4" {...stroke(c)} />
-  </Svg>
-);
-
-const HandTapIconSvg = ({ c = color.ink, size = 22 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Path
-      d="M9.5 11V5a1.5 1.5 0 0 1 3 0v5.5m0-1a1.5 1.5 0 0 1 3 0v1m0-.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-.6a5 5 0 0 1-3.9-1.9L5 15.5a1.6 1.6 0 0 1 2.4-2.1l2.1 1.9"
-      {...stroke(c)}
-    />
-    <Path d="M6.5 6.5a4.5 4.5 0 0 1 9 0" {...stroke(c)} />
-  </Svg>
-);
-
-const ShareIconSvg = ({ c = color.ink, size = 22 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Path d="M12 3v12M8 7l4-4 4 4" {...stroke(c)} />
-    <Path d="M8.5 10H7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1.5" {...stroke(c)} />
-  </Svg>
-);
-
-const MailIconSvg = ({ c = color.ink, size = 22 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Rect x={3} y={5.5} width={18} height={13} rx={2.5} {...stroke(c)} />
-    <Path d="M4 7.5l8 6 8-6" {...stroke(c)} />
-  </Svg>
-);
-
-const KeyboardIconSvg = ({ c = color.ink, size = 22 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Rect x={2.5} y={6} width={19} height={12} rx={2.5} {...stroke(c)} />
-    <Path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 13.5h.01M17 13.5h.01M9.5 14.5h5" {...stroke(c)} strokeWidth={2.2} />
-  </Svg>
-);
-
-const ChecklistIconSvg = ({ c = color.ink, size = 20 }: P) => (
-  <Svg {...HIDDEN} width={size} height={size} viewBox="0 0 24 24">
-    <Path d="M3.5 6.5l1.5 1.5 3-3M3.5 13.5l1.5 1.5 3-3M11.5 7h9M11.5 14h9M11.5 19.5h9" {...stroke(c)} />
-  </Svg>
-);
-
-/**
- * Tab icons: `c` overrides the fill. Their details (clock hands, page lines,
- * windows) are cut out of the shape, so whatever the icon sits on shows through.
- * `cut` is accepted for older callers and ignored.
- */
+/** Tab icons: `c` overrides the colour. `cut` is accepted for older callers and ignored. */
 type TabP = { on: boolean; c?: string; cut?: string };
-
-/** A per-instance mask id; useId's colons would break url(#…). */
-const useMaskId = () => `m${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
-
-const TabTodayIconSvg = ({ on, c }: TabP) => {
-  const id = useMaskId();
-  return (
-    <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
-      <Defs>
-        <Mask id={id} x={0} y={0} width={24} height={24} maskUnits="userSpaceOnUse">
-          <Rect width={24} height={24} fill="#fff" />
-          <Path d="M12 6.5V12l-3.5 2.2" stroke="#000" strokeWidth={2.2} strokeLinecap="round" fill="none" />
-        </Mask>
-      </Defs>
-      <Circle cx={12} cy={12} r={10} fill={c ?? (on ? color.ink : color.faint)} mask={`url(#${id})`} />
-    </Svg>
-  );
-};
-
-const TabPaycheckIconSvg = ({ on, c }: TabP) => {
-  const id = useMaskId();
-  return (
-    <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
-      <Defs>
-        <Mask id={id} x={0} y={0} width={24} height={24} maskUnits="userSpaceOnUse">
-          <Rect width={24} height={24} fill="#fff" />
-          {/* The folded corner lets 45% through, as the old fold was drawn at 45%. */}
-          <Path d="M13 2v6h6" fill="#000" opacity={0.45} />
-          <Path d="M8.5 13h7M8.5 17h7" stroke="#000" strokeWidth={1.8} strokeLinecap="round" />
-        </Mask>
-      </Defs>
-      <Path
-        d="M6 2h7.5L19 7.5V21a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"
-        fill={c ?? (on ? color.ink : color.faint)}
-        mask={`url(#${id})`}
-      />
-    </Svg>
-  );
-};
-
-const TabCompaniesIconSvg = ({ on, c }: TabP) => {
-  const id = useMaskId();
-  return (
-    <Svg {...HIDDEN} width={24} height={24} viewBox="0 0 24 24">
-      <Defs>
-        <Mask id={id} x={0} y={0} width={24} height={24} maskUnits="userSpaceOnUse">
-          <Rect width={24} height={24} fill="#fff" />
-          <G fill="#000">
-            {[[5.5, 5.5], [9.5, 5.5], [5.5, 9.5], [9.5, 9.5], [5.5, 13.5], [9.5, 13.5], [16, 12.5], [16, 16.5]].map(([x, y]) => (
-              <Rect key={`${x}-${y}`} x={x} y={y} width={2} height={2} rx={0.4} />
-            ))}
-          </G>
-        </Mask>
-      </Defs>
-      <Path
-        d="M3 4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v17H3V4zm11 6h6a1 1 0 0 1 1 1v10h-7V10z"
-        fill={c ?? (on ? color.ink : color.faint)}
-        mask={`url(#${id})`}
-      />
-    </Svg>
-  );
-};
 
 /** iOS status bar indicators (desktop frame only). */
 export const SignalBars = () => (
@@ -306,88 +61,94 @@ export const Battery = () => (
 );
 
 export const PersonIcon = ({ c = color.ink, size = 24 }: P) =>
-  sf('person.crop.circle', 'regular', c, size, <PersonIconSvg c={c} size={size} />);
+  sf('person.crop.circle', 'regular', c, size);
 
 export const ChevronLeft = ({ c = color.ink, size = 22 }: P) =>
-  sf('chevron.left', 'semibold', c, size, <ChevronLeftSvg c={c} size={size} />);
+  sf('chevron.left', 'semibold', c, size);
 
 export const ChevronRight = ({ c = color.sub, size = 18 }: P) =>
-  sf('chevron.right', 'semibold', c, size, <ChevronRightSvg c={c} size={size} />);
+  sf('chevron.right', 'semibold', c, size);
 
 export const PinIcon = ({ c = color.bg, size = 15 }: P) =>
-  sf('mappin', 'semibold', c, size, <PinIconSvg c={c} size={size} />);
+  sf('mappin', 'semibold', c, size);
 
 export const ClockIcon = ({ c = color.bg, size = 15 }: P) =>
-  sf('clock', 'bold', c, size, <ClockIconSvg c={c} size={size} />);
+  sf('clock', 'bold', c, size);
 
 export const CheckIcon = ({ c = color.bg, size = 15 }: P) =>
-  sf('checkmark', 'bold', c, size, <CheckIconSvg c={c} size={size} />);
+  sf('checkmark', 'bold', c, size);
 
 export const HourglassIcon = ({ c = color.bg, size = 15 }: P) =>
-  sf('hourglass', 'bold', c, size, <HourglassIconSvg c={c} size={size} />);
+  sf('hourglass', 'bold', c, size);
 
 export const DollarIcon = ({ c = color.ink, size = 15 }: P) =>
-  sf('dollarsign', 'bold', c, size, <DollarIconSvg c={c} size={size} />);
+  sf('dollarsign', 'bold', c, size);
+
+export const TruckOutlineIcon = ({ c = color.ink, size = 20 }: P) =>
+  sf('truck.box', 'regular', c, size);
 
 export const TruckIcon = ({ c = color.ink, size = 15 }: P) =>
-  sf('truck.box.fill', 'regular', c, size, <TruckIconSvg c={c} size={size} />);
+  sf('truck.box.fill', 'regular', c, size);
 
 export const CameraIcon = ({ c = color.sub, size = 22 }: P) =>
-  sf('camera', 'medium', c, size, <CameraIconSvg c={c} size={size} />);
+  sf('camera', 'medium', c, size);
+
+export const CloseIcon = ({ c = color.ink, size = 18 }: P) =>
+  sf('xmark', 'medium', c, size);
 
 export const DocIcon = ({ c = color.ink, size = 22 }: P) =>
-  sf('doc.text', 'medium', c, size, <DocIconSvg c={c} size={size} />);
+  sf('doc.text', 'medium', c, size);
 
 export const MinusIcon = ({ c = color.ink, size = 18 }: P) =>
-  sf('minus', 'bold', c, size, <MinusIconSvg c={c} size={size} />);
+  sf('minus', 'bold', c, size);
 
 export const PlusIcon = ({ c = color.ink, size = 18 }: P) =>
-  sf('plus', 'bold', c, size, <PlusIconSvg c={c} size={size} />);
+  sf('plus', 'bold', c, size);
 
 export const SearchIcon = ({ c = color.sub, size = 20 }: P) =>
-  sf('magnifyingglass', 'medium', c, size, <SearchIconSvg c={c} size={size} />);
+  sf('magnifyingglass', 'medium', c, size);
 
 export const ShieldIcon = ({ c = color.ink, size = 20 }: P) =>
-  sf('checkmark.shield', 'medium', c, size, <ShieldIconSvg c={c} size={size} />);
+  sf('checkmark.shield', 'medium', c, size);
 
 export const RepeatIcon = ({ c = color.ink, size = 24 }: P) =>
-  sf('arrow.triangle.2.circlepath', 'medium', c, size, <RepeatIconSvg c={c} size={size} />);
+  sf('arrow.triangle.2.circlepath', 'medium', c, size);
 
 export const ShuffleIcon = ({ c = color.ink, size = 24 }: P) =>
-  sf('shuffle', 'medium', c, size, <ShuffleIconSvg c={c} size={size} />);
+  sf('shuffle', 'medium', c, size);
 
 export const CalendarPlusIcon = ({ c = color.ink, size = 24 }: P) =>
-  sf('calendar.badge.plus', 'medium', c, size, <CalendarPlusIconSvg c={c} size={size} />);
+  sf('calendar.badge.plus', 'medium', c, size);
 
 export const LocationIcon = ({ c = color.ink, size = 20, filled }: P & { filled?: boolean }) =>
-  sf(filled ? 'location.fill' : 'location', 'medium', c, size, <LocationIconSvg c={c} size={size} filled={filled} />);
+  sf(filled ? 'location.fill' : 'location', 'medium', c, size);
 
 export const IslandIcon = ({ c = color.ink, size = 20 }: P) =>
-  sf('capsule', 'medium', c, size, <IslandIconSvg c={c} size={size} />);
+  sf('capsule', 'medium', c, size);
 
 export const EyeSlashIcon = ({ c = color.ink, size = 20 }: P) =>
-  sf('eye.slash', 'medium', c, size, <EyeSlashIconSvg c={c} size={size} />);
+  sf('eye.slash', 'medium', c, size);
 
 export const HandTapIcon = ({ c = color.ink, size = 22 }: P) =>
-  sf('hand.tap', 'medium', c, size, <HandTapIconSvg c={c} size={size} />);
+  sf('hand.tap', 'medium', c, size);
 
 export const ShareIcon = ({ c = color.ink, size = 22 }: P) =>
-  sf('square.and.arrow.up', 'medium', c, size, <ShareIconSvg c={c} size={size} />);
+  sf('square.and.arrow.up', 'medium', c, size);
 
 export const MailIcon = ({ c = color.ink, size = 22 }: P) =>
-  sf('envelope', 'medium', c, size, <MailIconSvg c={c} size={size} />);
+  sf('envelope', 'medium', c, size);
 
 export const KeyboardIcon = ({ c = color.ink, size = 22 }: P) =>
-  sf('keyboard', 'medium', c, size, <KeyboardIconSvg c={c} size={size} />);
+  sf('keyboard', 'medium', c, size);
 
 export const ChecklistIcon = ({ c = color.ink, size = 20 }: P) =>
-  sf('checklist', 'medium', c, size, <ChecklistIconSvg c={c} size={size} />);
+  sf('checklist', 'medium', c, size);
 
 export const TabTodayIcon =({ on, c, cut }: TabP) =>
-  sf('clock.fill', 'regular', c ?? (on ? color.ink : color.faint), 24, <TabTodayIconSvg on={on} c={c} cut={cut} />);
+  sf(on ? 'clock.fill' : 'clock', 'regular', c ?? color.ink, 24);
 
 export const TabPaycheckIcon = ({ on, c, cut }: TabP) =>
-  sf('doc.text.fill', 'regular', c ?? (on ? color.ink : color.faint), 24, <TabPaycheckIconSvg on={on} c={c} cut={cut} />);
+  sf(on ? 'doc.text.fill' : 'doc.text', 'regular', c ?? color.ink, 24);
 
 export const TabCompaniesIcon = ({ on, c, cut }: TabP) =>
-  sf('building.2.fill', 'regular', c ?? (on ? color.ink : color.faint), 24, <TabCompaniesIconSvg on={on} c={c} cut={cut} />);
+  sf(on ? 'building.2.fill' : 'building.2', 'regular', c ?? color.ink, 24);

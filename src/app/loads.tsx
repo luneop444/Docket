@@ -10,7 +10,7 @@ import { color } from '../theme/tokens';
 /** Figma L-A Loads · icon tiles (Onboarding v3): each choice gets an icon, not a sketch to decode. */
 const STYLES: { k: LoadStyle; label: string; sub: string; icon: IconFn }[] = [
   { k: 'same', label: 'Same stops every week', sub: 'Set your stops up once', icon: (c) => <RepeatIcon c={c} /> },
-  { k: 'different', label: 'Different loads every day', sub: 'Add each load when dispatch sends it', icon: (c) => <ShuffleIcon c={c} /> },
+  { k: 'different', label: 'New stops every load', sub: 'Add each load as it comes', icon: (c) => <ShuffleIcon c={c} /> },
   { k: 'mix', label: 'A mix of both', sub: 'Save regular stops, add the rest', icon: (c) => <CalendarPlusIcon c={c} /> },
 ];
 

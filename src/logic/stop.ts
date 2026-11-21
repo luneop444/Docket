@@ -2,7 +2,7 @@
  * Today's stop: its phases, the numbers for it, and the Dynamic Island stage.
  */
 import { calc, type Rules } from './detention';
-import { clock, dur, money } from './format';
+import { clock, dur } from './format';
 import { APPT } from './sampleData';
 
 /**
@@ -164,68 +164,103 @@ export interface DockEvent {
   canCheckIn?: boolean;
 }
 
+type EventState = DockEvent['state'];
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * How a time on this stop is written. A stop that runs past midnight puts the day on every
+ * time ("Mon 1:12 PM", "Tue 5:56 AM"), so an early-morning check-in can't read as before
+ * the arrival. A live stop dates from its own day; the demo clock counts "now" as today.
+ */
+export function stopTime(stop: Stop, now: number): (m: number) => string {
+  const arrive = stop.arrive ?? now;
+  if (Math.floor(now / 1440) === Math.floor(arrive / 1440)) return clock;
+  const base = stop.dayStart ?? localMidnight(Date.now()) - Math.floor(now / 1440) * 86400000;
+  return (m) => `${WEEKDAYS[new Date(base + m * 60000).getDay()]} ${clock(m)}`;
+}
+
+/** 60 → "1 hour", 120 → "2 hours", 90 → "1h 30m" */
+function freeWords(m: number): string {
+  if (m > 0 && m % 60 === 0) return `${m / 60} hour${m === 60 ? '' : 's'}`;
+  return dur(m);
+}
+
 /** Events for the At the dock timeline (Figma C3), in display order. */
 export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[] {
   const arrive = stop.arrive ?? now;
   const c = stopCalc(stop, now, rules);
   const inDetention = now >= c.freeEnd;
   const fromAppt = rules.start === 'appt';
-  const events: DockEvent[] = [
-    {
-      title: 'Arrived at gate',
-      detail: 'Location, entered facility',
-      time: clock(arrive),
-      state: 'done',
-      // Grey until the clock starts (Figma 08), free time after (09).
-      segment: now >= c.start ? 'free' : 'upcoming',
-      icon: 'pin',
-    },
+  const at = stopTime(stop, now);
+  // `when` is the minute it happened; only done events have one, and they're listed in that order.
+  const events: (Omit<DockEvent, 'segment'> & { when?: number })[] = [
+    { title: 'Arrived at gate', detail: 'From your location', time: at(arrive), state: 'done', icon: 'pin', when: arrive },
   ];
   if (fromAppt) {
     const reached = now >= apptOf(stop);
     events.push({
       title: 'Appointment time',
       detail: 'Your company starts the clock here',
-      time: clock(apptOf(stop)),
+      time: at(apptOf(stop)),
       state: reached ? 'done' : 'upcoming',
-      segment: reached ? 'free' : 'upcoming',
       icon: 'clock',
+      when: reached ? apptOf(stop) : undefined,
     });
   }
   const checked = stop.checkin != null;
   events.push({
     title: 'Checked in',
-    detail: checked ? 'You tapped, location confirms on site' : 'Tap when you check in at the window',
-    time: checked ? clock(stop.checkin as number) : undefined,
+    detail: checked ? 'You tapped at the dock' : 'Tap when you check in at the window',
+    time: checked ? at(stop.checkin as number) : undefined,
     state: checked ? 'done' : 'current',
-    segment: checked ? 'free' : 'upcoming',
     icon: 'check',
     canCheckIn: !checked,
+    when: checked ? (stop.checkin as number) : undefined,
   });
   events.push({
     title: 'Free time ends',
-    detail: `${dur(rules.free)} free from ${fromAppt ? 'appointment time' : 'arrival'}`,
-    time: clock(c.freeEnd),
+    detail: `${freeWords(rules.free)} free after ${fromAppt ? 'appointment' : 'arrival'}`,
+    time: at(c.freeEnd),
     state: inDetention ? 'done' : 'upcoming',
-    segment: inDetention ? 'paid' : 'upcoming',
     icon: 'hourglass',
+    when: inDetention ? c.freeEnd : undefined,
   });
-  events.push({
+  // The rate is on the status line above; this row says how long, and that it's now.
+  const detention: Omit<DockEvent, 'segment'> & { when?: number } = {
     title: 'Detention',
-    detail: inDetention ? `${money(rules.rate)} an hour` : 'Starts after free time',
-    time: inDetention ? dur(c.paidMin) : undefined,
+    detail: inDetention ? `${dur(c.paidMin)} so far` : 'Starts after free time',
+    time: inDetention ? 'Now' : undefined,
     state: inDetention ? 'current' : 'upcoming',
-    segment: 'none',
     icon: 'dollar',
-  });
+  };
+  // What happened, in the order it happened; then what hasn't, in the order it will.
+  const done = events.filter((e) => e.state === 'done').sort((a, b) => (a.when as number) - (b.when as number));
+  const rest = events.filter((e) => e.state !== 'done');
+  const list = [...done, ...rest, detention];
   // Only one point is lit: detention once it runs, then check-in until it's tapped (Figma 08),
   // then the next step not done yet.
-  const at = inDetention
-    ? events.length - 1
+  const lit = inDetention
+    ? list.length - 1
     : !checked
-      ? events.findIndex((e) => e.canCheckIn)
-      : events.findIndex((e) => e.state !== 'done');
-  return events.map((e, i) => (e.state === 'done' ? e : { ...e, state: i === at ? 'current' : 'upcoming' }));
+      ? list.findIndex((e) => e.canCheckIn)
+      : list.findIndex((e) => e.state !== 'done');
+  // The rail under each point: black once detention runs, grey free time before it, the
+  // light upcoming grey for what hasn't happened yet (Figma 08 and 09).
+  return list.map(({ when, ...e }, i): DockEvent => {
+    const state: EventState = e.state === 'done' ? 'done' : i === lit ? 'current' : 'upcoming';
+    const segment: DockEvent['segment'] =
+      i === list.length - 1
+        ? 'none'
+        : state !== 'done'
+          ? 'upcoming'
+          : (when as number) >= c.freeEnd
+            ? 'paid'
+            : now >= c.start || e.title !== 'Arrived at gate'
+              ? 'free'
+              : 'upcoming';
+    return { ...e, state, segment };
+  });
 }
 
 /** Times being edited in the Fix a time sheet. `leave` is null while still at the dock. */
