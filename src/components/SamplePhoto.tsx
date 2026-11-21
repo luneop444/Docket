@@ -1,5 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState, type ReactNode } from 'react';
+import { isValidElement, useEffect, useState, type ReactNode } from 'react';
+import Svg, { Polygon } from 'react-native-svg';
+import { quad } from './paperGeometry';
+import { SamplePaper, type Statement } from './SamplePaper';
 import { Animated, Image, Platform, StyleSheet, View } from 'react-native';
 import { color } from '../theme/tokens';
 import { useReduceMotion } from './stepMotion';
@@ -43,6 +46,13 @@ function paperFibre(): string | null {
   return c.toDataURL('image/png');
 }
 
+/** What the drawn page shows (its label, claims, what was paid, highlights), for SamplePaper. */
+function statementOf(page: ReactNode): Statement | null {
+  if (!isValidElement(page)) return null;
+  const p = page.props as Partial<Statement>;
+  return p.label && p.claims && p.paid ? { label: p.label, claims: p.claims, paid: p.paid, highlight: p.highlight } : null;
+}
+
 const web = (s: object) => (Platform.OS === 'web' ? s : null);
 
 /**
@@ -61,8 +71,17 @@ export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: n
   }, [found, on]);
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Image source={CAB} style={styles.cab} resizeMode="cover" />
-      {/* The paper, tilted a little away from the lens. */}
+      {Platform.OS === 'web' ? (
+        <>
+          {/* The seat, then the page as a photo of paper (SamplePaper). */}
+          <Image source={CAB} style={styles.cab} resizeMode="cover" />
+          {statementOf(page) ? <SamplePaper statement={statementOf(page)!} x={x} y={y} w={w} h={h} /> : null}
+        </>
+      ) : (
+        <Image source={CAB} style={styles.cab} resizeMode="cover" />
+      )}
+      {/* Native: the paper as views, tilted a little. */}
+      {Platform.OS === 'web' ? null : (
       <View style={[styles.paper, { left: x, top: y, width: w, height: h }]}>
         {page}
         {/* Paper fibre: a fine, faint tooth, so the page isn't a flat fill. */}
@@ -101,8 +120,16 @@ export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: n
           style={StyleSheet.absoluteFill}
         />
       </View>
+      )}
       {/* Found: a sharp lime outline on the page's own corners. It sits in the paper's own
           tilt, so it lands on the real edges, and settles in from a touch larger. */}
+      {Platform.OS === 'web' ? (
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: on }]}>
+          <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+            <Polygon points={quad(x, y, w, h).map((p) => p.join(',')).join(' ')} fill={color.signal} fillOpacity={0.1} stroke={color.signal} strokeWidth={3} strokeLinejoin="miter" />
+          </Svg>
+        </Animated.View>
+      ) : (
       <Animated.View
         style={[
           styles.found,
@@ -116,6 +143,7 @@ export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: n
           },
         ]}
       />
+      )}
       {/* The whole frame: a soft vignette and grain, so the page and the seat read as one photo. */}
       <LinearGradient colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.16)']} locations={[0, 0.22, 0.7, 1]} style={StyleSheet.absoluteFill} />
       {/* Grain is the camera's, not the scene's: the glass's picture of the photo leaves it out. */}

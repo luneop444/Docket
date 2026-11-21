@@ -9,7 +9,8 @@ import { color } from '../theme/tokens';
  * photograph. No carrier's name or branding, and marked as a sample on the page.
  * Its detention lines are the ones the sample scan reads back.
  */
-export function SampleSettlementPage({ label, claims, paid, highlight }: { label: string; claims: Claim[]; paid: Record<string, number>; highlight?: boolean }) {
+/** The statement's lines, shared by the drawn page and the photographed one (SamplePaper). */
+export function statementLines(claims: Claim[], paid: Record<string, number>) {
   const rows: { load: string; what: string; amt: number }[] = [];
   claims.forEach((c, i) => {
     const no = loadNo(c.load) ?? '—';
@@ -19,6 +20,21 @@ export function SampleSettlementPage({ label, claims, paid, highlight }: { label
   rows.push({ load: '', what: 'Fuel advance', amt: -150 });
   rows.push({ load: '', what: 'ELD fee', amt: -12 });
   const net = rows.reduce((t, r) => t + r.amt, 0);
+  const miles = 1840 + claims.length * 212;
+  return { rows, net, miles };
+}
+export const DEDUCTIONS: [string, number][] = [
+  ['Occupational accident', -38.5],
+  ['Escrow', -50],
+  ['Plate program', -22.75],
+];
+export const YTD: [string, number][] = [
+  ['Gross', 41380.25],
+  ['Net', 37468.25],
+];
+
+export function SampleSettlementPage({ label, claims, paid, highlight }: { label: string; claims: Claim[]; paid: Record<string, number>; highlight?: boolean }) {
+  const { rows, net, miles } = statementLines(claims, paid);
   return (
     <View style={styles.page} accessibilityLabel={`Sample settlement statement, pay date ${label}`}>
       <View style={styles.head}>
@@ -52,15 +68,11 @@ export function SampleSettlementPage({ label, claims, paid, highlight }: { label
       <View style={styles.row}>
         <Text style={[styles.cell, styles.colLoad]} />
         <Text style={[styles.cell, styles.colWhat]}>Paid miles this period</Text>
-        <Text style={[styles.cell, styles.num, styles.colAmt]}>{(1840 + claims.length * 212).toLocaleString('en-US')}</Text>
+        <Text style={[styles.cell, styles.num, styles.colAmt]}>{miles.toLocaleString('en-US')}</Text>
       </View>
       {/* The deductions block every statement carries, so the page reads full to the tear. */}
       <Text style={[styles.meta, styles.ytdHead]}>DEDUCTIONS THIS PERIOD</Text>
-      {[
-        ['Occupational accident', -38.5],
-        ['Escrow', -50],
-        ['Plate program', -22.75],
-      ].map(([k, v]) => (
+      {DEDUCTIONS.map(([k, v]) => (
         <View key={k as string} style={styles.row}>
           <Text style={[styles.cell, styles.colLoad]} />
           <Text style={[styles.cell, styles.colWhat]}>{k}</Text>
@@ -70,10 +82,7 @@ export function SampleSettlementPage({ label, claims, paid, highlight }: { label
       <View style={styles.fill} />
       <View style={styles.tear} />
       <Text style={[styles.meta, styles.ytdHead]}>YEAR TO DATE</Text>
-      {[
-        ['Gross', 41380.25],
-        ['Net', 37468.25],
-      ].map(([k, v]) => (
+      {YTD.map(([k, v]) => (
         <View key={k as string} style={styles.row}>
           <Text style={[styles.cell, styles.colLoad]} />
           <Text style={[styles.cell, styles.colWhat]}>{k}</Text>

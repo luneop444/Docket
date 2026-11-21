@@ -8,6 +8,7 @@ import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
 import { BackdropCtx, RiseCtx } from './backdrop';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
+import { quad } from './paperGeometry';
 import { SamplePhoto } from './SamplePhoto';
 import { useReduceMotion } from './stepMotion';
 
@@ -204,7 +205,7 @@ export function Scanner({
             glass bends it too. */}
         {/* Taller than the screen by DROP_MAX above, so the scrim still covers the top once the scene drops. */}
         <Svg width={width} height={height + DROP_MAX} style={[styles.scrimSvg, { top: -DROP_MAX }]} pointerEvents="none">
-          <Path fillRule="evenodd" fill={protoColor.scrim} d={`M0 0H${width}V${height + DROP_MAX}H0Z ${holePath(gx, gy + DROP_MAX, gw, gh, reduce ? holeTo : holeT)}`} />
+          <Path fillRule="evenodd" fill={protoColor.scrim} d={`M0 0H${width}V${height + DROP_MAX}H0Z ${holePath(gx, gy + DROP_MAX, gw, gh, reduce ? holeTo : holeT, sample ? quad(gx + 10, gy + 10 + DROP_MAX, gw - 20, gh - 20) : undefined)}`} />
         </Svg>
       </Animated.View>
       </View>
@@ -463,20 +464,30 @@ function handheld(t: Animated.Value) {
 }
 
 /**
- * The scrim's hole. At t = 0 it's the frame (x, y, w, h) as a squircle at the chip radius; at
- * t = 1 it's the found page's outline as SamplePhoto draws it: 6 in from the frame, square
- * corners, turned PAGE_TURN degrees about its center.
+ * The scrim's hole. At t = 0 it's the frame (x, y, w, h) with rounded corners at the chip
+ * radius; at t = 1 it's the found page's own outline, its four corners where SamplePhoto
+ * draws them (paperGeometry), square. In between, the corners travel and the rounding goes.
+ * `page` is the page's box in the same coordinates (the frame's, 10 in).
  */
-const PAGE_TURN = -2.2;
-function holePath(x: number, y: number, w: number, h: number, t: number) {
-  const ix = x + 6 * t, iy = y + 6 * t, iw = w - 12 * t, ih = h - 12 * t;
-  const r = squircleExtent(radius.chip, iw, ih) * (1 - t);
-  const a = (PAGE_TURN * t * Math.PI) / 180, c = Math.cos(a), sn = Math.sin(a);
-  const cx = iw / 2, cy = ih / 2;
-  return squirclePath(iw, ih, [r, r, r, r]).replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g, (_, px, py) => {
-    const dx = +px - cx, dy = +py - cy;
-    return `${(ix + cx + dx * c - dy * sn).toFixed(2)} ${(iy + cy + dx * sn + dy * c).toFixed(2)}`;
-  });
+function holePath(x: number, y: number, w: number, h: number, t: number, page?: [number, number][]) {
+  if (!page || t <= 0) {
+    const r = squircleExtent(radius.chip, w, h);
+    return squirclePath(w, h, [r, r, r, r]).replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g, (_, px, py) => `${(+px + x).toFixed(2)} ${(+py + y).toFixed(2)}`);
+  }
+  const frame: [number, number][] = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+  const P = frame.map(([fx, fy], i) => [fx + (page[i][0] - fx) * t, fy + (page[i][1] - fy) * t] as [number, number]);
+  const r = radius.chip * 1.4 * (1 - t);
+  const parts: string[] = [];
+  for (let i = 0; i < 4; i++) {
+    const A = P[(i + 3) % 4], C = P[i], B = P[(i + 1) % 4];
+    const toward = (Q: [number, number]) => {
+      const dx = Q[0] - C[0], dy = Q[1] - C[1], l = Math.hypot(dx, dy) || 1;
+      return [C[0] + (dx / l) * r, C[1] + (dy / l) * r];
+    };
+    const s0 = toward(A), s1 = toward(B);
+    parts.push(`${i ? 'L' : 'M'}${s0[0].toFixed(2)} ${s0[1].toFixed(2)} Q${C[0].toFixed(2)} ${C[1].toFixed(2)} ${s1[0].toFixed(2)} ${s1[1].toFixed(2)}`);
+  }
+  return parts.join(' ') + 'Z';
 }
 
 function Bracket({ at }: { at: 'tl' | 'tr' | 'bl' | 'br' }) {
