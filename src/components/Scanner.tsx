@@ -358,7 +358,9 @@ function Bracket({ at }: { at: 'tl' | 'tr' | 'bl' | 'br' }) {
   const pos = { tl: { top: -o, left: -o }, tr: { top: -o, right: -o }, bl: { bottom: -o, left: -o }, br: { bottom: -o, right: -o } }[at];
   return (
     <Svg width={L + o} height={L + o} style={[styles.bracket, pos]}>
-      <Path d={d} transform={flip} stroke={WHITE} strokeOpacity={0.92} strokeWidth={W} strokeLinecap="round" fill="none" />
+      {/* A soft dark edge under the white, so the guide reads on a light seat too. */}
+      <Path d={d} transform={flip} stroke="#000" strokeOpacity={0.22} strokeWidth={W + 3} strokeLinecap="round" fill="none" />
+      <Path d={d} transform={flip} stroke={WHITE} strokeOpacity={0.95} strokeWidth={W} strokeLinecap="round" fill="none" />
     </Svg>
   );
 }
@@ -380,7 +382,8 @@ const styles = StyleSheet.create({
   chipText: { ...typo.labelSmall, color: color.ink },
   chipTextLocked: { color: color.ink },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', gap: 16 },
-  privacy: { ...typo.bodyTiny, color: colorDark.sub, textAlign: 'center', paddingHorizontal: 32 },
+  // White with a soft shadow, like the camera's own labels: it reads over a light seat or a dark one.
+  privacy: { ...typo.bodyTiny, color: WHITE, textAlign: 'center', paddingHorizontal: 32, textShadowColor: 'rgba(0,0,0,0.55)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   controls: { width: '100%', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24 },
   side: { flex: 1, alignItems: 'flex-start' },
   sideRight: { alignItems: 'flex-end' },
@@ -391,7 +394,7 @@ const styles = StyleSheet.create({
   thumbPdf: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   count: { zIndex: 2, position: 'absolute', top: -8, right: -8, minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 5, backgroundColor: color.signal, alignItems: 'center', justifyContent: 'center' },
   countText: { ...typo.labelPill, color: color.ink },
-  shutter: { width: 80, height: 80, borderRadius: 40, borderWidth: 4, borderColor: WHITE, alignItems: 'center', justifyContent: 'center' },
+  shutter: { width: 80, height: 80, borderRadius: 40, borderWidth: 4, borderColor: WHITE, alignItems: 'center', justifyContent: 'center', ...(Platform.OS === 'web' ? ({ boxShadow: '0 2px 10px rgba(0,0,0,0.22), inset 0 0 0 0.5px rgba(0,0,0,0.12)' } as object) : null) },
   shutterDown: { transform: [{ scale: 0.94 }] },
   shutterIn: { width: 64, height: 64, borderRadius: 32, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },
   flash: { backgroundColor: WHITE },

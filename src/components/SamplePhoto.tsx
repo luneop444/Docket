@@ -18,9 +18,9 @@ const web = (s: object) => (Platform.OS === 'web' ? s : null);
 
 /**
  * The sample, as if the driver were really pointing the phone at it: a folded settlement
- * lying on the passenger seat of the cab in evening light. The page is the drawn one (so its
+ * lying on the passenger seat of the cab in daylight. The page is the drawn one (so its
  * numbers match the sample claims), set into a photo of an empty seat: tilted slightly away,
- * with the window's light falling across it, its fold creases, a contact shadow, and the
+ * lit from the windshield, its fold creases, a contact shadow, and the
  * camera's grain over everything.
  */
 export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: number; y: number; w: number; h: number; found?: boolean }) {
@@ -42,19 +42,19 @@ export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: n
             <View style={styles.creaseLight} />
           </View>
         ))}
-        {/* Evening light through the window, crossing the page like it crosses the seat. */}
+        {/* Daylight from the windshield: a soft brightening across the top of the page. */}
         <LinearGradient
-          colors={['rgba(255,170,90,0)', 'rgba(255,170,90,0.16)', 'rgba(255,170,90,0.16)', 'rgba(255,170,90,0)', 'rgba(255,170,90,0)', 'rgba(255,170,90,0.12)', 'rgba(255,170,90,0)']}
-          locations={[0.12, 0.2, 0.34, 0.42, 0.6, 0.68, 0.78]}
-          start={{ x: 0.85, y: 0.05 }}
-          end={{ x: 0.15, y: 0.95 }}
+          colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0)']}
+          locations={[0, 0.5]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
         {/* The left edge lifts off the seat a little, so it catches less light. */}
-        <LinearGradient colors={['rgba(40,30,20,0.18)', 'rgba(40,30,20,0)']} locations={[0, 0.12]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
-        {/* The cab is dim: the page falls off into shade at the far edge and the bottom. */}
+        <LinearGradient colors={['rgba(30,30,34,0.10)', 'rgba(40,30,20,0)']} locations={[0, 0.12]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
+        {/* Away from the windshield the page falls off a little into shade. */}
         <LinearGradient
-          colors={['rgba(30,22,14,0.22)', 'rgba(30,22,14,0.06)', 'rgba(30,22,14,0.10)', 'rgba(30,22,14,0.38)']}
+          colors={['rgba(30,30,34,0.04)', 'rgba(30,30,34,0.02)', 'rgba(30,30,34,0.05)', 'rgba(30,30,34,0.14)']}
           locations={[0, 0.35, 0.7, 1]}
           start={{ x: 0.2, y: 0 }}
           end={{ x: 0.8, y: 1 }}
@@ -77,7 +77,7 @@ export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: n
         ]}
       />
       {/* The whole frame: a soft vignette and grain, so the page and the seat read as one photo. */}
-      <LinearGradient colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.45)']} locations={[0, 0.22, 0.7, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.16)']} locations={[0, 0.22, 0.7, 1]} style={StyleSheet.absoluteFill} />
       {/* Grain is the camera's, not the scene's: the glass's picture of the photo leaves it out. */}
       {Platform.OS === 'web' ? <View style={[StyleSheet.absoluteFill, styles.grain]} {...({ dataSet: { noglass: '1' } } as object)} /> : null}
     </View>
@@ -92,10 +92,10 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
     transform: [...TILT],
     shadowColor: '#000',
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.3,
     shadowRadius: 18,
     shadowOffset: { width: 4, height: 12 },
-    ...web({ boxShadow: '0 1px 2px rgba(0,0,0,0.55), 3px 10px 18px rgba(0,0,0,0.45), 8px 26px 40px rgba(0,0,0,0.35)', }),
+    ...web({ boxShadow: '0 1px 2px rgba(0,0,0,0.30), 2px 8px 16px rgba(0,0,0,0.18), 6px 20px 36px rgba(0,0,0,0.14)', }),
   },
   found: { position: 'absolute', borderWidth: 3, borderColor: color.signal, backgroundColor: 'rgba(212,245,76,0.10)' },
   crease: { position: 'absolute', left: 0, right: 0, height: 2 },
