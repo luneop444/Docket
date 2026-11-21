@@ -23,7 +23,7 @@ export interface Statement {
  * camera's lens, and given the sensor's grain, all on one canvas. Being a bitmap also lets
  * the glass bend it exactly as seen.
  */
-export function SamplePaper({ statement, x, y, w, h }: { statement: Statement; x: number; y: number; w: number; h: number }) {
+export function SamplePaper({ statement, x, y, w, h, onReady }: { statement: Statement; x: number; y: number; w: number; h: number; onReady?: () => void }) {
   const out = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
   const key = JSON.stringify([statement.label, statement.highlight, statement.claims.map((c) => c.id), statement.paid]);
@@ -38,6 +38,7 @@ export function SamplePaper({ statement, x, y, w, h }: { statement: Statement; x
       const scale = Math.min(3, Math.max(2, window.devicePixelRatio || 1));
       draw(c, printed(statement, w, h, scale), w, h, scale);
       setReady(true);
+      onReady?.();
     })();
     return () => {
       gone = true;

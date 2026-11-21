@@ -104,10 +104,13 @@ export function Scanner({
   // The sample, held like a real phone: the page comes into the frame off-centre and turned,
   // drifts in with a hand's small overshoots, and goes still. Then it's found.
   const [hand] = useState(() => new Animated.Value(reduce || !sample ? 1 : 0));
+  // The hand starts once the paper is drawn, so its whole way in is seen.
+  const [paperReady, setPaperReady] = useState(false);
+  const [onPaper] = useState(() => () => setPaperReady(true));
   useEffect(() => {
-    if (!sample || reduce) return;
-    Animated.timing(hand, { toValue: 1, duration: HAND_MS, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
-  }, [sample, reduce, hand]);
+    if (!sample || reduce || !paperReady) return;
+    Animated.timing(hand, { toValue: 1, duration: HAND_MS, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [sample, reduce, hand, paperReady]);
 
   // How far the scene drops for the result card: just enough that about 150 points of the
   // page run under the card's top edge, so its glass has the page's lines to bend there. None
@@ -124,7 +127,7 @@ export function Scanner({
 
   // The sample's page is found once the hand has settled.
   useEffect(() => {
-    if (!sample || stage !== 'capture') return;
+    if (!sample || stage !== 'capture' || !paperReady) return;
     const t = setTimeout(() => {
       setFound(true);
       if (reduce) return;
@@ -132,7 +135,7 @@ export function Scanner({
       Animated.spring(snap, { toValue: 1, friction: 6, tension: 140, useNativeDriver: Platform.OS !== 'web' }).start();
     }, reduce ? 900 : HAND_MS + 150);
     return () => clearTimeout(t);
-  }, [sample, stage, reduce, snap]);
+  }, [sample, stage, reduce, snap, paperReady]);
 
   // Then it holds for a second and takes the photo by itself, once. Tapping the shutter first still works.
   const auto = locked && stage === 'capture' && pages.length === 0;
@@ -189,7 +192,7 @@ export function Scanner({
       <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateY: drop }] }]}>
       {sample ? (
           <Animated.View style={[StyleSheet.absoluteFill, handheld(hand)]}>
-            <SamplePhoto page={samplePage} x={gx + 10} y={gy + 10} w={gw - 20} h={gh - 20} found={locked && stage === 'capture'} />
+            <SamplePhoto page={samplePage} x={gx + 10} y={gy + 10} w={gw - 20} h={gh - 20} found={locked && stage === 'capture'} onReady={onPaper} />
           </Animated.View>
         ) : stage !== 'capture' && last?.preview ? (
           <Image source={{ uri: last.preview }} style={styles.still} resizeMode="cover" accessibilityLabel="Your settlement page" />
@@ -443,22 +446,52 @@ const DROP_MAX = 160;
 const THUMB = 60;
 
 /** How long the hand takes to bring the sample page into the frame. */
-const HAND_MS = 1500;
+const HAND_MS = 1800;
 
 /**
- * A hand's path into the frame, as the camera sees it: the scene (seat and page together)
- * starts low, right, turned and a touch close, then drifts in with small overshoots and stops.
+ * A hand's path into the frame, as the camera sees it, worked out once as motion rather than
+ * keyframes. Three things a held phone does at once:
+ *
+ * - it's brought in: a damped spring from low, right, turned and a touch close, settling with
+ *   one soft overshoot, the way an arm stops;
+ * - it sways: slow drift, a breath or two a second, that dies away as the driver steadies it;
+ * - it trembles: the hand's fine physiological tremor (8 to 12 a second), tiny, fading last.
+ *
+ * Sampled at 60 a second and played back on one linear clock, so it's smooth and the same
+ * every time, and it ends exactly at rest.
  */
+const HAND = (() => {
+  const T = HAND_MS / 1000;
+  const n = Math.round(T * 60);
+  const w = 6, z = 0.64; // the arm's spring: about half a second in, one soft overshoot
+  const wd = w * Math.sqrt(1 - z * z);
+  const spring = (from: number, t: number) => from * Math.exp(-z * w * t) * (Math.cos(wd * t) + ((z * w) / wd) * Math.sin(wd * t));
+  const S = (f: number, p: number, t: number) => Math.sin(2 * Math.PI * f * t + p);
+  const at: number[] = [], x: number[] = [], y: number[] = [], r: number[] = [], k: number[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = (i / n) * T, f = i / n;
+    const sway = Math.pow(1 - f, 1.6);
+    const shake = Math.pow(1 - f, 2.4);
+    const tremor = (a: number, p: number) => shake * a * (0.6 * S(9.2, p, t) + 0.4 * S(11.7, p * 2.3, t));
+    at.push(f);
+    x.push(i === n ? 0 : spring(42, t) + sway * (2.4 * S(1.3, 0.4, t) + 1.2 * S(2.2, 1.7, t)) + tremor(0.45, 0.9));
+    y.push(i === n ? 0 : spring(88, t) + sway * (1.8 * S(1.1, 2.1, t) + 1.4 * S(1.9, 0.3, t)) + tremor(0.4, 2.2));
+    // The wrist turns with the drift, a little behind it.
+    r.push(i === n ? 0 : spring(5.5, t) + sway * (0.45 * S(1.2, 1.1, t) + 0.25 * S(2.0, 2.6, t)) + tremor(0.06, 0.2));
+    // Distance: brought down from a touch close, breathing slightly as it steadies.
+    k.push(i === n ? 1 : 1 + spring(0.1, t) + sway * 0.006 * S(0.9, 0.5, t));
+  }
+  return { at, x, y, r, k };
+})();
+
 function handheld(t: Animated.Value) {
-  const at = [0, 0.25, 0.5, 0.68, 0.82, 0.92, 1];
-  const i = (out: number[]) => t.interpolate({ inputRange: at, outputRange: out });
-  const deg = (out: number[]) => t.interpolate({ inputRange: at, outputRange: out.map((d) => `${d}deg`) });
+  const i = (out: number[]) => t.interpolate({ inputRange: HAND.at, outputRange: out });
   return {
     transform: [
-      { translateX: i([46, 26, -7, 4, -2, 0.6, 0]) },
-      { translateY: i([96, 48, 9, -5, 2, -0.6, 0]) },
-      { rotate: deg([6.5, 3.4, -1.1, 0.6, -0.25, 0.08, 0]) },
-      { scale: i([1.12, 1.07, 1.015, 0.996, 1.002, 1, 1]) },
+      { translateX: i(HAND.x) },
+      { translateY: i(HAND.y) },
+      { rotate: t.interpolate({ inputRange: HAND.at, outputRange: HAND.r.map((d) => `${d.toFixed(3)}deg`) }) },
+      { scale: i(HAND.k) },
     ],
   };
 }

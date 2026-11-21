@@ -62,9 +62,12 @@ const web = (s: object) => (Platform.OS === 'web' ? s : null);
  * lit from the windshield, its fold creases, a contact shadow, and the
  * camera's grain over everything.
  */
-export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: number; y: number; w: number; h: number; found?: boolean }) {
+export function SamplePhoto({ page, x, y, w, h, found, onReady }: { page: ReactNode; x: number; y: number; w: number; h: number; found?: boolean; onReady?: () => void }) {
   const reduce = useReduceMotion();
   const [fibre] = useState(paperFibre);
+  useEffect(() => {
+    if (Platform.OS !== 'web') onReady?.();
+  }, [onReady]);
   const [on] = useState(() => new Animated.Value(0));
   useEffect(() => {
     Animated.spring(on, { toValue: found ? 1 : 0, friction: 7, tension: 120, useNativeDriver: Platform.OS !== 'web' }).start();
@@ -75,7 +78,7 @@ export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: n
         <>
           {/* The seat, then the page as a photo of paper (SamplePaper). */}
           <Image source={CAB} style={styles.cab} resizeMode="cover" />
-          {statementOf(page) ? <SamplePaper statement={statementOf(page)!} x={x} y={y} w={w} h={h} /> : null}
+          {statementOf(page) ? <SamplePaper statement={statementOf(page)!} x={x} y={y} w={w} h={h} onReady={onReady} /> : null}
         </>
       ) : (
         <Image source={CAB} style={styles.cab} resizeMode="cover" />
