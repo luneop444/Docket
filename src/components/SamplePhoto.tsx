@@ -14,6 +14,35 @@ const GRAIN =
  * picture of this photo, sees the page exactly where it is: the picture can't do 3D.
  */
 const TILT = [{ rotateZ: '-2.2deg' }] as const;
+/**
+ * A small tile of paper fibre, made once on a canvas (a PNG, so the glass's picture of the
+ * scene can draw it): faint speckle with a few longer, lighter flecks. Web only.
+ */
+function paperFibre(): string | null {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') return null;
+  const c = document.createElement('canvas');
+  c.width = c.height = 96;
+  const g = c.getContext('2d');
+  if (!g) return null;
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 900; i++) {
+    const v = rnd() < 0.5 ? 0 : 255;
+    g.fillStyle = `rgba(${v},${v},${v},${0.015 + rnd() * 0.025})`;
+    g.fillRect(Math.floor(rnd() * 96), Math.floor(rnd() * 96), 1, 1);
+  }
+  for (let i = 0; i < 40; i++) {
+    g.strokeStyle = `rgba(120,110,95,${0.04 + rnd() * 0.04})`;
+    g.lineWidth = 0.5;
+    const x = rnd() * 96, y = rnd() * 96, a = rnd() * Math.PI, l = 2 + rnd() * 5;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
+    g.stroke();
+  }
+  return c.toDataURL('image/png');
+}
+
 const web = (s: object) => (Platform.OS === 'web' ? s : null);
 
 /**
@@ -25,6 +54,7 @@ const web = (s: object) => (Platform.OS === 'web' ? s : null);
  */
 export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: number; y: number; w: number; h: number; found?: boolean }) {
   const reduce = useReduceMotion();
+  const [fibre] = useState(paperFibre);
   const [on] = useState(() => new Animated.Value(0));
   useEffect(() => {
     Animated.spring(on, { toValue: found ? 1 : 0, friction: 7, tension: 120, useNativeDriver: Platform.OS !== 'web' }).start();
@@ -35,13 +65,23 @@ export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: n
       {/* The paper, tilted a little away from the lens. */}
       <View style={[styles.paper, { left: x, top: y, width: w, height: h }]}>
         {page}
-        {/* The folds from the envelope, a third and two thirds down. */}
-        {[1 / 3, 2 / 3].map((f) => (
-          <View key={f} style={[styles.crease, { top: h * f }]}>
-            <View style={styles.creaseDark} />
-            <View style={styles.creaseLight} />
-          </View>
+        {/* Paper fibre: a fine, faint tooth, so the page isn't a flat fill. */}
+        {fibre ? <Image source={{ uri: fibre }} style={styles.fibre} resizeMode="repeat" /> : null}
+        {/* Folded in three for the envelope and opened again: each panel sits at its own small
+            angle to the light (the middle one tips away, so it's a touch darker), and each fold
+            is a soft valley, shaded on one side and catching light on the other. */}
+        <View style={[styles.panel, { top: h / 3, height: h / 3 }]} />
+        {[1 / 3, 2 / 3].map((f, i) => (
+          <LinearGradient
+            key={f}
+            colors={i === 0 ? ['rgba(40,32,24,0)', 'rgba(40,32,24,0.10)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0)'] : ['rgba(255,255,255,0)', 'rgba(255,255,255,0.45)', 'rgba(40,32,24,0.12)', 'rgba(40,32,24,0)']}
+            locations={[0, 0.48, 0.56, 1]}
+            style={[styles.fold, { top: h * f - 7 }]}
+          />
         ))}
+        {/* The bottom right corner curls up off the seat: it catches light along its edge and
+            shades just inside. */}
+        <LinearGradient colors={['rgba(40,32,24,0)', 'rgba(40,32,24,0)', 'rgba(40,32,24,0.09)', 'rgba(255,255,255,0.45)']} locations={[0, 0.78, 0.95, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         {/* Daylight from the windshield: a soft brightening across the top of the page. */}
         <LinearGradient
           colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0)']}
@@ -96,11 +136,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 18,
     shadowOffset: { width: 4, height: 12 },
-    ...web({ boxShadow: '0 1px 2px rgba(0,0,0,0.30), 2px 8px 16px rgba(0,0,0,0.18), 6px 20px 36px rgba(0,0,0,0.14)', }),
+    // A tight contact shadow where the paper touches the seat, then the soft one under the
+    // lifted parts; and a hairline edge, the paper's own thickness catching light.
+    ...web({ boxShadow: '0 0 0 0.5px rgba(0,0,0,0.12), 0 1px 1.5px rgba(0,0,0,0.35), 2px 6px 12px rgba(0,0,0,0.16), 6px 18px 32px rgba(0,0,0,0.12)' }),
   },
   found: { position: 'absolute', borderWidth: 3, borderColor: color.signal, backgroundColor: 'rgba(212,245,76,0.10)' },
-  crease: { position: 'absolute', left: 0, right: 0, height: 2 },
-  creaseDark: { height: 1, backgroundColor: 'rgba(60,45,30,0.16)' },
-  creaseLight: { height: 1, backgroundColor: 'rgba(255,255,255,0.55)' },
+  fibre: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 1 },
+  panel: { position: 'absolute', left: 0, right: 0, backgroundColor: 'rgba(40,32,24,0.035)' },
+  fold: { position: 'absolute', left: 0, right: 0, height: 14 },
   grain: { opacity: 0.13, ...web({ backgroundImage: GRAIN, mixBlendMode: 'overlay' }) },
 });
