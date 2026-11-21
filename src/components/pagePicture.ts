@@ -81,6 +81,11 @@ export function pictureOf(el: HTMLElement, skip?: Element | null): Promise<PageP
   return job;
 }
 
+/** Drop the picture of `el`, so the next pictureOf takes a new one (the content changed in place). */
+export function forget(el: HTMLElement) {
+  cache.delete(el);
+}
+
 /** Whether the picture of `el` is out of date (it changed size since). */
 export function isStale(el: HTMLElement): boolean {
   const had = cache.get(el);

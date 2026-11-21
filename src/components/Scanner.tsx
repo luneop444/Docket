@@ -7,12 +7,24 @@ import { useInsets } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { Button } from './ui';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
-import { BackdropCtx } from './backdrop';
+import { BackdropCtx, GlassTuneCtx, type GlassTune } from './backdrop';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
 import { SamplePhoto } from './SamplePhoto';
 import { useReduceMotion } from './stepMotion';
 
 const WHITE = colorDark.ink;
+/**
+ * This screen's glass, asked for on this page only (21 Nov): less white, more depth, way more
+ * refraction and splay than the app's glass. The result card goes further still (LiquidSheet).
+ */
+const SCANNER_GLASS: GlassTune = {
+  bend: 2.2,
+  bezel: 0.5,
+  split: 0.45,
+  tint: 0.42,
+  lift: '0 14px 34px rgba(0,0,0,0.18)',
+  rimShade: 0.08,
+};
 /** How long the sample holds still before it takes the photo itself. */
 const AUTO_MS = 1100;
 /** A US letter page, the shape of a settlement. */
@@ -140,6 +152,7 @@ export function Scanner({
 
   return (
     <BackdropCtx.Provider value={backdrop}>
+    <GlassTuneCtx.Provider value={SCANNER_GLASS}>
     <View style={styles.root}>
       <View ref={backdrop as never} style={StyleSheet.absoluteFill} pointerEvents="none">
       {sample ? (
@@ -260,6 +273,7 @@ export function Scanner({
 
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, { opacity: flash }]} />
     </View>
+    </GlassTuneCtx.Provider>
     </BackdropCtx.Provider>
   );
 }

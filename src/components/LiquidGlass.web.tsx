@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createGlass, type Glass } from './glassGL';
 import { SPEC } from './glassPicture';
-import { BAR_TINT_GL, GLASS_CHROMA, frostSlice, GLASS_RIM, GLASS_STANDIN, glassK, glassReach, mapData, scrollerUnder, sliceMap } from './glassLook';
+import { BAR_TINT_GL, chromaTimes, frostSlice, GLASS_RIM, GLASS_STANDIN, glassK, glassReach, lensMap, mapData, rimWith, scrollerUnder } from './glassLook';
 import { isStale, pictureOf, sliceAt, type PagePicture, type Slice } from './pagePicture';
 import { MOVE_EVENT } from './contentMove';
-import { BackdropCtx } from './backdrop';
+import { BackdropCtx, GlassTuneCtx } from './backdrop';
 
 /**
  * The nav bar's liquid glass (TabBar.web.tsx) for small floating pills: the onboarding back
@@ -40,6 +40,7 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
   const content = useRef<HTMLElement | null>(null);
   const [live, setLive] = useState(false);
   const scale = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
+  const tune = useContext(GlassTuneCtx);
 
   const frame = useCallback(() => {
     const p = pic.current, el = content.current;
@@ -65,16 +66,16 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
         outOrigin: at,
         outSize: size,
         scale,
-        barK: glassK(r.h),
-        lensK: glassK(r.h),
-        chroma: GLASS_CHROMA,
+        barK: [glassK(r.h)[0] * tune.bend, glassK(r.h)[1] * tune.bend],
+        lensK: [glassK(r.h)[0] * tune.bend, glassK(r.h)[1] * tune.bend],
+        chroma: chromaTimes(tune.split),
         spec: SPEC,
-        barTint: BAR_TINT_GL,
+        barTint: tune.tint == null ? BAR_TINT_GL : [BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2], tune.tint],
         pillTint: [0, 0, 0, 0],
         isPill: false,
       });
     }
-  }, [scale]);
+  }, [scale, tune]);
 
   // Find the content under the group and get its picture (taken once the screen settles).
   // Over a photo (the scanner), the glass bends the photo; otherwise the page scrolling under it.
@@ -142,7 +143,7 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
       if (!g) return () => {};
       const rec: Rec = { ...r, g, slice: null };
       recs.current.add(rec);
-      void mapData(sliceMap(r.w, r.h), r.w, r.h, { x: 0, y: 0, w: r.w, h: r.h }, scale).then((m) => {
+      void mapData(lensMap(r.w, r.h, tune.bezel ?? undefined), r.w, r.h, { x: 0, y: 0, w: r.w, h: r.h }, scale).then((m) => {
         g.setMaps(m, m);
         requestAnimationFrame(() => frame());
       });
@@ -176,12 +177,17 @@ export function LiquidPill({ w, h, on = true, children }: { w: number; h: number
     return add({ el: el.current, cv: cv.current, w, h });
   }, [add, w, h]);
   const r = h / 2;
+  const tune = useContext(GlassTuneCtx);
+  const tuned: CSSProperties = {
+    ...(tune.tint == null ? null : { background: `rgba(255,255,255,${tune.tint})` }),
+    ...(tune.lift == null ? null : { boxShadow: `0 0 0 0.5px rgba(0,0,0,0.10), ${tune.lift}` }),
+  };
   return (
     <div ref={el} style={{ ...S.pill, width: w, height: h, borderRadius: r }}>
-      <div style={{ ...S.glass, borderRadius: r, opacity: on ? 1 : 0 }}>
+      <div style={{ ...S.glass, ...tuned, borderRadius: r, opacity: on ? 1 : 0 }}>
         {/* A new size gets a new canvas: the old one's WebGL context was let go with its glass. */}
         <canvas key={`${w}x${h}`} ref={cv} aria-hidden style={{ ...S.cv, opacity: group?.live ? 1 : 0 }} />
-        <div style={{ ...S.rim, borderRadius: r }} />
+        <div style={{ ...S.rim, ...(tune.rimShade == null ? null : { boxShadow: rimWith(tune.rimShade) }), borderRadius: r }} />
       </div>
       <div style={S.content}>{children}</div>
     </div>

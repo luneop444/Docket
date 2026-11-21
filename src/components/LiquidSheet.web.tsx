@@ -2,11 +2,11 @@ import { useContext, useEffect, useRef, useState, type CSSProperties, type React
 import { BackdropCtx } from './backdrop';
 import { glassEdge, radius } from '../theme/tokens';
 import { createGlass, type Glass } from './glassGL';
-import { BAR_TINT_GL, FROST, GLASS_CHROMA, glassK, mapData } from './glassLook';
+import { BAR_TINT_GL, chromaTimes, FROST, glassK, mapData, rimWith } from './glassLook';
+import { forget, pictureOf, sliceAt } from './pagePicture';
 import { frosted, SPEC } from './glassPicture';
 import { squircleExtent, squirclePath } from '../logic/squircle';
 
-type Html2Canvas = (el: HTMLElement, o: Record<string, unknown>) => Promise<HTMLCanvasElement>;
 
 export { BackdropCtx };
 
@@ -31,17 +31,17 @@ const RIM_H = 120;
  * fringe ends up slightly smaller than before (85%) despite the stronger bend, less white
  * (52%), and more depth (a deeper lift and lower rim).
  */
-const BEZEL_PX = 100;
-const SHEET_BEND = 2;
-const SHEET_SPLIT = 0.425;
-export const SHEET_TINT = 0.52;
-const SHEET_LIFT = '0 16px 40px rgba(0,0,0,0.16)';
-const SHEET_RIM = 'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(0,0,0,0.08), inset 0 0 0 1px rgba(255,255,255,0.45)';
+const BEZEL_PX = 170; // way more splay: 170 of the card's ~410 points (100 before)
+const SHEET_BEND = 3.6; // way more refraction: about 170 points at the very edge (2 before)
+const SHEET_SPLIT = 0.25; // the colour split held near where it was as the bend grew
+export const SHEET_TINT = 0.4; // less white (52% before)
+const SHEET_LIFT = '0 22px 52px rgba(0,0,0,0.22)'; // more depth (0 16 40 at 16% before)
+const SHEET_RIM = rimWith(0.1);
 const sheetK = (): [number, number] => {
   const [k] = glassK(RIM_H);
   return [k * SHEET_BEND, k * SHEET_BEND];
 };
-const SHEET_CHROMA: [number, number, number] = [1 + (GLASS_CHROMA[0] - 1) * SHEET_SPLIT, 1 + (GLASS_CHROMA[1] - 1) * SHEET_SPLIT, 1];
+const SHEET_CHROMA = chromaTimes(SHEET_SPLIT);
 
 export function LiquidSheet({ children, tint = SHEET_TINT }: { children: ReactNode; tint?: number }) {
   const backdrop = useContext(BackdropCtx);
@@ -71,8 +71,8 @@ export function LiquidSheet({ children, tint = SHEET_TINT }: { children: ReactNo
       const b = el.getBoundingClientRect(), p = bd.getBoundingClientRect();
       const at: [number, number] = [b.left, b.top], sz: [number, number] = [b.width, b.height];
       g.draw({
-        pageOrigin: [p.left, p.top],
-        pageSize: [p.width, p.height],
+        pageOrigin: [p.left, p.top + top],
+        pageSize: [p.width, tall],
         barOrigin: at,
         barSize: sz,
         pillOrigin: at,
@@ -98,19 +98,23 @@ export function LiquidSheet({ children, tint = SHEET_TINT }: { children: ReactNo
       if (gone) return;
       g.setMaps(m, m);
     });
-    const t = window.setTimeout(async () => {
-      const { default: html2canvas } = (await import('html2canvas')) as unknown as { default: Html2Canvas };
-      const shot = await html2canvas(bd, { scale, backgroundColor: '#0B0B0C', logging: false, useCORS: true, ignoreElements: (e: Element) => (e as HTMLElement).dataset?.noglass === '1' }).catch(() => null);
-      if (!shot || gone) return;
-      g.setPage(frosted(shot, scale, FROST));
+    // The same picture of the photo the pills bend (pagePicture), taken once the screen settles.
+    let top = 0, tall = 1;
+    // A fresh picture: the page now shows the lines it read, which the earlier one didn't.
+    forget(bd);
+    void pictureOf(bd).then((p) => {
+      if (!p || gone) return;
+      const sl = sliceAt(p, 0, p.slices[0]?.height ?? 0);
+      top = sl.top;
+      tall = sl.height;
+      g.setPage(frosted(sl.canvas, p.scale, FROST));
       setLive(true);
       follow(performance.now() + 900);
-    }, 450);
+    });
     const kick = () => draw();
     window.addEventListener('resize', kick);
     return () => {
       gone = true;
-      clearTimeout(t);
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', kick);
       (c.getContext('webgl') as WebGLRenderingContext | null)?.getExtension('WEBGL_lose_context')?.loseContext();

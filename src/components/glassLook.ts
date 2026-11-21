@@ -124,7 +124,7 @@ export function mapData(src: string | Promise<string>, w: number, h: number, box
  * fading to flat, the same falloff as Aave's (their strongest 243 included). Blue darkens
  * the outer 3px a touch, as theirs does.
  */
-export function lensMap(w: number, h: number): Promise<string> {
+export function lensMap(w: number, h: number, bezel = BEZEL): Promise<string> {
   const W = Math.max(1, Math.round(w)), H = Math.max(1, Math.round(h));
   const c = document.createElement('canvas');
   c.width = W;
@@ -132,7 +132,7 @@ export function lensMap(w: number, h: number): Promise<string> {
   const ctx = c.getContext('2d')!;
   const img = ctx.createImageData(W, H);
   const R = Math.min(W, H) / 2;
-  const B = Math.max(3, BEZEL * H);
+  const B = Math.max(3, bezel * H);
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const px = x + 0.5, py = y + 0.5;
@@ -174,3 +174,8 @@ export function frostSlice(sl: Slice, scale: number): HTMLCanvasElement {
   }
   return f;
 }
+
+/** The glass's rims with a given shade on the lower inner rim (the system's is 4%). */
+export const rimWith = (shade: number) => `inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(0,0,0,${shade}), inset 0 0 0 1px rgba(255,255,255,0.45)`;
+/** The system's colour split, scaled. */
+export const chromaTimes = (k: number): [number, number, number] => [1 + (GLASS_CHROMA[0] - 1) * k, 1 + (GLASS_CHROMA[1] - 1) * k, 1];
