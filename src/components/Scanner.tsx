@@ -9,7 +9,6 @@ import { Button } from './ui';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
 import { BackdropCtx, RiseCtx } from './backdrop';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
-import { FrameBlur } from './FrameBlur';
 import { SamplePhoto } from './SamplePhoto';
 import { useReduceMotion } from './stepMotion';
 
@@ -191,9 +190,6 @@ export function Scanner({
           <Path fillRule="evenodd" fill={protoColor.scrim} d={`M0 0H${width}V${height}H0Z ${holePath(gx, gy, gw, gh, reduce ? holeTo : holeT)}`} />
         </Svg>
       </View>
-      {/* Out of focus outside the frame, like the camera's depth of field: a blur masked to the
-          same shape as the scrim's hole. */}
-      <FrameBlur width={width} height={height} hole={holePath(gx, gy, gw, gh, reduce ? holeTo : holeT)} />
 
       {stage === 'reading' ? <Beam x={gx} y={gy} w={gw} h={gh} /> : null}
 
