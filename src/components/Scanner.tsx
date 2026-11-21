@@ -67,6 +67,26 @@ export function Scanner({
   // The sample's page is found once; it stays found after the photo.
   const [found, setFound] = useState(false);
   const locked = sample && found;
+  // The scrim's hole: 0 is the frame, 1 is the found page. Eased over the outline's settle.
+  const [holeT, setHoleT] = useState(0);
+  const holeTo = locked ? 1 : 0;
+  useEffect(() => {
+    if (reduce) return;
+    let raf = 0;
+    const from = holeT;
+    const start = performance.now();
+    const step = () => {
+      const f = Math.min(1, (performance.now() - start) / 320);
+      const e = 1 - Math.pow(1 - f, 3);
+      setHoleT(from + (holeTo - from) * e);
+      if (f < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+    // Runs on the target changing; holeT is where it starts from, not a reason to rerun.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holeTo, reduce]);
+
   // Auto-capture: once the page is found and still, a ring fills round the shutter, then it shoots.
   const [hold, setHold] = useState(0);
   const [flash] = useState(() => new Animated.Value(0));
@@ -153,9 +173,11 @@ export function Scanner({
         )}
         {/* Everything outside the frame sits under the app's scrim (the one behind sheets), so
             the page is the brightest thing. The hole is the frame's squircle, at the chip
-            radius like the brackets. Inside the photo layer, so the glass bends it too. */}
+            radius like the brackets; once the page is found it tightens with the outline onto
+            the page itself (square corners, the page's turn). Inside the photo layer, so the
+            glass bends it too. */}
         <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
-          <Path fillRule="evenodd" fill={protoColor.scrim} d={`M0 0H${width}V${height}H0Z ${holePath(gx, gy, gw, gh)}`} />
+          <Path fillRule="evenodd" fill={protoColor.scrim} d={`M0 0H${width}V${height}H0Z ${holePath(gx, gy, gw, gh, reduce ? holeTo : holeT)}`} />
         </Svg>
       </View>
 
@@ -355,10 +377,21 @@ function Rise({ children }: { children: ReactNode }) {
  * One corner guide: two straight arms joined by the app's squircle (the Squircle plugin's
  * curve at the chip radius), not a circular arc.
  */
-/** The frame's outline as a squircle at the chip radius, placed at x, y. */
-function holePath(x: number, y: number, w: number, h: number) {
-  const r = squircleExtent(radius.chip, w, h);
-  return squirclePath(w, h, [r, r, r, r]).replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g, (_, a, b) => `${+a + x} ${+b + y}`);
+/**
+ * The scrim's hole. At t = 0 it's the frame (x, y, w, h) as a squircle at the chip radius; at
+ * t = 1 it's the found page's outline as SamplePhoto draws it: 6 in from the frame, square
+ * corners, turned PAGE_TURN degrees about its center.
+ */
+const PAGE_TURN = -2.2;
+function holePath(x: number, y: number, w: number, h: number, t: number) {
+  const ix = x + 6 * t, iy = y + 6 * t, iw = w - 12 * t, ih = h - 12 * t;
+  const r = squircleExtent(radius.chip, iw, ih) * (1 - t);
+  const a = (PAGE_TURN * t * Math.PI) / 180, c = Math.cos(a), sn = Math.sin(a);
+  const cx = iw / 2, cy = ih / 2;
+  return squirclePath(iw, ih, [r, r, r, r]).replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g, (_, px, py) => {
+    const dx = +px - cx, dy = +py - cy;
+    return `${(ix + cx + dx * c - dy * sn).toFixed(2)} ${(iy + cy + dx * sn + dy * c).toFixed(2)}`;
+  });
 }
 
 function Bracket({ at }: { at: 'tl' | 'tr' | 'bl' | 'br' }) {
