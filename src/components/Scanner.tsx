@@ -5,7 +5,6 @@ import { squircleExtent, squirclePath } from '../logic/squircle';
 import { color, colorDark, protoColor, radius, type as typo } from '../theme/tokens';
 import { useInsets } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
-import { Button } from './ui';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
 import { BackdropCtx, RiseCtx } from './backdrop';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
@@ -245,6 +244,10 @@ export function Scanner({
       <View style={[styles.bottom, { paddingBottom: footerBottom + 12 }]} pointerEvents="box-none">
         <Text style={styles.privacy}>Sent once to Claude to read. Not stored, and your company never sees it.</Text>
         <View style={styles.controls}>
+          {/* After the iPhone's own camera (iOS 26): the shutter is a white disc on a liquid
+              glass circle, the last shot sits in a circle to its left, and the other action is
+              glass to its right. Only what this page uses: no modes, no flip (pages are shot
+              with the back camera). */}
           <View style={styles.side}>
             {pages.length ? (
               <View style={styles.thumbWrap} accessibilityLabel={`${pages.length} page${pages.length === 1 ? '' : 's'} so far`}>
@@ -252,10 +255,11 @@ export function Scanner({
                   {last?.preview ? (
                     <Image source={{ uri: last.preview }} style={styles.thumbImg} />
                   ) : sample ? (
-                    // The drawn page, shrunk whole to fit the thumbnail.
-                    <View style={{ position: 'absolute', left: (48 - (gw - 12)) / 2, top: (64 - (gh - 12)) / 2, width: gw - 12, height: gh - 12, transform: [{ scale: 48 / (gw - 12) }] }}>{samplePage}</View>
+                    // The drawn page, a little wider than the circle, top edge showing: how the
+                    // camera's round thumbnail crops a photo of a page.
+                    <View style={{ position: 'absolute', left: (THUMB - (gw - 12)) / 2, top: ((gh - 12) * (THUMB * 1.15) / (gw - 12) - (gh - 12)) / 2 + 8, width: gw - 12, height: gh - 12, transform: [{ scale: (THUMB * 1.15) / (gw - 12) }] }}>{samplePage}</View>
                   ) : (
-                    <View style={styles.thumbPdf}><DocIcon c={color.ink} size={18} /></View>
+                    <View style={styles.thumbPdf}><DocIcon c={color.ink} size={20} /></View>
                   )}
                 </View>
                 <View style={styles.count}>
@@ -263,19 +267,27 @@ export function Scanner({
                 </View>
               </View>
             ) : (
-              <View style={[styles.thumb, styles.thumbEmpty]} />
+              <GlassPill h={THUMB} minW={THUMB} fixed>
+                <View />
+              </GlassPill>
             )}
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel={auto ? 'Taking the photo. Tap to take it now' : 'Take the photo'} onPress={shoot} style={({ pressed }) => [styles.shutter, pressed && styles.shutterDown]}>
-            <View style={styles.shutterIn}>{state === 'off' && !sample ? <CameraIcon c={color.ink} size={24} /> : null}</View>
+          <GlassPill h={SHUTTER} minW={SHUTTER} fixed>
+            <Pressable accessibilityRole="button" accessibilityLabel={auto ? 'Taking the photo. Tap to take it now' : 'Take the photo'} onPress={shoot} style={({ pressed }) => [styles.shutter, pressed && styles.shutterDown]}>
+              <View style={styles.shutterIn}>{state === 'off' && !sample ? <CameraIcon c={color.ink} size={24} /> : null}</View>
+            </Pressable>
             {hold > 0 ? (
-              <Svg width={80} height={80} style={styles.ring} pointerEvents="none">
-                <Circle cx={40} cy={40} r={38} stroke={color.signal} strokeWidth={4} fill="none" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 38}`} strokeDashoffset={2 * Math.PI * 38 * (1 - hold)} transform="rotate(-90 40 40)" />
+              <Svg width={SHUTTER} height={SHUTTER} style={styles.ring} pointerEvents="none">
+                <Circle cx={SHUTTER / 2} cy={SHUTTER / 2} r={SHUTTER / 2 - 2} stroke={color.signal} strokeWidth={3} fill="none" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * (SHUTTER / 2 - 2)}`} strokeDashoffset={2 * Math.PI * (SHUTTER / 2 - 2) * (1 - hold)} transform={`rotate(-90 ${SHUTTER / 2} ${SHUTTER / 2})`} />
               </Svg>
             ) : null}
-          </Pressable>
+          </GlassPill>
           <View style={[styles.side, styles.sideRight]}>
-            <Button label="Done" variant="white" small disabled={!pages.length} onPress={onDone} style={styles.done} />
+            <GlassPill h={THUMB} minW={THUMB} pad={22}>
+              <Pressable accessibilityRole="button" accessibilityLabel={pages.length ? `Done, read ${pages.length} page${pages.length === 1 ? '' : 's'}` : 'Done'} accessibilityState={{ disabled: !pages.length }} disabled={!pages.length} onPress={onDone} style={({ pressed }) => [styles.doneHit, pressed && styles.pressed]}>
+                <Text style={[styles.doneText, !pages.length && styles.doneOff]}>Done</Text>
+              </Pressable>
+            </GlassPill>
           </View>
         </View>
       </View>
@@ -400,6 +412,10 @@ function Rise({ children }: { children: ReactNode }) {
  * One corner guide: two straight arms joined by the app's squircle (the Squircle plugin's
  * curve at the chip radius), not a circular arc.
  */
+/** The camera's bottom row (iOS 26 sizes): the shutter's glass circle and the side circles. */
+const SHUTTER = 84;
+const THUMB = 60;
+
 /** How long the hand takes to bring the sample page into the frame. */
 const HAND_MS = 1500;
 
@@ -476,19 +492,20 @@ const styles = StyleSheet.create({
   controls: { width: '100%', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24 },
   side: { flex: 1, alignItems: 'flex-start' },
   sideRight: { alignItems: 'flex-end' },
-  thumbWrap: { width: 52, height: 68 },
-  thumb: { width: 52, height: 68, borderRadius: 12, borderCurve: 'continuous', borderWidth: 2, borderColor: WHITE, overflow: 'hidden', backgroundColor: '#FFF' },
-  thumbEmpty: { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.35)', borderStyle: 'dashed' },
-  thumbImg: { width: '100%', height: '100%', borderRadius: 8 },
+  thumbWrap: { width: THUMB, height: THUMB },
+  thumb: { width: THUMB, height: THUMB, borderRadius: THUMB / 2, overflow: 'hidden', backgroundColor: '#F6F4EF' },
+  thumbImg: { width: '100%', height: '100%' },
   thumbPdf: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  count: { zIndex: 2, position: 'absolute', top: -8, right: -8, minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 5, backgroundColor: color.signal, alignItems: 'center', justifyContent: 'center' },
+  count: { zIndex: 2, position: 'absolute', top: -4, right: -4, minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 5, backgroundColor: color.signal, alignItems: 'center', justifyContent: 'center' },
   countText: { ...typo.labelPill, color: color.ink },
-  shutter: { width: 80, height: 80, borderRadius: 40, borderWidth: 4, borderColor: WHITE, alignItems: 'center', justifyContent: 'center', ...(Platform.OS === 'web' ? ({ boxShadow: '0 2px 10px rgba(0,0,0,0.22), inset 0 0 0 0.5px rgba(0,0,0,0.12)' } as object) : null) },
-  shutterDown: { transform: [{ scale: 0.94 }] },
-  shutterIn: { width: 64, height: 64, borderRadius: 32, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },
+  shutter: { width: SHUTTER, height: SHUTTER, alignItems: 'center', justifyContent: 'center' },
+  shutterDown: { transform: [{ scale: 0.92 }] },
+  shutterIn: { width: SHUTTER - 20, height: SHUTTER - 20, borderRadius: (SHUTTER - 20) / 2, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', ...(Platform.OS === 'web' ? ({ boxShadow: '0 1px 3px rgba(0,0,0,0.12)' } as object) : null) },
   flash: { backgroundColor: WHITE },
-  done: { width: 96 },
-  ring: { position: 'absolute', top: -4, left: -4 },
+  doneHit: { height: THUMB, justifyContent: 'center' },
+  doneText: { ...typo.labelControl, color: color.ink },
+  doneOff: { color: color.faint },
+  ring: { position: 'absolute', top: 0, left: 0 },
   bracket: { position: 'absolute' },
   still: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   circleSpace: { width: 44, height: 44 },
