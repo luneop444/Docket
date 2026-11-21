@@ -315,12 +315,17 @@ export function Scanner({
             )}
           </View>
           <GlassPill h={SHUTTER} minW={SHUTTER} fixed>
-            <Pressable accessibilityRole="button" accessibilityLabel={auto ? 'Taking the photo. Tap to take it now' : 'Take the photo'} onPress={shoot} style={({ pressed }) => [styles.shutter, pressed && styles.shutterDown]}>
-              <View style={styles.shutterIn}>{state === 'off' && !sample ? <CameraIcon c={color.ink} size={24} /> : null}</View>
+            {/* The groove: a thin dark gap between the glass ring and the disc, as on the iPhone. */}
+            <Svg width={SHUTTER} height={SHUTTER} style={styles.ring} pointerEvents="none">
+              <Circle cx={SHUTTER / 2} cy={SHUTTER / 2} r={DISC / 2 + GROOVE / 2} stroke="rgba(0,0,0,0.38)" strokeWidth={GROOVE} fill="none" />
+            </Svg>
+            <Pressable accessibilityRole="button" accessibilityLabel={auto ? 'Taking the photo. Tap to take it now' : 'Take the photo'} onPress={shoot} style={styles.shutter}>
+              {({ pressed }) => <View style={[styles.shutterIn, pressed && styles.shutterDown]}>{state === 'off' && !sample ? <CameraIcon c={color.ink} size={24} /> : null}</View>}
             </Pressable>
+            {/* Auto-capture fills the glass ring itself, lime, round from the top. */}
             {hold > 0 ? (
               <Svg width={SHUTTER} height={SHUTTER} style={styles.ring} pointerEvents="none">
-                <Circle cx={SHUTTER / 2} cy={SHUTTER / 2} r={SHUTTER / 2 - 2} stroke={color.signal} strokeWidth={3} fill="none" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * (SHUTTER / 2 - 2)}`} strokeDashoffset={2 * Math.PI * (SHUTTER / 2 - 2) * (1 - hold)} transform={`rotate(-90 ${SHUTTER / 2} ${SHUTTER / 2})`} />
+                <Circle cx={SHUTTER / 2} cy={SHUTTER / 2} r={RING_R} stroke={color.signal} strokeWidth={RING_W} fill="none" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * RING_R}`} strokeDashoffset={2 * Math.PI * RING_R * (1 - hold)} transform={`rotate(-90 ${SHUTTER / 2} ${SHUTTER / 2})`} />
               </Svg>
             ) : null}
           </GlassPill>
@@ -504,7 +509,16 @@ function Rise({ children, onHeight }: { children: ReactNode; onHeight: (h: numbe
  * curve at the chip radius), not a circular arc.
  */
 /** The camera's bottom row (iOS 26 sizes): the shutter's glass circle and the side circles. */
-const SHUTTER = 84;
+const SHUTTER = 80;
+/**
+ * Measured off the iPhone's own shutter (iOS 26, at 3x): an 80pt glass circle, a 68pt white
+ * disc, and between them a 4pt glass ring and a 2pt dark groove. Pressing shrinks the disc,
+ * not the ring.
+ */
+const DISC = 68;
+const GROOVE = 2;
+const RING_W = (SHUTTER - DISC) / 2 - GROOVE;
+const RING_R = SHUTTER / 2 - RING_W / 2;
 /**
  * The scanner's spacing, from the app's own: the 20 screen edge (every screen's side padding,
  * and the tab bar's inset), the 52 header bar with its 44 pills centred in it, and the 12 and
@@ -650,8 +664,8 @@ const styles = StyleSheet.create({
   count: { zIndex: 2, position: 'absolute', top: -4, right: -4, minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 5, backgroundColor: color.signal, alignItems: 'center', justifyContent: 'center' },
   countText: { ...typo.labelPill, color: color.ink },
   shutter: { width: SHUTTER, height: SHUTTER, alignItems: 'center', justifyContent: 'center' },
-  shutterDown: { transform: [{ scale: 0.92 }] },
-  shutterIn: { width: SHUTTER - 20, height: SHUTTER - 20, borderRadius: (SHUTTER - 20) / 2, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', ...(Platform.OS === 'web' ? ({ boxShadow: '0 1px 3px rgba(0,0,0,0.12)' } as object) : null) },
+  shutterDown: { transform: [{ scale: 0.9 }] },
+  shutterIn: { width: DISC, height: DISC, borderRadius: DISC / 2, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },
   flash: { backgroundColor: WHITE },
   scrimSvg: { position: 'absolute', left: 0 },
   doneHit: { height: THUMB, justifyContent: 'center' },
