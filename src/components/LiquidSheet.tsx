@@ -1,8 +1,9 @@
-import { createContext, type ReactNode, type RefObject } from 'react';
+import type { ReactNode } from 'react';
+import { BackdropCtx } from './backdrop';
 import { View } from 'react-native';
 import { glassDense, radius } from '../theme/tokens';
 
-export const BackdropCtx = createContext<RefObject<unknown> | null>(null);
+export { BackdropCtx };
 
 /** Native: the glass sheet without the web lens (the native build will use the system's glass). */
 export function LiquidSheet({ children }: { children: ReactNode; tint?: number }) {

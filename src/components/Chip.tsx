@@ -15,6 +15,7 @@ export function Chip({ text, tone = 'plain' }: { text: string; tone?: 'plain' | 
 
 const styles = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: color.raise2 },
-  flag: { backgroundColor: 'rgba(201,49,31,0.10)' },
+  // Solid, so red text keeps its contrast on glass over anything (5:1 on flagBg).
+  flag: { backgroundColor: color.flagBg },
   lime: { backgroundColor: color.signal },
 });

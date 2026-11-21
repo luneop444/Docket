@@ -4,6 +4,7 @@ import { SPEC } from './glassPicture';
 import { BAR_TINT_GL, GLASS_CHROMA, frostSlice, GLASS_RIM, GLASS_STANDIN, glassK, glassReach, mapData, scrollerUnder, sliceMap } from './glassLook';
 import { isStale, pictureOf, sliceAt, type PagePicture, type Slice } from './pagePicture';
 import { MOVE_EVENT } from './contentMove';
+import { BackdropCtx } from './backdrop';
 
 /**
  * The nav bar's liquid glass (TabBar.web.tsx) for small floating pills: the onboarding back
@@ -76,9 +77,11 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
   }, [scale]);
 
   // Find the content under the group and get its picture (taken once the screen settles).
+  // Over a photo (the scanner), the glass bends the photo; otherwise the page scrolling under it.
+  const backdrop = useContext(BackdropCtx);
   const load = useCallback(() => {
     const el = root.current;
-    const c = el ? ((scrollerUnder(el, el)?.firstElementChild as HTMLElement | null) ?? null) : null;
+    const c = (backdrop ? backdrop.current : null) ?? (el ? ((scrollerUnder(el, el)?.firstElementChild as HTMLElement | null) ?? null) : null);
     if (!c) return false;
     content.current = c;
     void pictureOf(c).then((p) => {
@@ -89,7 +92,7 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
       requestAnimationFrame(frame);
     });
     return true;
-  }, [frame]);
+  }, [frame, backdrop]);
 
   useEffect(() => {
     let tries = 0;

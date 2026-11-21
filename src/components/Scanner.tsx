@@ -7,17 +7,11 @@ import { useInsets } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { Button } from './ui';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
-import { BackdropCtx } from './LiquidSheet';
+import { BackdropCtx } from './backdrop';
+import { LiquidGroup, LiquidPill } from './LiquidGlass';
 import { SamplePhoto } from './SamplePhoto';
 import { useReduceMotion } from './stepMotion';
 
-/** Dark glass for controls over the camera (the app's glass, for a dark backdrop). */
-const DARK_GLASS = {
-  backgroundColor: 'rgba(40,40,42,0.55)',
-  borderWidth: StyleSheet.hairlineWidth,
-  borderColor: 'rgba(255,255,255,0.18)',
-  ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(18px) saturate(140%)', WebkitBackdropFilter: 'blur(18px) saturate(140%)' } as object) : null),
-};
 const WHITE = colorDark.ink;
 /** How long the sample holds still before it takes the photo itself. */
 const AUTO_MS = 1100;
@@ -176,27 +170,37 @@ export function Scanner({
 
       {/* Top: close, what's being scanned, a file instead. */}
       <View style={[styles.top, { paddingTop: top + 8 }]} pointerEvents="box-none">
-        <Pressable accessibilityRole="button" accessibilityLabel="Close the scanner" onPress={onClose} style={({ pressed }) => [styles.circle, DARK_GLASS, pressed && styles.pressed]}>
-          <CloseIcon c={WHITE} size={16} />
-        </Pressable>
-        <View style={[styles.titlePill, DARK_GLASS]}>
-          <Text style={styles.title} numberOfLines={1}>{title}</Text>
-        </View>
-        {stage === 'capture' ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Choose a PDF or screenshot instead" onPress={onFile} style={({ pressed }) => [styles.filePill, DARK_GLASS, pressed && styles.pressed]}>
-            <DocIcon c={WHITE} size={16} />
-            <Text style={styles.fileText}>File</Text>
+        <GlassPill h={44} minW={44}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close the scanner" onPress={onClose} style={({ pressed }) => [styles.circle, pressed && styles.pressed]}>
+            <CloseIcon c={color.ink} size={16} />
           </Pressable>
+        </GlassPill>
+        <GlassPill h={44} minW={80} pad={16}>
+          <Text style={styles.title} numberOfLines={1}>{title}</Text>
+        </GlassPill>
+        {stage === 'capture' ? (
+          <GlassPill h={44} minW={44}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Choose a PDF or screenshot instead" onPress={onFile} style={({ pressed }) => [styles.filePill, pressed && styles.pressed]}>
+              <DocIcon c={color.ink} size={16} />
+              <Text style={styles.fileText}>File</Text>
+            </Pressable>
+          </GlassPill>
         ) : (
           <View style={styles.circleSpace} />
         )}
       </View>
       {stage !== 'capture' ? null : <>
       <View style={[styles.chipRow, { top: top + 8 + 44 + 12 }]} pointerEvents="none">
-        <View style={[styles.chip, locked ? styles.chipLocked : DARK_GLASS]}>
-          {locked ? <CheckIcon c={color.ink} size={12} /> : null}
-          <Text style={[styles.chipText, locked && styles.chipTextLocked]}>{chip}</Text>
-        </View>
+        {locked ? (
+          <View style={[styles.chip, styles.chipLocked]}>
+            <CheckIcon c={color.ink} size={12} />
+            <Text style={[styles.chipText, styles.chipTextLocked]}>{chip}</Text>
+          </View>
+        ) : (
+          <GlassPill h={36} minW={60} pad={14}>
+            <Text style={styles.chipText}>{chip}</Text>
+          </GlassPill>
+        )}
       </View>
 
       {/* Bottom: pages so far, the shutter, done. */}
@@ -242,11 +246,13 @@ export function Scanner({
 
       {stage === 'reading' && progress ? (
         <View style={[styles.progressRow, { bottom: footerBottom + 40 }]} pointerEvents="none">
-          <View style={[styles.progress, DARK_GLASS]} accessibilityRole="progressbar" accessibilityLabel={`${progress.text}, ${progress.pct}%`}>
-            <Text style={styles.pct}>{progress.pct}%</Text>
-            <Text style={styles.progressText} numberOfLines={1}>{progress.text}</Text>
-            <Dots />
-          </View>
+          <GlassPill h={72} minW={Math.min(360, width - 48)} fixed>
+            <View style={styles.progress} accessibilityRole="progressbar" accessibilityLabel={`${progress.text}, ${progress.pct}%`}>
+              <Text style={styles.pct}>{progress.pct}%</Text>
+              <Text style={styles.progressText} numberOfLines={1}>{progress.text}</Text>
+              <Dots />
+            </View>
+          </GlassPill>
         </View>
       ) : null}
 
@@ -255,6 +261,26 @@ export function Scanner({
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, { opacity: flash }]} />
     </View>
     </BackdropCtx.Provider>
+  );
+}
+
+/**
+ * A control in the app's liquid glass (the nav bar's, LiquidGlass.web.tsx), bending the photo
+ * behind the scanner. It hugs its content: measured once laid out.
+ */
+function GlassPill({ h, minW, pad = 0, fixed, children }: { h: number; minW: number; pad?: number; fixed?: boolean; children: ReactNode }) {
+  const [w, setW] = useState(minW);
+  return (
+    <LiquidGroup>
+      <LiquidPill w={w} h={h}>
+        <View
+          onLayout={fixed ? undefined : (e) => setW(Math.max(minW, Math.ceil(e.nativeEvent.layout.width)))}
+          style={[{ height: h, paddingHorizontal: pad, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }, fixed && { width: w }]}
+        >
+          {children}
+        </View>
+      </LiquidPill>
+    </LiquidGroup>
   );
 }
 
@@ -344,15 +370,14 @@ const styles = StyleSheet.create({
   guide: { position: 'absolute' },
   top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, gap: 10 },
   circle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  titlePill: { flexShrink: 1, height: 36, borderRadius: 18, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
-  title: { ...typo.labelControl, color: WHITE },
+  title: { ...typo.labelControl, color: color.ink },
   filePill: { height: 44, borderRadius: 22, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  fileText: { ...typo.labelControl, color: WHITE },
+  fileText: { ...typo.labelControl, color: color.ink },
   pressed: { opacity: 0.6 },
   chipRow: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 34, borderRadius: 17, paddingHorizontal: 14 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, borderRadius: 18, paddingHorizontal: 14 },
   chipLocked: { backgroundColor: color.signal },
-  chipText: { ...typo.labelSmall, color: WHITE },
+  chipText: { ...typo.labelSmall, color: color.ink },
   chipTextLocked: { color: color.ink },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', gap: 16 },
   privacy: { ...typo.bodyTiny, color: colorDark.sub, textAlign: 'center', paddingHorizontal: 32 },
@@ -378,10 +403,10 @@ const styles = StyleSheet.create({
   beam: { height: 3, borderRadius: 2, backgroundColor: color.signal, ...(Platform.OS === 'web' ? ({ boxShadow: `0 0 18px ${color.signal}` } as object) : null) },
   wash: { position: 'absolute', left: 0, right: 0, bottom: 3, height: 44, backgroundColor: color.signal, opacity: 0.16 },
   progressRow: { position: 'absolute', left: 24, right: 24, alignItems: 'center' },
-  progress: { width: '100%', maxWidth: 360, height: 72, borderRadius: 36, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, gap: 16 },
-  pct: { ...typo.numberS, color: WHITE, minWidth: 48, fontVariant: ['tabular-nums'] },
-  progressText: { ...typo.labelButton, flex: 1, color: WHITE },
+  progress: { flex: 1, height: 72, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, gap: 16 },
+  pct: { ...typo.numberS, color: color.ink, minWidth: 48, fontVariant: ['tabular-nums'] },
+  progressText: { ...typo.labelButton, flex: 1, color: color.ink },
   dots: { flexDirection: 'row', gap: 5 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: WHITE },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.ink },
   sheetWrap: { position: 'absolute', left: 8, right: 8, bottom: 8 },
 });

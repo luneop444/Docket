@@ -332,13 +332,13 @@ function Review({
 }
 
 /**
- * The sheet's glass tint: Glass / Dense (82% white), so red text over the dark photo passes
- * contrast. The nav bar's exact 62% can be tried with ?sheettint=0.62.
+ * The sheet's glass tint: the nav bar's exact 62%. Red sits only in solid chips, which carry
+ * their own contrast, so the glass doesn't have to. Try others with ?sheettint=0.82.
  */
 const SHEET_TINT = (() => {
-  if (typeof window === 'undefined') return 0.82;
+  if (typeof window === 'undefined') return 0.62;
   const v = parseFloat(new URLSearchParams(window.location.search).get('sheettint') ?? '');
-  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.82;
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.62;
 })();
 
 const READING = ['Reading the page', 'Finding your loads', 'Matching detention', 'Matching detention'];
@@ -391,12 +391,12 @@ function Found({
         {short > 0 ? (
           <>
             <T v="numberL">{money(short)}</T>
-            <T v="bodySmall" c={color.flag} style={styles.heroNote}>short on {which}</T>
+            <Chip text={`Short on ${which}`} tone="flag" />
           </>
         ) : (
           <>
             <T v="numberL">{money(paid)}</T>
-            <T v="bodySmall" style={styles.heroNote}>all paid</T>
+            <Chip text="All paid" tone="lime" />
           </>
         )}
       </View>
@@ -463,8 +463,7 @@ const styles = StyleSheet.create({
   edit: { paddingBottom: 14, gap: 10 },
   pair: { gap: 8 },
   missNote: { paddingBottom: 12 },
-  hero: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 10 },
-  heroNote: { flexShrink: 1 },
+  hero: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
   sheetRows: { maxHeight: 210, flexGrow: 0 },
   foundRow: { paddingVertical: 10 },
   amount: {

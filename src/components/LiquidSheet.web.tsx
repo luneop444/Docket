@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { BackdropCtx } from './backdrop';
 import { glassEdge, glassLift, radius } from '../theme/tokens';
 import { createGlass, type Glass } from './glassGL';
 import { BAR_TINT_GL, FROST, GLASS_CHROMA, GLASS_RIM, glassK, mapData } from './glassLook';
@@ -7,8 +8,7 @@ import { squircleExtent, squirclePath } from '../logic/squircle';
 
 type Html2Canvas = (el: HTMLElement, o: Record<string, unknown>) => Promise<HTMLCanvasElement>;
 
-/** The element a sheet's glass bends: the photo behind the scanner. */
-export const BackdropCtx = createContext<RefObject<HTMLElement | null> | null>(null);
+export { BackdropCtx };
 
 /**
  * The tab bar's liquid glass (glassGL.ts), shaped as a sheet: the same shader, tint, frost,

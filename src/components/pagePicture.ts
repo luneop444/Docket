@@ -100,7 +100,8 @@ async function take(el: HTMLElement, key: string, skip: Element | null): Promise
     scale,
     backgroundColor: color.canvas,
     logging: false,
-    ignoreElements: (e: Element) => !!skip && skip.contains(e),
+    // Skipped too: anything marked as not part of the scene (the camera's grain).
+    ignoreElements: (e: Element) => (!!skip && skip.contains(e)) || (e as HTMLElement).dataset?.noglass === '1',
   }).catch(() => null);
   if (!shot) return null;
   // Slices no taller than the graphics chip takes in one texture.
