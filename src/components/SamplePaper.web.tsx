@@ -8,6 +8,8 @@ import { CAB_OVER, cabUri } from './sampleCab';
 /** Room around the page on the canvas, for the shadow and the corner curl. */
 const PAD = 40;
 const COLS = 18;
+/** The print's resolution against the screen's: the camera's softness. */
+const SOFT = 0.72;
 /** Off-canvas distance for shapes drawn only for their shadow. */
 const FAR = 10000;
 const ROWS = 28;
@@ -27,23 +29,31 @@ export interface Statement {
  * the glass bend it exactly as seen.
  */
 export function SamplePaper({ statement, x, y, w, h, onReady }: { statement: Statement; x: number; y: number; w: number; h: number; onReady?: () => void }) {
-  const out = useRef<HTMLCanvasElement>(null);
+  const plain = useRef<HTMLCanvasElement>(null);
+  const lit = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
-  const key = JSON.stringify([statement.label, statement.highlight, statement.claims.map((c) => c.id), statement.paid]);
+  // Both versions of the page (detention rows plain, and lit as read) are drawn once, up front,
+  // before anything moves; the read only switches which one shows. A redraw is about a tenth of
+  // a second of the main thread, and doing it mid-scan stalled every animation on screen.
+  const key = JSON.stringify([statement.label, statement.claims.map((c) => c.id), statement.paid]);
+  const hi = !!statement.highlight;
 
   useEffect(() => {
-    const c = out.current;
-    if (!c || w < 10 || h < 10) return;
+    const a = plain.current, b = lit.current;
+    if (!a || !b || w < 10 || h < 10) return;
     let gone = false;
     (async () => {
       await (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready;
       if (gone) return;
       const scale = Math.min(3, Math.max(2, window.devicePixelRatio || 1));
-      const parent = c.parentElement;
+      const parent = a.parentElement;
       const seat = await photo();
       if (gone) return;
       const light = seat && parent ? lightOf(seat, parent.offsetWidth, parent.offsetHeight, x, y, w, h) : null;
-      draw(c, printed(statement, w, h, scale), w, h, scale, light);
+      // Printed a little under the screen's resolution: laying it onto the sheet scales it up a
+      // touch, which softens it like a phone lens, with no blur pass.
+      draw(a, printed({ ...statement, highlight: false }, w, h, scale * SOFT), w, h, scale, light);
+      draw(b, printed({ ...statement, highlight: true }, w, h, scale * SOFT), w, h, scale, light);
       setReady(true);
       onReady?.();
     })();
@@ -54,12 +64,12 @@ export function SamplePaper({ statement, x, y, w, h, onReady }: { statement: Sta
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, x, y, w, h]);
 
+  const box = { position: 'absolute', left: x - PAD, top: y - PAD, width: w + PAD * 2, height: h + PAD * 2, pointerEvents: 'none' } as const;
   return (
-    <canvas
-      ref={out}
-      aria-label={`Sample settlement statement, pay date ${statement.label}`}
-      style={{ position: 'absolute', left: x - PAD, top: y - PAD, width: w + PAD * 2, height: h + PAD * 2, pointerEvents: 'none', opacity: ready ? 1 : 0, transition: 'opacity 120ms' }}
-    />
+    <>
+      <canvas ref={plain} aria-hidden={hi} aria-label={hi ? undefined : `Sample settlement statement, pay date ${statement.label}`} style={{ ...box, opacity: ready && !hi ? 1 : 0, transition: 'opacity 120ms' }} />
+      <canvas ref={lit} aria-hidden={!hi} aria-label={hi ? `Sample settlement statement, pay date ${statement.label}` : undefined} style={{ ...box, opacity: ready && hi ? 1 : 0, transition: 'opacity 120ms' }} />
+    </>
   );
 }
 
@@ -242,21 +252,24 @@ function draw(c: HTMLCanvasElement, flat: HTMLCanvasElement, w: number, h: numbe
     }
   }
   k.globalCompositeOperation = 'source-over';
-  // The camera: a little soft, and the sensor's grain, on the paper only.
-  const img = k.getImageData(0, 0, p.width, p.height);
-  if (light) relight(img, light, scale);
-  soften(img);
-  const d = img.data;
-  let seed = 11;
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] < 200) continue;
-    seed = (seed * 16807) % 2147483647;
-    const n = (seed / 2147483647 - 0.5) * 10;
-    d[i] += n;
-    d[i + 1] += n;
-    d[i + 2] += n;
+  // The seat's light, then the sensor's grain, on the paper only. Both are canvas blends the
+  // graphics chip does, not loops over pixels: those took about 300ms a redraw and stalled
+  // everything on screen (the scan pill's glass with it) each time the statement changed.
+  k.setTransform(scale, 0, 0, scale, 0, 0);
+  k.save();
+  outline(k);
+  k.clip();
+  k.imageSmoothingEnabled = true;
+  if (light) {
+    k.globalCompositeOperation = 'multiply';
+    k.drawImage(lightCanvas(light), 0, 0, light.mw * light.cell, light.mh * light.cell);
   }
-  k.putImageData(img, 0, 0);
+  k.globalCompositeOperation = 'overlay';
+  k.fillStyle = k.createPattern(grainTile(), 'repeat') ?? 'transparent';
+  k.setTransform(1, 0, 0, 1, 0, 0);
+  k.fillRect(0, 0, p.width, p.height);
+  k.restore();
+  k.globalCompositeOperation = 'source-over';
 
   // 2. Shadows on the seat. A sheet lying on a seat isn't held above it, so there's no drop
   //    shadow: only the thin dark line where its edge meets the fabric, a faint soft one
@@ -307,31 +320,6 @@ function draw(c: HTMLCanvasElement, flat: HTMLCanvasElement, w: number, h: numbe
   g.drawImage(p, 0, 0);
 }
 
-/** A light 3×3 blur on the opaque pixels: print photographed, not print on glass. */
-function soften(img: ImageData) {
-  const { width: W, height: H, data: d } = img;
-  const src = new Uint8ClampedArray(d);
-  const k = [1, 2, 1, 2, 4, 2, 1, 2, 1];
-  for (let y = 1; y < H - 1; y++) {
-    for (let x = 1; x < W - 1; x++) {
-      const o = (y * W + x) * 4;
-      if (src[o + 3] < 250) continue;
-      for (let ch = 0; ch < 3; ch++) {
-        let t = 0, n = 0;
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            const p = ((y + dy) * W + (x + dx)) * 4;
-            if (src[p + 3] < 250) continue;
-            const kk = k[(dy + 1) * 3 + (dx + 1)];
-            t += src[p + ch] * kk;
-            n += kk;
-          }
-        }
-        if (n) d[o + ch] = t / n;
-      }
-    }
-  }
-}
 
 /** The light on the seat where the page lies, as a blurred brightness map (linear). */
 interface Light {
@@ -346,10 +334,6 @@ const LIN = Array.from({ length: 256 }, (_, i) => {
   const c = i / 255;
   return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 });
-const toSRGB = (l: number) => {
-  const c = l <= 0.0031308 ? 12.92 * l : 1.055 * Math.pow(l, 1 / 2.4) - 0.055;
-  return Math.max(0, Math.min(255, c * 255));
-};
 
 let seatPhoto: Promise<HTMLImageElement | null> | null = null;
 function photo() {
@@ -433,29 +417,46 @@ function blur(m: Float32Array, w: number, h: number, r: number) {
  * far more, shows that light at its own whiteness. So the page is exactly as bright as white
  * paper would be in that photo, brighter toward the windshield and dimmer toward the back,
  * and never a white cut-out laid over a grey picture. The tint is daylight's, a hair cool.
+ *
+ * Drawn as a small picture of that light, multiplied over the paper (the chip smooths it as it
+ * scales it up). Multiplying in sRGB by e^(1/2.2) is multiplying the light by e. Multiply can
+ * only darken, so the brightest light stops at the paper's own white.
  */
 const FABRIC = 0.43;
-const TINT = [0.975, 1, 1.03];
-function relight(img: ImageData, L: Light, scale: number) {
-  const { width: W, height: H, data: d } = img;
-  const per = scale * L.cell;
-  // Smoothly between map cells, so the light has no steps.
-  const at = (fx: number, fy: number) => {
-    const x0 = Math.max(0, Math.min(L.mw - 1, Math.floor(fx))), y0 = Math.max(0, Math.min(L.mh - 1, Math.floor(fy)));
-    const x1 = Math.min(L.mw - 1, x0 + 1), y1 = Math.min(L.mh - 1, y0 + 1);
-    const tx = Math.max(0, Math.min(1, fx - x0)), ty = Math.max(0, Math.min(1, fy - y0));
-    const m = L.map, r0 = y0 * L.mw, r1 = y1 * L.mw;
-    return (m[r0 + x0] * (1 - tx) + m[r0 + x1] * tx) * (1 - ty) + (m[r1 + x0] * (1 - tx) + m[r1 + x1] * tx) * ty;
-  };
-  for (let py = 0; py < H; py++) {
-    const fy = py / per - 0.5;
-    for (let px = 0; px < W; px++) {
-      const o = (py * W + px) * 4;
-      if (d[o + 3] === 0) continue;
-      const e = at(px / per - 0.5, fy) / FABRIC;
-      d[o] = toSRGB(LIN[d[o]] * e * TINT[0]);
-      d[o + 1] = toSRGB(LIN[d[o + 1]] * e * TINT[1]);
-      d[o + 2] = toSRGB(LIN[d[o + 2]] * e * TINT[2]);
-    }
+const TINT = [0.976, 0.987, 1];
+function lightCanvas(L: Light) {
+  const c = document.createElement('canvas');
+  c.width = L.mw;
+  c.height = L.mh;
+  const g = c.getContext('2d')!;
+  const img = g.createImageData(L.mw, L.mh);
+  for (let i = 0; i < L.map.length; i++) {
+    const f = Math.min(1, Math.pow(L.map[i] / FABRIC, 1 / 2.2));
+    img.data[i * 4] = 255 * f * TINT[0];
+    img.data[i * 4 + 1] = 255 * f * TINT[1];
+    img.data[i * 4 + 2] = 255 * f * TINT[2];
+    img.data[i * 4 + 3] = 255;
   }
+  g.putImageData(img, 0, 0);
+  return c;
+}
+
+/** The sensor's grain: a small tile of grey noise, made once, laid over the paper in overlay. */
+let grain: HTMLCanvasElement | null = null;
+function grainTile() {
+  if (grain) return grain;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  const img = g.createImageData(128, 128);
+  let seed = 11;
+  for (let i = 0; i < img.data.length; i += 4) {
+    seed = (seed * 16807) % 2147483647;
+    const v = 128 + (seed / 2147483647 - 0.5) * 20;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  grain = c;
+  return c;
 }
