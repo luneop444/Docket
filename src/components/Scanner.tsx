@@ -58,7 +58,11 @@ export function Scanner({
   onClose: () => void;
 }) {
   const { top, footerBottom } = useInsets();
-  const { width, height } = useWindowDimensions();
+  // The scanner's own size, not the window's: on a laptop the app sits in a phone frame, and
+  // the page, frame and scrim have to be laid out in that, not across the browser window.
+  const win = useWindowDimensions();
+  const [box, setBox] = useState<{ width: number; height: number } | null>(null);
+  const { width, height } = box ?? win;
   const reduce = useReduceMotion();
   const cam = useRef<Viewfinder>(null);
   // What the result sheet's glass bends: the photo, not the controls over it.
@@ -184,7 +188,10 @@ export function Scanner({
 
   return (
     <BackdropCtx.Provider value={backdrop}>
-    <View style={styles.root}>
+    <View style={styles.root} onLayout={(e) => {
+      const { width: w, height: h } = e.nativeEvent.layout;
+      if (!box || Math.abs(box.width - w) > 0.5 || Math.abs(box.height - h) > 0.5) setBox({ width: w, height: h });
+    }}>
       <View ref={backdrop as never} style={StyleSheet.absoluteFill} pointerEvents="none">
       {/* Once it's reading, the scene settles a little lower so the page runs under where the
           result card will rise: the card's glass then has the page's lines to bend at its
