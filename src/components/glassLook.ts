@@ -59,8 +59,8 @@ function tryNum(key: string, def: number, min: number, max: number) {
  * glass bends a wide rim that magnifies what's under its edges. Try ?bezel=0.3 … 0.5.
  */
 export const BEZEL = tryNum('bezel', 0.42, 0.05, 0.5);
-/** How far the very edge reads in from the page, as a share of the glass's height, at REFRACT 1. Try ?lens=. */
-export const LENS = tryNum('lens', 0.32, 0.05, 2);
+/** How far the very edge reads in from the page, as a share of the glass's height, at REFRACT 1. 0.26 since 21 Nov (0.32 was a bit much). Try ?lens=. */
+export const LENS = tryNum('lens', 0.26, 0.05, 2);
 /** Bend for glass of this height: the map's strongest value (0.45 off neutral) reads LENS × height in. */
 export const glassK = (h: number): [number, number] => {
   const k = (REFRACT * LENS * h) / 0.45;
