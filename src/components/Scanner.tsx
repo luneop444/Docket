@@ -315,10 +315,6 @@ export function Scanner({
             )}
           </View>
           <GlassPill h={SHUTTER} minW={SHUTTER} fixed>
-            {/* The groove: a thin dark gap between the glass ring and the disc, as on the iPhone. */}
-            <Svg width={SHUTTER} height={SHUTTER} style={styles.ring} pointerEvents="none">
-              <Circle cx={SHUTTER / 2} cy={SHUTTER / 2} r={DISC / 2 + GROOVE / 2} stroke="rgba(0,0,0,0.38)" strokeWidth={GROOVE} fill="none" />
-            </Svg>
             <Pressable accessibilityRole="button" accessibilityLabel={auto ? 'Taking the photo. Tap to take it now' : 'Take the photo'} onPress={shoot} style={styles.shutter}>
               {({ pressed }) => <View style={[styles.shutterIn, pressed && styles.shutterDown]}>{state === 'off' && !sample ? <CameraIcon c={color.ink} size={24} /> : null}</View>}
             </Pressable>
@@ -511,13 +507,13 @@ function Rise({ children, onHeight }: { children: ReactNode; onHeight: (h: numbe
 /** The camera's bottom row (iOS 26 sizes): the shutter's glass circle and the side circles. */
 const SHUTTER = 80;
 /**
- * Measured off the iPhone's own shutter (iOS 26, at 3x): an 80pt glass circle, a 68pt white
- * disc, and between them a 4pt glass ring and a 2pt dark groove. Pressing shrinks the disc,
- * not the ring.
+ * Measured off the iPhone's own shutter (iOS 26, at 3x): an 80pt glass circle and a 68pt white
+ * disc, the 6pt between them all glass. The iPhone's dark gap there is only its black preview
+ * showing through; drawn over this glass it reads as a stroke on the disc, so it's left out.
+ * Pressing shrinks the disc, not the ring.
  */
 const DISC = 68;
-const GROOVE = 2;
-const RING_W = (SHUTTER - DISC) / 2 - GROOVE;
+const RING_W = (SHUTTER - DISC) / 2;
 const RING_R = SHUTTER / 2 - RING_W / 2;
 /**
  * The scanner's spacing, from the app's own: the 20 screen edge (every screen's side padding,
