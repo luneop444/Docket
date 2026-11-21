@@ -10,7 +10,6 @@ import { useStore } from '../state/AppStore';
 import { DocReadError, DocReadingOff, pickFile, postDoc, shrinkPhoto, type DocFile } from '../state/readDoc';
 import { color, fontFamily, glass } from '../theme/tokens';
 import { LiquidSheet } from './LiquidSheet';
-import { BAR_TINT_GL } from './glassLook';
 import { BackBar, Screen } from './Chrome';
 import { Chip } from './Chip';
 import { DocIcon } from './Icons';
@@ -333,13 +332,13 @@ function Review({
 }
 
 /**
- * The sheet's glass tint: the nav bar's exact tint. Red sits only in solid chips, which carry
+ * The sheet's glass tint: the nav bar's exact 62%. Red sits only in solid chips, which carry
  * their own contrast, so the glass doesn't have to. Try others with ?sheettint=0.82.
  */
 const SHEET_TINT = (() => {
-  if (typeof window === 'undefined') return BAR_TINT_GL[3];
+  if (typeof window === 'undefined') return 0.62;
   const v = parseFloat(new URLSearchParams(window.location.search).get('sheettint') ?? '');
-  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : BAR_TINT_GL[3];
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.62;
 })();
 
 const READING = ['Reading the page', 'Finding your loads', 'Matching detention', 'Matching detention'];
