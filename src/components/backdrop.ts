@@ -29,16 +29,22 @@ export interface GlassTune {
    * is then what it shows before its picture is in. Null keeps one white for all.
    */
   adapt: { ink: string; min: number; max: number } | null;
+  /** The frost (blur of what's behind), in points. Null keeps the system's. */
+  frost: number | null;
 }
-export const NO_TUNE: GlassTune = { bend: 1, bezel: null, split: 1, tint: null, lift: null, rimShade: null, adapt: null };
+export const NO_TUNE: GlassTune = { bend: 1, bezel: null, split: 1, tint: null, lift: null, rimShade: null, adapt: null, frost: null };
 /**
  * Refraction on the scan pages, times the system's: a little less, since the glass there bends
  * a photo of a printed page and the bent text competes with the pills' and card's own text.
  * Shared by the pills and the result card so they stay one material.
  */
-export const SCAN_BEND = 0.65;
+export const SCAN_BEND = 0.85;
 /** Colour split (splay) on the scan pages, times the system's. Shared the same way. */
-export const SCAN_SPLIT = 0.4;
+export const SCAN_SPLIT = 0.6;
+/** Frost on the scan pages, in points (the system's is 1): clearer, so the bend reads. */
+export const SCAN_FROST = 0.5;
+/** Depth (the bending rim's width) on the scan pages, times the system's. */
+export const SCAN_DEPTH = 0.8;
 /**
  * Sent on document when what's behind the glass has moved and come to rest (the scanner's hand
  * settling, the scene dropping for the card): glass over a backdrop takes a new picture of it,

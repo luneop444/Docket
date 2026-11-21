@@ -1,8 +1,8 @@
 import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { BackdropCtx, RiseCtx, SCAN_BEND, SCAN_SPLIT } from './backdrop';
+import { BackdropCtx, RiseCtx, SCAN_BEND, SCAN_DEPTH, SCAN_FROST, SCAN_SPLIT } from './backdrop';
 import { glassEdge, glassLift, radius } from '../theme/tokens';
 import { createGlass, type Glass } from './glassGL';
-import { BAR_TINT_GL, BEZEL, chromaTimes, FROST, GLASS_RIM, glassK, mapData } from './glassLook';
+import { BAR_TINT_GL, BEZEL, chromaTimes, GLASS_RIM, glassK, mapData } from './glassLook';
 import { forget, pictureOf, sliceAt } from './pagePicture';
 import { frosted, SPEC } from './glassPicture';
 import { squircleExtent, squirclePath } from '../logic/squircle';
@@ -26,7 +26,7 @@ export { BackdropCtx };
  * rims and colour split are the system's.
  */
 const RIM_H = 64;
-const BEZEL_PX = BEZEL * RIM_H;
+const BEZEL_PX = BEZEL * SCAN_DEPTH * RIM_H;
 const SHEET_BEND = SCAN_BEND;
 const SHEET_SPLIT = SCAN_SPLIT;
 export const SHEET_TINT = BAR_TINT_GL[3];
@@ -105,7 +105,7 @@ export function LiquidSheet({ children, tint = SHEET_TINT }: { children: ReactNo
       const sl = sliceAt(p, 0, p.slices[0]?.height ?? 0);
       top = sl.top;
       tall = sl.height;
-      g.setPage(frosted(sl.canvas, p.scale, FROST));
+      g.setPage(frosted(sl.canvas, p.scale, SCAN_FROST));
       setLive(true);
       // Now the card can rise, with its glass drawn the whole way up.
       rise?.();

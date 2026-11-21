@@ -54,7 +54,7 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
       const reach = glassReach(r.h);
       const s = sliceAt(p, b.top - cr.top - reach, b.height + reach * 2);
       if (s !== r.slice) {
-        r.g.setPage(frostSlice(s, p.scale));
+        r.g.setPage(frostSlice(s, p.scale, tune.frost ?? undefined));
         r.slice = s;
       }
       if (!r.g.ready()) continue;

@@ -166,7 +166,8 @@ export const sliceMap = lensMap;
 
 /** A slice of the screen's picture, frosted by FROST, made once and shared by every glass. */
 const frostedOf = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
-export function frostSlice(sl: Slice, scale: number): HTMLCanvasElement {
+export function frostSlice(sl: Slice, scale: number, frost = FROST): HTMLCanvasElement {
+  if (frost !== FROST) return frosted(sl.canvas, scale, frost);
   let f = frostedOf.get(sl.canvas);
   if (!f) {
     f = frosted(sl.canvas, scale, FROST);
