@@ -85,7 +85,8 @@ export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: n
 }
 
 const styles = StyleSheet.create({
-  cab: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  // Bigger than the screen, so the hand's drift never shows an edge.
+  cab: { position: 'absolute', top: '-15%', left: '-15%', width: '130%', height: '130%' },
   paper: {
     position: 'absolute',
     overflow: 'hidden',

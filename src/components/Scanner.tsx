@@ -9,6 +9,7 @@ import { Button } from './ui';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
 import { BackdropCtx, RiseCtx } from './backdrop';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
+import { FrameBlur } from './FrameBlur';
 import { SamplePhoto } from './SamplePhoto';
 import { useReduceMotion } from './stepMotion';
 
@@ -101,7 +102,15 @@ export function Scanner({
   const gx = (width - gw) / 2;
   const gy = topH + 12 + (room - gh) / 2;
 
-  // The sample's page is found a beat after the scanner opens.
+  // The sample, held like a real phone: the page comes into the frame off-centre and turned,
+  // drifts in with a hand's small overshoots, and goes still. Then it's found.
+  const [hand] = useState(() => new Animated.Value(reduce || !sample ? 1 : 0));
+  useEffect(() => {
+    if (!sample || reduce) return;
+    Animated.timing(hand, { toValue: 1, duration: HAND_MS, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [sample, reduce, hand]);
+
+  // The sample's page is found once the hand has settled.
   useEffect(() => {
     if (!sample || stage !== 'capture') return;
     const t = setTimeout(() => {
@@ -109,7 +118,7 @@ export function Scanner({
       if (reduce) return;
       snap.setValue(0.94);
       Animated.spring(snap, { toValue: 1, friction: 6, tension: 140, useNativeDriver: Platform.OS !== 'web' }).start();
-    }, 900);
+    }, reduce ? 900 : HAND_MS + 150);
     return () => clearTimeout(t);
   }, [sample, stage, reduce, snap]);
 
@@ -163,7 +172,9 @@ export function Scanner({
     <View style={styles.root}>
       <View ref={backdrop as never} style={StyleSheet.absoluteFill} pointerEvents="none">
       {sample ? (
-          <SamplePhoto page={samplePage} x={gx + 10} y={gy + 10} w={gw - 20} h={gh - 20} found={locked && stage === 'capture'} />
+          <Animated.View style={[StyleSheet.absoluteFill, handheld(hand)]}>
+            <SamplePhoto page={samplePage} x={gx + 10} y={gy + 10} w={gw - 20} h={gh - 20} found={locked && stage === 'capture'} />
+          </Animated.View>
         ) : stage !== 'capture' && last?.preview ? (
           <Image source={{ uri: last.preview }} style={styles.still} resizeMode="cover" accessibilityLabel="Your settlement page" />
         ) : stage !== 'capture' ? (
@@ -180,6 +191,9 @@ export function Scanner({
           <Path fillRule="evenodd" fill={protoColor.scrim} d={`M0 0H${width}V${height}H0Z ${holePath(gx, gy, gw, gh, reduce ? holeTo : holeT)}`} />
         </Svg>
       </View>
+      {/* Out of focus outside the frame, like the camera's depth of field: a blur masked to the
+          same shape as the scrim's hole. */}
+      <FrameBlur width={width} height={height} hole={holePath(gx, gy, gw, gh, reduce ? holeTo : holeT)} />
 
       {stage === 'reading' ? <Beam x={gx} y={gy} w={gw} h={gh} /> : null}
 
@@ -390,6 +404,27 @@ function Rise({ children }: { children: ReactNode }) {
  * One corner guide: two straight arms joined by the app's squircle (the Squircle plugin's
  * curve at the chip radius), not a circular arc.
  */
+/** How long the hand takes to bring the sample page into the frame. */
+const HAND_MS = 1500;
+
+/**
+ * A hand's path into the frame, as the camera sees it: the scene (seat and page together)
+ * starts low, right, turned and a touch close, then drifts in with small overshoots and stops.
+ */
+function handheld(t: Animated.Value) {
+  const at = [0, 0.25, 0.5, 0.68, 0.82, 0.92, 1];
+  const i = (out: number[]) => t.interpolate({ inputRange: at, outputRange: out });
+  const deg = (out: number[]) => t.interpolate({ inputRange: at, outputRange: out.map((d) => `${d}deg`) });
+  return {
+    transform: [
+      { translateX: i([46, 26, -7, 4, -2, 0.6, 0]) },
+      { translateY: i([96, 48, 9, -5, 2, -0.6, 0]) },
+      { rotate: deg([6.5, 3.4, -1.1, 0.6, -0.25, 0.08, 0]) },
+      { scale: i([1.12, 1.07, 1.015, 0.996, 1.002, 1, 1]) },
+    ],
+  };
+}
+
 /**
  * The scrim's hole. At t = 0 it's the frame (x, y, w, h) as a squircle at the chip radius; at
  * t = 1 it's the found page's outline as SamplePhoto draws it: 6 in from the frame, square
