@@ -2,6 +2,7 @@
  * Screen chrome: safe areas, the Docket top bar, back bar, page header and the
  * scroll + footer scaffold every screen uses.
  */
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, usePathname } from 'expo-router';
 import { createContext, isValidElement, useContext, useEffect, useState, type ReactNode, type RefObject } from 'react';
 import {
@@ -107,26 +108,6 @@ export function ProfileTrailing({ noDate }: { noDate?: boolean } = {}) {
   );
 }
 
-export function BackBar({ onPress, label = 'Back' }: { onPress: () => void; label?: string }) {
-  return (
-    <>
-      <TopSafe />
-      <View style={[styles.topbar, styles.backbar]}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onPress}
-          style={({ pressed }) => [styles.back, pressed && styles.pressedBg]}
-        >
-          <ChevronLeft />
-          <Text style={styles.backText}>{label}</Text>
-        </Pressable>
-      </View>
-    </>
-  );
-}
-
-export const ONBOARDING_STEPS = 4;
-
 /** The onboarding header row: back and step pills, centred in 52. */
 const BAR_H = 52;
 /** Room under a screen's content, above its footer. */
@@ -135,6 +116,40 @@ const PAD_BOTTOM = 28;
 const UNDER_AT = 10 + (BAR_H - 44) / 2;
 /** Whether content has scrolled under the onboarding header (its pills turn to glass). */
 const HeaderUnder = createContext(false);
+
+/**
+ * Back, on detail screens. It stays reachable from anywhere on the page, so it floats and
+ * the page scrolls under it: bare at rest, in a glass pill (the nav bar's glass) once
+ * something is under it. Same as the onboarding back button.
+ */
+export function BackBar({ onPress, label = 'Back' }: { onPress: () => void; label?: string }) {
+  const { top } = useInsets();
+  const under = useContext(HeaderUnder);
+  // The pill hugs the label: measured once it's laid out (a fair guess until then).
+  const [w, setW] = useState(Math.round(40 + label.length * 9.5));
+  return (
+    <View style={{ height: top + BAR_H }} pointerEvents="box-none">
+      <View style={{ height: top }} pointerEvents="none" />
+      <View style={styles.glassRow} pointerEvents="box-none">
+        <LiquidGroup>
+          <LiquidPill w={w} h={44} on={under}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onPress}
+              onLayout={(e) => setW(Math.ceil(e.nativeEvent.layout.width))}
+              style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
+            >
+              <ChevronLeft />
+              <Text style={styles.backText}>{label}</Text>
+            </Pressable>
+          </LiquidPill>
+        </LiquidGroup>
+      </View>
+    </View>
+  );
+}
+
+export const ONBOARDING_STEPS = 4;
 
 /** v2 header: chevron back on the left, onboarding step dashes on the right (if a step is given). */
 /**
@@ -317,8 +332,11 @@ export function Screen({
   const { footerBottom } = useInsets();
   const { space } = useTabSpace();
   const { top } = useInsets();
-  // The onboarding header floats over the content, which scrolls under its glass.
-  const over = isValidElement(header) && header.type === OnboardingBar;
+  // Headers with a control (back) float over the content, which scrolls under their glass.
+  // Title headers (a tab's title and date) are labels the tab bar already says: they scroll
+  // away with the page (Apple's large titles do too).
+  const over = isValidElement(header) && (header.type === OnboardingBar || header.type === BackBar);
+  const inline = !over;
   // Scroll only when the content needs it: the room left under it (PAD_BOTTOM, or the tab
   // pill's space) is not a reason to scroll when everything above it already fits.
   const padBottom = tabs ? space : PAD_BOTTOM;
@@ -333,12 +351,11 @@ export function Screen({
   };
   return (
     <View style={styles.screen}>
-      {over ? null : header}
       <Push step={step}>
         <BandScrollView
           scrollRef={scrollRef}
           style={styles.flex}
-          contentContainerStyle={[styles.scroll, step ? styles.stepTop : null, over ? { paddingTop: top + BAR_H + 10 } : null, tabs ? { paddingBottom: space } : null, contentStyle]}
+          contentContainerStyle={[styles.scroll, step ? styles.stepTop : null, over ? { paddingTop: top + (step ? BAR_H + 10 : BAR_H) } : null, tabs ? { paddingBottom: space } : null, contentStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           scrollEnabled={needsScroll}
@@ -347,11 +364,19 @@ export function Screen({
           onScroll={onScrollY || over ? (e) => onScroll(e.nativeEvent.contentOffset.y) : undefined}
           scrollEventThrottle={onScrollY || over ? 16 : undefined}
         >
+          {inline ? <View style={styles.inlineHead}>{header}</View> : null}
           {children}
         </BandScrollView>
         {overlay}
         {footer ? <View style={[styles.footer, { paddingBottom: footerBottom }]}>{footer}</View> : null}
       </Push>
+      {/* Content passing under the status bar fades out instead of running into it. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[color.canvas, color.canvas, `${color.canvas}00`]}
+        locations={[0, 0.6, 1]}
+        style={[styles.topFade, { height: top + 14 }]}
+      />
       {over ? (
         <HeaderUnder.Provider value={under && needsScroll}>
           <View style={styles.headOver} pointerEvents="box-none">{header}</View>
@@ -388,6 +413,9 @@ const styles = StyleSheet.create({
   dash: { height: 3, borderRadius: 2, borderCurve: 'continuous' },
   dashInline: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   headOver: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5 },
+  // A title header inside the scroll: it brings its own 20 side padding.
+  inlineHead: { marginHorizontal: -20 },
+  topFade: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 4 },
   glassRow: { height: BAR_H, flexDirection: 'row', alignItems: 'center', paddingLeft: 14 },
   centerAbs: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
   // Press: the glass stays, the chevron dims (press.link elsewhere uses 0.3; a back tap is brief).
