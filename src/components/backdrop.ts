@@ -31,6 +31,12 @@ export interface GlassTune {
   adapt: { ink: string; min: number; max: number } | null;
 }
 export const NO_TUNE: GlassTune = { bend: 1, bezel: null, split: 1, tint: null, lift: null, rimShade: null, adapt: null };
+/**
+ * Refraction on the scan pages, times the system's: a little less, since the glass there bends
+ * a photo of a printed page and the bent text competes with the pills' and card's own text.
+ * Shared by the pills and the result card so they stay one material.
+ */
+export const SCAN_BEND = 0.8;
 export const GlassTuneCtx = createContext<GlassTune>(NO_TUNE);
 
 /**
