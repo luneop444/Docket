@@ -1,29 +1,26 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
 import { Chip } from '../components/Chip';
+import { SettlementScan } from '../components/SettlementScan';
 import { DocIcon } from '../components/Icons';
 import { Button, Card, Fake, Gap, noFocusRing, Row, T } from '../components/ui';
 import {
   checkEvents,
   checkTime,
   followUpText,
-  gotFromSettlement,
-  sampleScan,
   settlementDue,
   totalEvents,
   type Claim,
   type ClaimEvent,
 } from '../logic/claims';
-import { sameLoad, type SettlementReading } from '../logic/documents';
 import { money } from '../logic/format';
 import { loadNo } from '../logic/sampleData';
 import { cleanAmount } from '../logic/settlement';
 import { useStore } from '../state/AppStore';
 import { useClaims } from '../state/useClaims';
 import { useNow } from '../state/useNow';
-import { DocReadError, DocReadingOff, pickFile, pickScreenshot, postDoc, type DocFile } from '../state/readDoc';
 import { color, fontFamily } from '../theme/tokens';
 
 /** One checked settlement: what it showed for each claim, and the claims as they were before. */
@@ -48,7 +45,6 @@ export default function Settlement() {
   const claims = useClaims();
   const [typing, setTyping] = useState(go === 'type');
   const [amt, setAmt] = useState('');
-  const [reading, setReading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const now = useNow();
   const due = settlementDue(claims, now);
@@ -59,37 +55,15 @@ export default function Settlement() {
     setResult(r);
   }
 
-  async function scan() {
-    if (!due) return;
-    const at = checkTime(due.claims, due.label, Date.now());
-    if (due.claims[0].sample) {
-      record({ label: due.label, before: due.claims, evs: asChecks(checkEvents(due.claims, due.label, at, sampleScan(due.claims, due.label))), unmatched: [], total: null });
-      return;
-    }
-    let file: DocFile | null;
-    try {
-      file = await (Platform.OS === 'web' ? pickFile() : pickScreenshot());
-    } catch (e) {
-      a.toast(e instanceof DocReadError ? e.message : 'Couldn’t open that file.');
-      return;
-    }
-    if (!file) return;
-    setReading(true);
-    try {
-      const r = await postDoc<SettlementReading>('read-settlement', file, 'settlement');
-      if (!r.found) {
-        a.toast(r.note || 'No loads found on that page. Type the detention total instead.');
-        setTyping(true);
-        return;
-      }
-      const { got, unmatched } = gotFromSettlement(due.claims, r.loads, sameLoad);
-      const matched = due.claims.filter((c) => !unmatched.includes(c.id));
-      record({ label: due.label, before: due.claims, evs: asChecks(checkEvents(matched, due.label, at, got)), unmatched, total: null });
-    } catch (e) {
-      a.toast(e instanceof DocReadingOff || e instanceof DocReadError ? e.message : 'Couldn’t read the settlement. Try again, or type the total.');
-    } finally {
-      setReading(false);
-    }
+  // The scan screens (capture, reading, review), for the claims due when it started.
+  const [scanFor, setScanFor] = useState<{ label: string; claims: Claim[] } | null>(() => (go === 'scan' && due ? due : null));
+  const scan = () => due && setScanFor(due);
+  function scanned(got: Record<string, number>, unmatched: string[]) {
+    if (!scanFor) return;
+    const at = checkTime(scanFor.claims, scanFor.label, Date.now());
+    const matched = scanFor.claims.filter((c) => !unmatched.includes(c.id));
+    record({ label: scanFor.label, before: scanFor.claims, evs: asChecks(checkEvents(matched, scanFor.label, at, got)), unmatched, total: null });
+    setScanFor(null);
   }
 
   function checkTotal() {
@@ -100,18 +74,22 @@ export default function Settlement() {
     record({ label: due.label, before: due.claims, evs: asChecks(totalEvents(due.claims, due.label, at, total)), unmatched: [], total });
   }
 
-  // Opened from Today's "Scan the settlement": go straight to the scan.
-  const started = useRef(false);
-  useEffect(() => {
-    if (go === 'scan' && !started.current && due) {
-      started.current = true;
-      void scan();
-    }
-    // Once, when the screen opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   if (result) return <Answer r={result} claims={claims} onDone={() => router.navigate('/paycheck')} />;
+  if (scanFor) {
+    return (
+      <SettlementScan
+        label={scanFor.label}
+        claims={scanFor.claims}
+        onCancel={() => (go === 'scan' ? back() : setScanFor(null))}
+        onConfirm={scanned}
+        onType={() => {
+          setScanFor(null);
+          setTyping(true);
+        }}
+      />
+    );
+  }
 
   if (!due) {
     return (
@@ -150,7 +128,7 @@ export default function Settlement() {
         ))}
       </Card>
       <Gap h={24} />
-      <Button label={reading ? 'Reading…' : 'Scan the settlement'} icon={<DocIcon c={color.bg} />} disabled={reading} onPress={scan} />
+      <Button label="Scan the settlement" icon={<DocIcon c={color.bg} />} onPress={scan} />
       <Gap h={8} />
       <T v="bodyTiny" style={styles.center}>Claude finds each load on it by its number.</T>
       <Gap h={16} />
@@ -230,10 +208,8 @@ function Answer({ r, claims, onDone }: { r: Result; claims: Claim[]; onDone: () 
           <View key={c.id}>
             {i ? <View style={styles.rule} /> : null}
             <View style={styles.loadRow}>
-              <Row base>
-                <T v="bodyStrong" style={styles.flex}>{c.load.name}</T>
-                <Outcome c={c} e={e} unmatched={r.unmatched.includes(c.id)} />
-              </Row>
+              <T v="bodyStrong">{c.load.name}</T>
+              <Outcome c={c} e={e} unmatched={r.unmatched.includes(c.id)} />
               {e && !e.whole && e.got === 0 ? (
                 <T v="bodyTiny">
                   {c.missed > 0
