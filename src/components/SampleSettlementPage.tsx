@@ -47,13 +47,36 @@ export function SampleSettlementPage({ label, claims, paid, highlight }: { label
         <Text style={[styles.cell, styles.colWhat, styles.th]}>Net pay</Text>
         <Text style={[styles.cell, styles.colAmt, styles.th]}>{money(net)}</Text>
       </View>
+      {/* What the rest of a real statement carries, down the page: miles and year to date. */}
+      <View style={styles.rule} />
+      <View style={styles.row}>
+        <Text style={[styles.cell, styles.colLoad]} />
+        <Text style={[styles.cell, styles.colWhat]}>Paid miles this period</Text>
+        <Text style={[styles.cell, styles.colAmt]}>{(1840 + claims.length * 212).toLocaleString('en-US')}</Text>
+      </View>
+      <View style={styles.fill} />
+      <View style={styles.tear} />
+      <Text style={[styles.meta, styles.ytdHead]}>Year to date</Text>
+      {[
+        ['Gross', 41380.25],
+        ['Net', 37468.25],
+      ].map(([k, v]) => (
+        <View key={k as string} style={styles.row}>
+          <Text style={[styles.cell, styles.colLoad]} />
+          <Text style={[styles.cell, styles.colWhat]}>{k}</Text>
+          <Text style={[styles.cell, styles.colAmt]}>{(v as number) < 0 ? `(${money(-(v as number))})` : money(v as number)}</Text>
+        </View>
+      ))}
     </View>
   );
 }
 
 const ink = 'rgba(28,28,28,0.78)';
 const styles = StyleSheet.create({
-  page: { width: '100%', height: '100%', backgroundColor: '#FFFFFF', paddingHorizontal: 14, paddingVertical: 14, gap: 4 },
+  fill: { flex: 1, minHeight: 6 },
+  tear: { borderTopWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(28,28,28,0.3)', marginBottom: 4 },
+  ytdHead: { marginBottom: 1 },
+  page: { width: '100%', height: '100%', backgroundColor: '#F6F4EF', paddingHorizontal: 14, paddingVertical: 14, gap: 4 },
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   title: { fontFamily: fontFamily.semibold, fontSize: 11, color: color.ink },
   meta: { fontFamily: fontFamily.regular, fontSize: 8, color: ink, marginTop: 2 },

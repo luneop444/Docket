@@ -4,6 +4,7 @@ import { color, fontFamily } from '../theme/tokens';
 import { useInsets } from './Chrome';
 import { CameraIcon, CloseIcon, DocIcon } from './Icons';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
+import { SamplePhoto } from './SamplePhoto';
 import { useReduceMotion } from './stepMotion';
 
 /** Dark glass for controls over the camera (the app's glass, for a dark backdrop). */
@@ -115,9 +116,7 @@ export function Scanner({
   return (
     <View style={styles.root}>
       {sample ? (
-        <View style={styles.desk}>
-          <View style={[styles.paper, { left: gx + 6, top: gy + 6, width: gw - 12, height: gh - 12 }]}>{samplePage}</View>
-        </View>
+        <SamplePhoto page={samplePage} x={gx + 10} y={gy + 10} w={gw - 20} h={gh - 20} />
       ) : stage !== 'capture' && last?.preview ? (
         <Image source={{ uri: last.preview }} style={styles.still} resizeMode="cover" accessibilityLabel="Your settlement page" />
       ) : stage !== 'capture' ? (
@@ -298,9 +297,8 @@ function Corner({ at, c }: { at: 'tl' | 'tr' | 'bl' | 'br'; c: string }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0B0B0C', overflow: 'hidden' },
-  // A dark desk under the sample's page.
+  // Dark, behind a photo that's still loading.
   desk: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#2A2A2C' },
-  paper: { position: 'absolute', borderRadius: 3, overflow: 'hidden', transform: [{ rotate: '-1.2deg' }], shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 24, shadowOffset: { width: 0, height: 14 } },
   guide: { position: 'absolute' },
   top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, gap: 10 },
   circle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
