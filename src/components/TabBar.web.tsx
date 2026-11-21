@@ -316,7 +316,9 @@ const S: Record<string, CSSProperties> = {
     position: 'absolute',
     inset: 0,
     borderRadius: PILL_H / 2,
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75), inset 0 0 0 0.5px rgba(0,0,0,0.08)',
+    // The same faint edge all the way round. A bright top line disappeared into the white bar
+    // and made the pill read about 0.75pt low, though it sits 4pt in on every side.
+    boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.10)',
   },
   row: { position: 'absolute', inset: 0, display: 'flex', padding: PAD },
   tab: {
