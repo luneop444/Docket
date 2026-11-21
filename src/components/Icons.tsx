@@ -93,6 +93,9 @@ export const TruckIcon = ({ c = color.ink, size = 15 }: P) =>
 export const CameraIcon = ({ c = color.sub, size = 22 }: P) =>
   sf('camera', 'medium', c, size);
 
+export const CloseIcon = ({ c = color.ink, size = 18 }: P) =>
+  sf('xmark', 'medium', c, size);
+
 export const DocIcon = ({ c = color.ink, size = 22 }: P) =>
   sf('doc.text', 'medium', c, size);
 

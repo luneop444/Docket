@@ -81,12 +81,8 @@ export default function Settlement() {
       <SettlementScan
         label={scanFor.label}
         claims={scanFor.claims}
-        onCancel={() => (go === 'scan' ? back() : setScanFor(null))}
+        onCancel={() => setScanFor(null)}
         onConfirm={scanned}
-        onType={() => {
-          setScanFor(null);
-          setTyping(true);
-        }}
       />
     );
   }

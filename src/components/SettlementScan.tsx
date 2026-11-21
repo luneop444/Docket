@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
-import { Animated, Easing, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { gotFromSettlement, sampleScan, type Claim } from '../logic/claims';
 import { sameLoad, type SettlementReading } from '../logic/documents';
 import { money } from '../logic/format';
@@ -11,14 +11,16 @@ import { DocReadError, DocReadingOff, pickFile, postDoc, shrinkPhoto, type DocFi
 import { color, fontFamily, glass, protoColor } from '../theme/tokens';
 import { BackBar, Screen } from './Chrome';
 import { Chip } from './Chip';
-import { CameraIcon, CheckIcon, DocIcon } from './Icons';
+import { CheckIcon, DocIcon } from './Icons';
 import { SampleSettlementPage } from './SampleSettlementPage';
+import { Scanner } from './Scanner';
 import { useReduceMotion } from './stepMotion';
-import { Button, Card, Fake, Gap, noFocusRing, press, Row, T } from './ui';
+import { Button, Card, Gap, noFocusRing, press, Row, T } from './ui';
 
 /** One page to read: the file sent, and what to show of it (a PDF has no picture here). */
 interface Page {
-  file: DocFile;
+  /** Null for the sample's drawn page, which has nothing to send. */
+  file: DocFile | null;
   preview: string | null;
 }
 
@@ -34,15 +36,12 @@ export function SettlementScan({
   claims,
   onCancel,
   onConfirm,
-  onType,
 }: {
   label: string;
   claims: Claim[];
   onCancel: () => void;
   /** What the settlement paid each claim (0 = not on it); claims it couldn't look for. */
   onConfirm: (got: Record<string, number>, unmatched: string[]) => void;
-  /** Give up on scanning: type the detention total instead. */
-  onType: () => void;
 }) {
   const { a } = useStore();
   const sample = claims[0].sample;
@@ -103,6 +102,7 @@ export function SettlementScan({
       let found = false;
       let note = '';
       for (const p of pages) {
+        if (!p.file) continue;
         const r = await postDoc<SettlementReading>('read-settlement', p.file, 'settlement');
         found = found || r.found;
         note = note || r.note;
@@ -126,7 +126,7 @@ export function SettlementScan({
     }
   }
 
-  const n = sample ? 1 : pages.length;
+  const n = Math.max(1, pages.length);
   const pageArt = (highlight = false) =>
     sample ? (
       <SampleSettlementPage label={label} claims={claims} paid={samplePaid} highlight={highlight} />
@@ -180,82 +180,19 @@ export function SettlementScan({
     );
   }
 
-  // Capture.
-  const has = sample || pages.length > 0;
+  // Capture: the full-screen scanner.
   return (
-    <Screen
-      header={<BackBar label="Back" onPress={onCancel} />}
-      footer={
-        has ? (
-          <>
-            <Button label={sample ? 'Read the sample settlement' : `Read ${n} page${n === 1 ? '' : 's'}`} onPress={read} />
-            {sample ? null : <Button label="Add another page" variant="quiet" icon={<CameraIcon />} onPress={takePhoto} />}
-          </>
-        ) : (
-          <>
-            <Button label="Take a photo" icon={<CameraIcon c={color.bg} />} onPress={takePhoto} />
-            <Button label="Choose a PDF or screenshot" variant="quiet" onPress={chooseFile} />
-          </>
-        )
-      }
-    >
-      <T v="bodySmall">{label} settlement</T>
-      <Gap h={8} />
-      <T v="h2">Scan your settlement</T>
-      <Gap h={8} />
-      <T v="body" c={color.sub}>
-        {sample
-          ? 'This is a made-up settlement for the sample week. On your own, you photograph each page, or pick the PDF from your company’s app.'
-          : 'Photograph each page, flat and in good light, or pick the PDF or screenshot from your company’s app.'}
-      </T>
-      <Gap h={24} />
-      {sample ? (
-        <View style={[styles.frame, styles.portrait]}>
-          {pageArt()}
-          <View style={styles.sampleTag}>
-            <Fake label="Sample data" />
-          </View>
-        </View>
-      ) : pages.length ? (
-        <>
-          <View style={[styles.frame, styles.portrait]}>{pageArt()}</View>
-          <Gap h={12} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbs}>
-            {pages.map((p, i) => (
-              <View key={i} style={styles.thumb}>
-                <PageView page={p} />
-                <View style={styles.thumbNo}>
-                  <Text style={styles.thumbNoText}>{i + 1}</Text>
-                </View>
-              </View>
-            ))}
-            <Pressable accessibilityRole="button" accessibilityLabel="Choose a PDF or screenshot" onPress={chooseFile} style={({ pressed }) => [styles.thumb, styles.thumbAdd, pressed && press.give]}>
-              <DocIcon />
-              <T v="bodyTiny">File</T>
-            </Pressable>
-          </ScrollView>
-          <Gap h={4} />
-          <Pressable accessibilityRole="button" onPress={() => setPages((ps) => ps.slice(0, -1))} hitSlop={8} style={({ pressed }) => [styles.left, pressed && press.link]}>
-            <T v="bodyTiny" style={styles.under}>Remove the last page</T>
-          </Pressable>
-        </>
-      ) : (
-        <Pressable accessibilityRole="button" accessibilityLabel="Take a photo of your settlement" onPress={takePhoto} style={({ pressed }) => [styles.frame, styles.portraitSmall, pressed && press.give]}>
-          <View style={[StyleSheet.absoluteFill, styles.empty]}>
-            <CameraIcon />
-            <T v="bodySmall">Tap to take a photo</T>
-          </View>
-        </Pressable>
-      )}
-      <Gap h={12} />
-      <Card>
-        <T v="bodySmall" c={color.ink}>
-          The pages are sent once to an AI (Claude) to read the detention lines. They aren’t stored, and your company never sees them.
-        </T>
-      </Card>
-      <Gap h={16} />
-      <Button label="Type the detention total instead" variant="text" onPress={onType} />
-    </Screen>
+    <Scanner
+      title={`${label} settlement`}
+      sample={sample}
+      samplePage={<SampleSettlementPage label={label} claims={claims} paid={samplePaid} />}
+      pages={pages}
+      onShot={(shot) => add(shot === 'sample' ? { file: null, preview: null } : shot)}
+      onFallback={takePhoto}
+      onFile={sample ? () => a.toast('The sample has no file to pick. Use the shutter.') : chooseFile}
+      onDone={read}
+      onClose={onCancel}
+    />
   );
 }
 
@@ -428,20 +365,11 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  left: { alignSelf: 'flex-start' },
-  under: { textDecorationLine: 'underline' },
   frame: { width: '100%', borderRadius: 24, borderCurve: 'continuous', overflow: 'hidden', ...glass },
   portrait: { aspectRatio: 3 / 4 },
   portraitSmall: { aspectRatio: 4 / 3 },
-  empty: { alignItems: 'center', justifyContent: 'center', gap: 6 },
   img: { width: '100%', height: '100%', resizeMode: 'cover' },
   pdf: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: color.raise },
-  sampleTag: { position: 'absolute', right: 12, bottom: 12 },
-  thumbs: { gap: 8 },
-  thumb: { width: 54, height: 72, borderRadius: 10, borderCurve: 'continuous', overflow: 'hidden', backgroundColor: color.raise },
-  thumbAdd: { alignItems: 'center', justifyContent: 'center', gap: 2 },
-  thumbNo: { position: 'absolute', left: 4, bottom: 4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: color.ink, alignItems: 'center', justifyContent: 'center' },
-  thumbNoText: { fontFamily: fontFamily.semibold, fontSize: 10, color: color.bg },
   beam: { position: 'absolute', left: 0, right: 0, top: 0, height: 3, backgroundColor: color.signal },
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
   dot: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: color.line, alignItems: 'center', justifyContent: 'center' },
