@@ -54,6 +54,19 @@ export function SampleSettlementPage({ label, claims, paid, highlight }: { label
         <Text style={[styles.cell, styles.colWhat]}>Paid miles this period</Text>
         <Text style={[styles.cell, styles.colAmt]}>{(1840 + claims.length * 212).toLocaleString('en-US')}</Text>
       </View>
+      {/* The deductions block every statement carries, so the page reads full to the tear. */}
+      <Text style={[styles.meta, styles.ytdHead]}>Deductions this period</Text>
+      {[
+        ['Occupational accident', -38.5],
+        ['Escrow', -50],
+        ['Plate program', -22.75],
+      ].map(([k, v]) => (
+        <View key={k as string} style={styles.row}>
+          <Text style={[styles.cell, styles.colLoad]} />
+          <Text style={[styles.cell, styles.colWhat]}>{k}</Text>
+          <Text style={[styles.cell, styles.colAmt]}>{`(${money(-(v as number))})`}</Text>
+        </View>
+      ))}
       <View style={styles.fill} />
       <View style={styles.tear} />
       <Text style={[styles.meta, styles.ytdHead]}>Year to date</Text>

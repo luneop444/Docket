@@ -18,7 +18,12 @@ export { BackdropCtx };
  *
  * The page it bends is one picture of the photo behind it, taken once the sheet has risen.
  */
-const RIM_H = 64; // the nav bar's glass height: the sheet bends like it
+/**
+ * The rim the sheet bends across, as if it were glass this tall. Each pill bends for its own
+ * height (glassK(h)); the sheet is too tall for that (380 would pull the page 150 points in),
+ * so it bends like 120-point glass: about 47 points at the very edge, across a 50-point rim.
+ */
+const RIM_H = 120;
 const BEZEL_PX = 0.42 * RIM_H;
 
 export function LiquidSheet({ children, tint = BAR_TINT_GL[3] }: { children: ReactNode; tint?: number }) {
