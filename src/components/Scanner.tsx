@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { squircleExtent } from '../logic/squircle';
-import { color, colorDark, radius, type as typo } from '../theme/tokens';
+import { squircleExtent, squirclePath } from '../logic/squircle';
+import { color, colorDark, protoColor, radius, type as typo } from '../theme/tokens';
 import { useInsets } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { Button } from './ui';
@@ -151,6 +151,12 @@ export function Scanner({
         ) : (
           <ScanViewfinder ref={cam} onState={setState} />
         )}
+        {/* Everything outside the frame sits under the app's scrim (the one behind sheets), so
+            the page is the brightest thing. The hole is the frame's squircle, at the chip
+            radius like the brackets. Inside the photo layer, so the glass bends it too. */}
+        <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Path fillRule="evenodd" fill={protoColor.scrim} d={`M0 0H${width}V${height}H0Z ${holePath(gx, gy, gw, gh)}`} />
+        </Svg>
       </View>
 
       {stage === 'reading' ? <Beam x={gx} y={gy} w={gw} h={gh} /> : null}
@@ -349,6 +355,12 @@ function Rise({ children }: { children: ReactNode }) {
  * One corner guide: two straight arms joined by the app's squircle (the Squircle plugin's
  * curve at the chip radius), not a circular arc.
  */
+/** The frame's outline as a squircle at the chip radius, placed at x, y. */
+function holePath(x: number, y: number, w: number, h: number) {
+  const r = squircleExtent(radius.chip, w, h);
+  return squirclePath(w, h, [r, r, r, r]).replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g, (_, a, b) => `${+a + x} ${+b + y}`);
+}
+
 function Bracket({ at }: { at: 'tl' | 'tr' | 'bl' | 'br' }) {
   const L = 34, W = 4, o = W / 2;
   const r = squircleExtent(radius.chip, 100, 100);
