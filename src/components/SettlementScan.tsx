@@ -8,7 +8,7 @@ import { loadNo } from '../logic/sampleData';
 import { cleanAmount } from '../logic/settlement';
 import { useStore } from '../state/AppStore';
 import { DocReadError, DocReadingOff, pickFile, postDoc, shrinkPhoto, type DocFile } from '../state/readDoc';
-import { color, fontFamily, glass } from '../theme/tokens';
+import { color, fontFamily, glass, radius } from '../theme/tokens';
 import { BackBar, Screen } from './Chrome';
 import { Chip } from './Chip';
 import { DocIcon } from './Icons';
@@ -453,13 +453,14 @@ const styles = StyleSheet.create({
   pair: { gap: 8 },
   missNote: { paddingBottom: 12 },
   sheet: {
-    borderRadius: 36,
+    // The app's sheet: 24 squircle, 20 padding. Light glass, a touch denser than the cards'
+    // 62% white so it stays readable over a dark photo.
+    borderRadius: radius.sheet,
     borderCurve: 'continuous',
-    padding: 22,
-    paddingBottom: 18,
+    padding: 20,
     backgroundColor: 'rgba(255,255,255,0.9)',
     ...(Platform.OS === 'web'
-      ? ({ backdropFilter: 'blur(24px) saturate(160%)', WebkitBackdropFilter: 'blur(24px) saturate(160%)', boxShadow: '0 -8px 40px rgba(0,0,0,0.28), inset 0 0 0 0.5px rgba(255,255,255,0.6)' } as object)
+      ? ({ backdropFilter: 'blur(24px) saturate(160%)', WebkitBackdropFilter: 'blur(24px) saturate(160%)', boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.6)' } as object)
       : null),
   },
   hero: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 10 },

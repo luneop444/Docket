@@ -1,12 +1,16 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import type { ReactNode } from 'react';
-import { Image, Platform, StyleSheet, View } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Animated, Image, Platform, StyleSheet, View } from 'react-native';
+import { color } from '../theme/tokens';
+import { useReduceMotion } from './stepMotion';
 
 const CAB = require('../../assets/sample-cab.jpg');
 
 /** Camera grain, as an SVG noise tile (web only; the native camera has its own). */
 const GRAIN =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")";
+/** The paper's tilt: a little away from the lens, a slight turn. */
+const TILT = [{ perspective: 700 }, { rotateX: '12deg' }, { rotateZ: '-2.2deg' }] as const;
 const web = (s: object) => (Platform.OS === 'web' ? s : null);
 
 /**
@@ -16,7 +20,12 @@ const web = (s: object) => (Platform.OS === 'web' ? s : null);
  * with the window's light falling across it, its fold creases, a contact shadow, and the
  * camera's grain over everything.
  */
-export function SamplePhoto({ page, x, y, w, h }: { page: ReactNode; x: number; y: number; w: number; h: number }) {
+export function SamplePhoto({ page, x, y, w, h, found }: { page: ReactNode; x: number; y: number; w: number; h: number; found?: boolean }) {
+  const reduce = useReduceMotion();
+  const [on] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    Animated.spring(on, { toValue: found ? 1 : 0, friction: 7, tension: 120, useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [found, on]);
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Image source={CAB} style={styles.cab} resizeMode="cover" />
@@ -49,6 +58,21 @@ export function SamplePhoto({ page, x, y, w, h }: { page: ReactNode; x: number; 
           style={StyleSheet.absoluteFill}
         />
       </View>
+      {/* Found: a sharp lime outline on the page's own corners. It sits in the paper's own
+          tilt, so it lands on the real edges, and settles in from a touch larger. */}
+      <Animated.View
+        style={[
+          styles.found,
+          {
+            left: x - 4,
+            top: y - 4,
+            width: w + 8,
+            height: h + 8,
+            opacity: on,
+            transform: [...TILT, { scale: reduce ? 1 : on.interpolate({ inputRange: [0, 1], outputRange: [1.05, 1] }) }],
+          },
+        ]}
+      />
       {/* The whole frame: a soft vignette and grain, so the page and the seat read as one photo. */}
       <LinearGradient colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.45)']} locations={[0, 0.22, 0.7, 1]} style={StyleSheet.absoluteFill} />
       {Platform.OS === 'web' ? <View style={[StyleSheet.absoluteFill, styles.grain]} /> : null}
@@ -62,13 +86,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     overflow: 'hidden',
     borderRadius: 1.5,
-    transform: [{ perspective: 700 }, { rotateX: '12deg' }, { rotateZ: '-2.2deg' }],
+    transform: [...TILT],
     shadowColor: '#000',
     shadowOpacity: 0.5,
     shadowRadius: 18,
     shadowOffset: { width: 4, height: 12 },
     ...web({ boxShadow: '0 1px 2px rgba(0,0,0,0.55), 3px 10px 18px rgba(0,0,0,0.45), 8px 26px 40px rgba(0,0,0,0.35)', filter: 'contrast(0.96) saturate(0.9)' }),
   },
+  found: { position: 'absolute', borderWidth: 3, borderColor: color.signal, backgroundColor: 'rgba(212,245,76,0.10)' },
   crease: { position: 'absolute', left: 0, right: 0, height: 2 },
   creaseDark: { height: 1, backgroundColor: 'rgba(60,45,30,0.16)' },
   creaseLight: { height: 1, backgroundColor: 'rgba(255,255,255,0.55)' },

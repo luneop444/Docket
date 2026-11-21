@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { color, fontFamily } from '../theme/tokens';
+import Svg, { Circle, Path } from 'react-native-svg';
+import { squircleExtent } from '../logic/squircle';
+import { color, colorDark, radius, type as typo } from '../theme/tokens';
 import { useInsets } from './Chrome';
-import { CameraIcon, CloseIcon, DocIcon } from './Icons';
+import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
+import { Button } from './ui';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
 import { SamplePhoto } from './SamplePhoto';
 import { useReduceMotion } from './stepMotion';
@@ -14,8 +17,9 @@ const DARK_GLASS = {
   borderColor: 'rgba(255,255,255,0.18)',
   ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(18px) saturate(140%)', WebkitBackdropFilter: 'blur(18px) saturate(140%)' } as object) : null),
 };
-const WHITE = '#FFFFFF';
-const SOFT = 'rgba(255,255,255,0.72)';
+const WHITE = colorDark.ink;
+/** How long the sample holds still before it takes the photo itself. */
+const AUTO_MS = 1100;
 /** A US letter page, the shape of a settlement. */
 const PAGE = 11 / 8.5;
 
@@ -63,9 +67,11 @@ export function Scanner({
   const reduce = useReduceMotion();
   const cam = useRef<Viewfinder>(null);
   const [state, setState] = useState<CamState>('starting');
-  // The sample's page is found for the pages taken so far; a new shot looks again.
-  const [lockedFor, setLockedFor] = useState(-1);
-  const locked = sample && lockedFor === pages.length;
+  // The sample's page is found once; it stays found after the photo.
+  const [found, setFound] = useState(false);
+  const locked = sample && found;
+  // Auto-capture: once the page is found and still, a ring fills round the shutter, then it shoots.
+  const [hold, setHold] = useState(0);
   const [flash] = useState(() => new Animated.Value(0));
   const [snap] = useState(() => new Animated.Value(1));
 
@@ -78,17 +84,38 @@ export function Scanner({
   const gx = (width - gw) / 2;
   const gy = topH + 12 + (room - gh) / 2;
 
-  // The sample's page is found a beat after the scanner opens, and found again after each shot.
+  // The sample's page is found a beat after the scanner opens.
   useEffect(() => {
-    if (!sample) return;
+    if (!sample || stage !== 'capture') return;
     const t = setTimeout(() => {
-      setLockedFor(pages.length);
+      setFound(true);
       if (reduce) return;
-      snap.setValue(1.06);
+      snap.setValue(0.94);
       Animated.spring(snap, { toValue: 1, friction: 6, tension: 140, useNativeDriver: Platform.OS !== 'web' }).start();
     }, 900);
     return () => clearTimeout(t);
-  }, [sample, pages.length, reduce, snap]);
+  }, [sample, stage, reduce, snap]);
+
+  // Then it holds for a second and takes the photo by itself, once. Tapping the shutter first still works.
+  const auto = locked && stage === 'capture' && pages.length === 0;
+  useEffect(() => {
+    if (!auto) return;
+    const start = Date.now();
+    const id = setInterval(() => {
+      const f = Math.min(1, (Date.now() - start) / AUTO_MS);
+      setHold(f);
+      if (f >= 1) {
+        clearInterval(id);
+        shoot();
+      }
+    }, 30);
+    return () => {
+      clearInterval(id);
+      setHold(0);
+    };
+    // shoot only reads values that can't change while the sample holds still.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto]);
 
   async function shoot() {
     if (!reduce) {
@@ -102,21 +129,22 @@ export function Scanner({
   }
 
   const chip = sample
-    ? locked
-      ? 'Page found · hold still'
-      : 'Looking for the page…'
+    ? pages.length
+      ? 'Got it. Tap Done to read it.'
+      : locked
+        ? 'Page found · hold still'
+        : 'Looking for the page…'
     : state === 'live'
       ? 'Fit the page inside the corners'
       : state === 'starting'
         ? 'Starting the camera…'
         : 'Camera’s off here. The shutter opens your camera.';
   const last = pages[pages.length - 1];
-  const tint = locked ? color.signal : 'rgba(255,255,255,0.92)';
 
   return (
     <View style={styles.root}>
       {sample ? (
-        <SamplePhoto page={samplePage} x={gx + 10} y={gy + 10} w={gw - 20} h={gh - 20} />
+        <SamplePhoto page={samplePage} x={gx + 10} y={gy + 10} w={gw - 20} h={gh - 20} found={locked && stage === 'capture'} />
       ) : stage !== 'capture' && last?.preview ? (
         <Image source={{ uri: last.preview }} style={styles.still} resizeMode="cover" accessibilityLabel="Your settlement page" />
       ) : stage !== 'capture' ? (
@@ -127,15 +155,18 @@ export function Scanner({
 
       {stage === 'reading' ? <Beam x={gx} y={gy} w={gw} h={gh} /> : null}
 
-      {/* The corners: where the page goes; lime once the page is found. */}
-      {stage === 'capture' ? (
-      <Animated.View pointerEvents="none" style={[styles.guide, { left: gx, top: gy, width: gw, height: gh, transform: [{ scale: snap }] }]}>
-        <Corner at="tl" c={tint} />
-        <Corner at="tr" c={tint} />
-        <Corner at="bl" c={tint} />
-        <Corner at="br" c={tint} />
-      </Animated.View>
+      {/* Aiming: squircle brackets show where the page's corners go. Found: they hand off to a
+          sharp outline on the page's real corners, because paper has square corners and never
+          lies flat to the lens. */}
+      {stage === 'capture' && !locked ? (
+        <View pointerEvents="none" style={[styles.guide, { left: gx, top: gy, width: gw, height: gh }]}>
+          <Bracket at="tl" />
+          <Bracket at="tr" />
+          <Bracket at="bl" />
+          <Bracket at="br" />
+        </View>
       ) : null}
+
 
       {/* Top: close, what's being scanned, a file instead. */}
       <View style={[styles.top, { paddingTop: top + 8 }]} pointerEvents="box-none">
@@ -156,8 +187,8 @@ export function Scanner({
       </View>
       {stage !== 'capture' ? null : <>
       <View style={[styles.chipRow, { top: top + 8 + 44 + 12 }]} pointerEvents="none">
-        <View style={[styles.chip, DARK_GLASS, locked && styles.chipLocked]}>
-          {locked ? <View style={styles.lockDot} /> : null}
+        <View style={[styles.chip, locked ? styles.chipLocked : DARK_GLASS]}>
+          {locked ? <CheckIcon c={color.ink} size={12} /> : null}
           <Text style={[styles.chipText, locked && styles.chipTextLocked]}>{chip}</Text>
         </View>
       </View>
@@ -187,19 +218,16 @@ export function Scanner({
               <View style={[styles.thumb, styles.thumbEmpty]} />
             )}
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Take the photo" onPress={shoot} style={({ pressed }) => [styles.shutter, pressed && styles.shutterDown]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={auto ? 'Taking the photo. Tap to take it now' : 'Take the photo'} onPress={shoot} style={({ pressed }) => [styles.shutter, pressed && styles.shutterDown]}>
             <View style={styles.shutterIn}>{state === 'off' && !sample ? <CameraIcon c={color.ink} size={24} /> : null}</View>
+            {hold > 0 ? (
+              <Svg width={80} height={80} style={styles.ring} pointerEvents="none">
+                <Circle cx={40} cy={40} r={38} stroke={color.signal} strokeWidth={4} fill="none" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 38}`} strokeDashoffset={2 * Math.PI * 38 * (1 - hold)} transform="rotate(-90 40 40)" />
+              </Svg>
+            ) : null}
           </Pressable>
           <View style={[styles.side, styles.sideRight]}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={pages.length ? `Done, read ${pages.length} page${pages.length === 1 ? '' : 's'}` : 'Done'}
-              disabled={!pages.length}
-              onPress={onDone}
-              style={({ pressed }) => [styles.done, pages.length ? styles.doneOn : [DARK_GLASS, styles.doneOff], pressed && styles.pressed]}
-            >
-              <Text style={[styles.doneText, !pages.length && styles.doneTextOff]}>Done</Text>
-            </Pressable>
+            <Button label="Done" variant="white" small disabled={!pages.length} onPress={onDone} style={styles.done} />
           </View>
         </View>
       </View>
@@ -284,15 +312,22 @@ function Rise({ children }: { children: ReactNode }) {
   );
 }
 
-function Corner({ at, c }: { at: 'tl' | 'tr' | 'bl' | 'br'; c: string }) {
-  const L = 30, W = 4, R = 14;
-  const s = {
-    tl: { top: -2, left: -2, borderTopWidth: W, borderLeftWidth: W, borderTopLeftRadius: R },
-    tr: { top: -2, right: -2, borderTopWidth: W, borderRightWidth: W, borderTopRightRadius: R },
-    bl: { bottom: -2, left: -2, borderBottomWidth: W, borderLeftWidth: W, borderBottomLeftRadius: R },
-    br: { bottom: -2, right: -2, borderBottomWidth: W, borderRightWidth: W, borderBottomRightRadius: R },
-  }[at];
-  return <View style={[{ position: 'absolute', width: L, height: L, borderColor: c }, s]} />;
+/**
+ * One corner guide: two straight arms joined by the app's squircle (the Squircle plugin's
+ * curve at the chip radius), not a circular arc.
+ */
+function Bracket({ at }: { at: 'tl' | 'tr' | 'bl' | 'br' }) {
+  const L = 34, W = 4, o = W / 2;
+  const r = squircleExtent(radius.chip, 100, 100);
+  const k = r * 0.1765;
+  const d = `M ${o} ${L} L ${o} ${o + r} C ${o} ${o + k} ${o + k} ${o} ${o + r} ${o} L ${L} ${o}`;
+  const flip = { tl: '', tr: `translate(${L + o} 0) scale(-1 1)`, bl: `translate(0 ${L + o}) scale(1 -1)`, br: `translate(${L + o} ${L + o}) scale(-1 -1)` }[at];
+  const pos = { tl: { top: -o, left: -o }, tr: { top: -o, right: -o }, bl: { bottom: -o, left: -o }, br: { bottom: -o, right: -o } }[at];
+  return (
+    <Svg width={L + o} height={L + o} style={[styles.bracket, pos]}>
+      <Path d={d} transform={flip} stroke={WHITE} strokeOpacity={0.92} strokeWidth={W} strokeLinecap="round" fill="none" />
+    </Svg>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -303,45 +338,42 @@ const styles = StyleSheet.create({
   top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, gap: 10 },
   circle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   titlePill: { flexShrink: 1, height: 36, borderRadius: 18, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
-  title: { fontFamily: fontFamily.semibold, fontSize: 15, color: WHITE },
+  title: { ...typo.labelControl, color: WHITE },
   filePill: { height: 44, borderRadius: 22, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  fileText: { fontFamily: fontFamily.medium, fontSize: 15, color: WHITE },
+  fileText: { ...typo.labelControl, color: WHITE },
   pressed: { opacity: 0.6 },
   chipRow: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 34, borderRadius: 17, paddingHorizontal: 14 },
-  chipLocked: { backgroundColor: color.signal, borderColor: color.signal },
-  chipText: { fontFamily: fontFamily.medium, fontSize: 14, color: WHITE },
+  chipLocked: { backgroundColor: color.signal },
+  chipText: { ...typo.labelSmall, color: WHITE },
   chipTextLocked: { color: color.ink },
-  lockDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: color.ink },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', gap: 16 },
-  privacy: { fontFamily: fontFamily.regular, fontSize: 12, color: SOFT, textAlign: 'center', paddingHorizontal: 32 },
+  privacy: { ...typo.bodyTiny, color: colorDark.sub, textAlign: 'center', paddingHorizontal: 32 },
   controls: { width: '100%', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24 },
   side: { flex: 1, alignItems: 'flex-start' },
   sideRight: { alignItems: 'flex-end' },
   thumbWrap: { width: 52, height: 68 },
-  thumb: { width: 52, height: 68, borderRadius: 10, borderCurve: 'continuous', borderWidth: 2, borderColor: WHITE, overflow: 'hidden', backgroundColor: '#FFF' },
+  thumb: { width: 52, height: 68, borderRadius: 12, borderCurve: 'continuous', borderWidth: 2, borderColor: WHITE, overflow: 'hidden', backgroundColor: '#FFF' },
   thumbEmpty: { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.35)', borderStyle: 'dashed' },
   thumbImg: { width: '100%', height: '100%', borderRadius: 8 },
   thumbPdf: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   count: { zIndex: 2, position: 'absolute', top: -8, right: -8, minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 5, backgroundColor: color.signal, alignItems: 'center', justifyContent: 'center' },
-  countText: { fontFamily: fontFamily.semibold, fontSize: 12, color: color.ink },
+  countText: { ...typo.labelPill, color: color.ink },
   shutter: { width: 80, height: 80, borderRadius: 40, borderWidth: 4, borderColor: WHITE, alignItems: 'center', justifyContent: 'center' },
   shutterDown: { transform: [{ scale: 0.94 }] },
   shutterIn: { width: 64, height: 64, borderRadius: 32, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },
-  done: { height: 44, borderRadius: 22, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' },
-  doneOn: { backgroundColor: WHITE },
-  doneOff: { opacity: 0.6 },
-  doneText: { fontFamily: fontFamily.semibold, fontSize: 16, color: color.ink },
-  doneTextOff: { color: WHITE },
   flash: { backgroundColor: WHITE },
+  done: { width: 96 },
+  ring: { position: 'absolute', top: -4, left: -4 },
+  bracket: { position: 'absolute' },
   still: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   circleSpace: { width: 44, height: 44 },
   beam: { height: 3, borderRadius: 2, backgroundColor: color.signal, ...(Platform.OS === 'web' ? ({ boxShadow: `0 0 18px ${color.signal}` } as object) : null) },
   wash: { position: 'absolute', left: 0, right: 0, bottom: 3, height: 44, backgroundColor: color.signal, opacity: 0.16 },
   progressRow: { position: 'absolute', left: 24, right: 24, alignItems: 'center' },
   progress: { width: '100%', maxWidth: 360, height: 72, borderRadius: 36, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, gap: 16 },
-  pct: { fontFamily: fontFamily.medium, fontSize: 19, color: WHITE, minWidth: 44, fontVariant: ['tabular-nums'] },
-  progressText: { flex: 1, fontFamily: fontFamily.medium, fontSize: 19, color: WHITE },
+  pct: { ...typo.numberS, color: WHITE, minWidth: 48, fontVariant: ['tabular-nums'] },
+  progressText: { ...typo.labelButton, flex: 1, color: WHITE },
   dots: { flexDirection: 'row', gap: 5 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: WHITE },
   sheetWrap: { position: 'absolute', left: 8, right: 8, bottom: 8 },
