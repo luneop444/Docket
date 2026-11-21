@@ -386,7 +386,7 @@ function Found({
     <LiquidSheet tint={SHEET_TINT}>
       <T v="bodyStrong">{label} settlement</T>
       <T v="bodyTiny">Detention read from the page</T>
-      <Gap h={14} />
+      <Gap h={16} />
       <View style={styles.hero}>
         {short > 0 ? (
           <>
@@ -400,7 +400,7 @@ function Found({
           </>
         )}
       </View>
-      <Gap h={14} />
+      <Gap h={16} />
       <ScrollView style={styles.sheetRows} bounces={false}>
         {claims.map((c, i) => {
           const miss = unmatched.includes(c.id);
@@ -412,14 +412,15 @@ function Found({
               <Row base style={styles.foundRow}>
                 <View style={styles.flex}>
                   <T v="bodyStrong" numberOfLines={1}>{c.load.name}</T>
-                  <T v="bodyTiny">{no ? `Load ${no} · ` : ''}claimed {money(c.left)}</T>
+                  <T v="bodyTiny" numberOfLines={1}>{no ? `Load ${no} · ` : ''}claimed {money(c.left)}</T>
                 </View>
                 {miss ? (
                   <Chip text="No load number" />
                 ) : v >= c.left - 0.005 ? (
                   <Chip text={money(v)} tone="lime" />
                 ) : v > 0 ? (
-                  <Chip text={`${money(v)} of ${money(c.left)}`} tone="flag" />
+                  // The claim is already on the left; the chip only says what came.
+                  <Chip text={`${money(v)} paid`} tone="flag" />
                 ) : (
                   <Chip text="Not on it" tone="flag" />
                 )}
@@ -465,7 +466,7 @@ const styles = StyleSheet.create({
   missNote: { paddingBottom: 12 },
   hero: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
   sheetRows: { maxHeight: 210, flexGrow: 0 },
-  foundRow: { paddingVertical: 10 },
+  foundRow: { paddingVertical: 12 },
   amount: {
     flexDirection: 'row',
     alignItems: 'center',

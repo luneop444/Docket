@@ -1,8 +1,8 @@
 import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { BackdropCtx, RiseCtx } from './backdrop';
-import { glassEdge, radius } from '../theme/tokens';
+import { glassEdge, glassLift, radius } from '../theme/tokens';
 import { createGlass, type Glass } from './glassGL';
-import { BAR_TINT_GL, chromaTimes, FROST, glassK, mapData, rimWith } from './glassLook';
+import { BAR_TINT_GL, BEZEL, chromaTimes, FROST, GLASS_RIM, glassK, mapData } from './glassLook';
 import { forget, pictureOf, sliceAt } from './pagePicture';
 import { frosted, SPEC } from './glassPicture';
 import { squircleExtent, squirclePath } from '../logic/squircle';
@@ -19,24 +19,19 @@ export { BackdropCtx };
  * The page it bends is one picture of the photo behind it, taken once the sheet has risen.
  */
 /**
- * The rim the sheet bends across, as if it were glass this tall. Each pill bends for its own
- * height (glassK(h)); the sheet is too tall for that (380 would pull the page 150 points in),
- * so it bends like 120-point glass: about 47 points at the very edge, across a 50-point rim.
+ * The card's glass is the system's, read at the nav bar's scale (21 Nov, after the heavier
+ * tunings turned the whole card into a lens): the rim bends across the nav bar's own rim
+ * width (BEZEL of its 64-point glass, about 27 points) by the nav bar's own amount, so the
+ * edge reads like every other glass edge and the middle stays a calm, flat pane. Tint, lift,
+ * rims and colour split are the system's.
  */
-const RIM_H = 120;
-/**
- * The big card's own tuning (21 Nov, asked for on this card only, not the system's glass):
- * way more splay (the bend spreads across a 100-point rim, twice the 50 it had), way more
- * refraction (twice the bend: about 94 points at the very edge), the colour split cut so its
- * fringe ends up slightly smaller than before (85%) despite the stronger bend, less white
- * (52%), and more depth (a deeper lift and lower rim).
- */
-const BEZEL_PX = 170; // way more splay: 170 of the card's ~410 points (100 before)
-const SHEET_BEND = 3.6; // way more refraction: about 170 points at the very edge (2 before)
-const SHEET_SPLIT = 0.25; // the colour split held near where it was as the bend grew
-export const SHEET_TINT = 0.4; // less white (52% before)
-const SHEET_LIFT = '0 22px 52px rgba(0,0,0,0.22)'; // more depth (0 16 40 at 16% before)
-const SHEET_RIM = rimWith(0.1);
+const RIM_H = 64;
+const BEZEL_PX = BEZEL * RIM_H;
+const SHEET_BEND = 1;
+const SHEET_SPLIT = 1;
+export const SHEET_TINT = BAR_TINT_GL[3];
+const SHEET_LIFT = glassLift;
+const SHEET_RIM = GLASS_RIM;
 const sheetK = (): [number, number] => {
   const [k] = glassK(RIM_H);
   return [k * SHEET_BEND, k * SHEET_BEND];

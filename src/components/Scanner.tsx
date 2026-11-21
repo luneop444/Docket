@@ -3,7 +3,7 @@ import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View, u
 import Svg, { Circle, Path } from 'react-native-svg';
 import { squircleExtent, squirclePath } from '../logic/squircle';
 import { color, colorDark, protoColor, radius, type as typo } from '../theme/tokens';
-import { useInsets } from './Chrome';
+import { useInsets, useTabSpace } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
 import { BackdropCtx, RiseCtx } from './backdrop';
@@ -96,14 +96,17 @@ export function Scanner({
   const [flash] = useState(() => new Animated.Value(0));
   const [snap] = useState(() => new Animated.Value(1));
 
-  // The guide: a letter page, as big as fits between the top controls and the shutter.
-  const topH = top + 8 + 44 + 12 + 34;
-  const bottomH = footerBottom + 24 + 84 + 30;
-  const room = Math.max(200, height - topH - bottomH - 24);
-  const gw = Math.min(width - 72, room / PAGE);
+  // The guide: a letter page, as big as fits between the chip and the privacy line, 16 clear
+  // of each, and no closer than 36 to the sides (the 20 edge plus room for the brackets).
+  // The bottom block is measured, since its line can wrap to one or two lines.
+  const [bottomH, setBottomH] = useState(footerBottom + SHUTTER + L.gap + 40);
+  const chipTop = top + L.bar + L.gap;
+  const topH = chipTop + L.chip + L.gapL;
+  const room = Math.max(200, height - topH - bottomH - L.gapL);
+  const gw = Math.min(width - (L.edge + 16) * 2, room / PAGE);
   const gh = gw * PAGE;
   const gx = (width - gw) / 2;
-  const gy = topH + 12 + (room - gh) / 2;
+  const gy = topH + (room - gh) / 2;
 
   // The sample, held like a real phone: the page comes into the frame off-centre and turned,
   // drifts in with a hand's small overshoots, and goes still. Then it's found.
@@ -120,7 +123,8 @@ export function Scanner({
   // page run under the card's top edge, so its glass has the page's lines to bend there. None
   // when the card already covers that much (a tall card), and never past the read lines' room.
   const [cardH, setCardH] = useState(0);
-  const dropBy = cardH ? Math.max(0, Math.min(DROP_MAX, height - 8 - cardH + 150 - (gy + gh))) : 0;
+  const { pillBottom } = useTabSpace();
+  const dropBy = cardH ? Math.max(0, Math.min(DROP_MAX, height - pillBottom - cardH + 150 - (gy + gh))) : 0;
   const [drop] = useState(() => new Animated.Value(0));
   const dropping = stage === 'found';
   useEffect(() => {
@@ -240,14 +244,17 @@ export function Scanner({
 
 
       {/* Top: close, what's being scanned, a file instead. */}
-      <View style={[styles.top, { paddingTop: top + 8 }]} pointerEvents="box-none">
+      {/* The title sits on the screen's centre line whatever is either side of it. */}
+      <View style={[styles.titleRow, { top, height: L.bar }]} pointerEvents="box-none">
+        <GlassPill h={44} minW={80} pad={L.gapL}>
+          <Text style={styles.title} numberOfLines={1}>{title}</Text>
+        </GlassPill>
+      </View>
+      <View style={[styles.top, { top, height: L.bar }]} pointerEvents="box-none">
         <GlassPill h={44} minW={44}>
           <Pressable accessibilityRole="button" accessibilityLabel="Close the scanner" onPress={onClose} style={({ pressed }) => [styles.circle, pressed && styles.pressed]}>
             <CloseIcon c={color.ink} size={16} />
           </Pressable>
-        </GlassPill>
-        <GlassPill h={44} minW={80} pad={16}>
-          <Text style={styles.title} numberOfLines={1}>{title}</Text>
         </GlassPill>
         {stage === 'capture' ? (
           <GlassPill h={44} minW={44}>
@@ -261,21 +268,21 @@ export function Scanner({
         )}
       </View>
       {stage !== 'capture' ? null : <>
-      <View style={[styles.chipRow, { top: top + 8 + 44 + 12 }]} pointerEvents="none">
+      <View style={[styles.chipRow, { top: chipTop }]} pointerEvents="none">
         {locked ? (
           <View style={[styles.chip, styles.chipLocked]}>
             <CheckIcon c={color.ink} size={12} />
             <Text style={[styles.chipText, styles.chipTextLocked]}>{chip}</Text>
           </View>
         ) : (
-          <GlassPill h={36} minW={60} pad={14}>
+          <GlassPill h={L.chip} minW={60} pad={L.gap}>
             <Text style={styles.chipText}>{chip}</Text>
           </GlassPill>
         )}
       </View>
 
       {/* Bottom: pages so far, the shutter, done. */}
-      <View style={[styles.bottom, { paddingBottom: footerBottom + 12 }]} pointerEvents="box-none">
+      <View style={[styles.bottom, { paddingBottom: footerBottom }]} pointerEvents="box-none" onLayout={(e) => setBottomH(Math.round(e.nativeEvent.layout.height))}>
         <Text style={styles.privacy}>Sent once to Claude to read. Not stored, and your company never sees it.</Text>
         <View style={styles.controls}>
           {/* After the iPhone's own camera (iOS 26): the shutter is a white disc on a liquid
@@ -317,7 +324,7 @@ export function Scanner({
             ) : null}
           </GlassPill>
           <View style={[styles.side, styles.sideRight]}>
-            <GlassPill h={THUMB} minW={THUMB} pad={22}>
+            <GlassPill h={THUMB} minW={THUMB} pad={L.gapL + 4}>
               <Pressable accessibilityRole="button" accessibilityLabel={pages.length ? `Done, read ${pages.length} page${pages.length === 1 ? '' : 's'}` : 'Done'} accessibilityState={{ disabled: !pages.length }} disabled={!pages.length} onPress={onDone} style={({ pressed }) => [styles.doneHit, pressed && styles.pressed]}>
                 <Text style={[styles.doneText, !pages.length && styles.doneOff]}>Done</Text>
               </Pressable>
@@ -329,8 +336,8 @@ export function Scanner({
       </>}
 
       {stage === 'reading' && progress ? (
-        <View style={[styles.progressRow, { bottom: footerBottom + 40 }]} pointerEvents="none">
-          <GlassPill h={72} minW={Math.min(360, width - 48)} fixed>
+        <View style={[styles.progressRow, { bottom: footerBottom + (SHUTTER - 72) / 2 }]} pointerEvents="none">
+          <GlassPill h={72} minW={width - L.edge * 2} fixed>
             <View style={styles.progress} accessibilityRole="progressbar" accessibilityLabel={`${progress.text}, ${progress.pct}%`}>
               <Text style={styles.pct}>{progress.pct}%</Text>
               <Text style={styles.progressText} numberOfLines={1}>{progress.text}</Text>
@@ -422,6 +429,8 @@ function Dots() {
 function Rise({ children, onHeight }: { children: ReactNode; onHeight: (h: number) => void }) {
   const reduce = useReduceMotion();
   const { height } = useWindowDimensions();
+  // Floats where the tab bar floats: 20 in from the sides, at its distance from the bottom.
+  const { pillBottom } = useTabSpace();
   const [t] = useState(() => new Animated.Value(reduce ? 1 : 0));
   const [go, setGo] = useState(false);
   const [ready] = useState(() => () => setGo(true));
@@ -435,7 +444,7 @@ function Rise({ children, onHeight }: { children: ReactNode; onHeight: (h: numbe
   }, [reduce, go, t]);
   return (
     <RiseCtx.Provider value={ready}>
-      <Animated.View onLayout={(e) => onHeight(e.nativeEvent.layout.height)} style={[styles.sheetWrap, { transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [height, 0] }) }] }]}>
+      <Animated.View onLayout={(e) => onHeight(e.nativeEvent.layout.height)} style={[styles.sheetWrap, { right: L.edge, bottom: pillBottom }, { transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [height, 0] }) }] }]}>
         {children}
       </Animated.View>
     </RiseCtx.Provider>
@@ -448,6 +457,12 @@ function Rise({ children, onHeight }: { children: ReactNode; onHeight: (h: numbe
  */
 /** The camera's bottom row (iOS 26 sizes): the shutter's glass circle and the side circles. */
 const SHUTTER = 84;
+/**
+ * The scanner's spacing, from the app's own: the 20 screen edge (every screen's side padding,
+ * and the tab bar's inset), the 52 header bar with its 44 pills centred in it, and the 12 and
+ * 16 gaps the rest of the app steps in.
+ */
+const L = { edge: 20, bar: 52, chip: 36, gap: 12, gapL: 16 };
 /** The most the scene drops for the result card (see dropBy). */
 const DROP_MAX = 160;
 const THUMB = 60;
@@ -551,21 +566,22 @@ const styles = StyleSheet.create({
   // Dark, behind a photo that's still loading.
   desk: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#2A2A2C' },
   guide: { position: 'absolute' },
-  top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, gap: 10 },
+  titleRow: { position: 'absolute', left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
+  top: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: L.edge, gap: L.gap },
   circle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   title: { ...typo.labelControl, color: color.ink },
-  filePill: { height: 44, borderRadius: 22, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  filePill: { height: 44, paddingHorizontal: L.gapL, flexDirection: 'row', alignItems: 'center', gap: 6 },
   fileText: { ...typo.labelControl, color: color.ink },
   pressed: { opacity: 0.6 },
   chipRow: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, borderRadius: 18, paddingHorizontal: 14 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: L.chip, borderRadius: L.chip / 2, paddingHorizontal: L.gap },
   chipLocked: { backgroundColor: color.signal },
   chipText: { ...typo.labelSmall, color: color.ink },
   chipTextLocked: { color: color.ink },
-  bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', gap: 16 },
+  bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', gap: L.gapL },
   // White with a soft shadow, like the camera's own labels: it reads over a light seat or a dark one.
-  privacy: { ...typo.bodyTiny, color: WHITE, textAlign: 'center', paddingHorizontal: 32, textShadowColor: 'rgba(0,0,0,0.55)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  controls: { width: '100%', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24 },
+  privacy: { ...typo.bodyTiny, color: WHITE, textAlign: 'center', paddingHorizontal: L.edge * 2, textShadowColor: 'rgba(0,0,0,0.55)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  controls: { width: '100%', flexDirection: 'row', alignItems: 'center', paddingHorizontal: L.edge },
   side: { flex: 1, alignItems: 'flex-start' },
   sideRight: { alignItems: 'flex-end' },
   thumbWrap: { width: THUMB, height: THUMB },
@@ -588,11 +604,11 @@ const styles = StyleSheet.create({
   circleSpace: { width: 44, height: 44 },
   beam: { height: 3, borderRadius: 2, backgroundColor: color.signal, ...(Platform.OS === 'web' ? ({ boxShadow: `0 0 18px ${color.signal}` } as object) : null) },
   wash: { position: 'absolute', left: 0, right: 0, bottom: 3, height: 44, backgroundColor: color.signal, opacity: 0.16 },
-  progressRow: { position: 'absolute', left: 24, right: 24, alignItems: 'center' },
-  progress: { flex: 1, height: 72, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, gap: 16 },
+  progressRow: { position: 'absolute', left: L.edge, right: L.edge, alignItems: 'center' },
+  progress: { flex: 1, height: 72, flexDirection: 'row', alignItems: 'center', paddingHorizontal: L.edge + 4, gap: L.gap },
   pct: { ...typo.numberS, color: color.ink, minWidth: 48, fontVariant: ['tabular-nums'] },
   progressText: { ...typo.labelButton, flex: 1, color: color.ink },
   dots: { flexDirection: 'row', gap: 5 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.ink },
-  sheetWrap: { position: 'absolute', left: 8, right: 8, bottom: 8 },
+  sheetWrap: { position: 'absolute', left: L.edge },
 });
