@@ -108,6 +108,19 @@ export function Scanner({
     Animated.timing(hand, { toValue: 1, duration: HAND_MS, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
   }, [sample, reduce, hand]);
 
+  // How far the scene drops for the result card: just enough that about 150 points of the
+  // page run under the card's top edge, so its glass has the page's lines to bend there. None
+  // when the card already covers that much (a tall card), and never past the read lines' room.
+  const [cardH, setCardH] = useState(0);
+  const dropBy = cardH ? Math.max(0, Math.min(DROP_MAX, height - 8 - cardH + 150 - (gy + gh))) : 0;
+  const [drop] = useState(() => new Animated.Value(0));
+  const dropping = stage === 'found';
+  useEffect(() => {
+    const to = dropping ? dropBy : 0;
+    if (reduce) drop.setValue(to);
+    else Animated.timing(drop, { toValue: to, duration: 480, easing: Easing.inOut(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [dropping, dropBy, reduce, drop]);
+
   // The sample's page is found once the hand has settled.
   useEffect(() => {
     if (!sample || stage !== 'capture') return;
@@ -169,6 +182,10 @@ export function Scanner({
     <BackdropCtx.Provider value={backdrop}>
     <View style={styles.root}>
       <View ref={backdrop as never} style={StyleSheet.absoluteFill} pointerEvents="none">
+      {/* Once it's reading, the scene settles a little lower so the page runs under where the
+          result card will rise: the card's glass then has the page's lines to bend at its
+          edge, instead of blank seat. */}
+      <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateY: drop }] }]}>
       {sample ? (
           <Animated.View style={[StyleSheet.absoluteFill, handheld(hand)]}>
             <SamplePhoto page={samplePage} x={gx + 10} y={gy + 10} w={gw - 20} h={gh - 20} found={locked && stage === 'capture'} />
@@ -185,12 +202,18 @@ export function Scanner({
             radius like the brackets; once the page is found it tightens with the outline onto
             the page itself (square corners, the page's turn). Inside the photo layer, so the
             glass bends it too. */}
-        <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
-          <Path fillRule="evenodd" fill={protoColor.scrim} d={`M0 0H${width}V${height}H0Z ${holePath(gx, gy, gw, gh, reduce ? holeTo : holeT)}`} />
+        {/* Taller than the screen by DROP_MAX above, so the scrim still covers the top once the scene drops. */}
+        <Svg width={width} height={height + DROP_MAX} style={[styles.scrimSvg, { top: -DROP_MAX }]} pointerEvents="none">
+          <Path fillRule="evenodd" fill={protoColor.scrim} d={`M0 0H${width}V${height + DROP_MAX}H0Z ${holePath(gx, gy + DROP_MAX, gw, gh, reduce ? holeTo : holeT)}`} />
         </Svg>
+      </Animated.View>
       </View>
 
-      {stage === 'reading' ? <Beam x={gx} y={gy} w={gw} h={gh} /> : null}
+      {stage === 'reading' ? (
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { transform: [{ translateY: drop }] }]}>
+          <Beam x={gx} y={gy} w={gw} h={gh} />
+        </Animated.View>
+      ) : null}
 
       {/* Aiming: squircle brackets show where the page's corners go. Found: they hand off to a
           sharp outline on the page's real corners, because paper has square corners and never
@@ -306,7 +329,7 @@ export function Scanner({
         </View>
       ) : null}
 
-      {stage === 'found' && sheet ? <Rise>{sheet}</Rise> : null}
+      {stage === 'found' && sheet ? <Rise onHeight={setCardH}>{sheet}</Rise> : null}
 
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, { opacity: flash }]} />
     </View>
@@ -385,7 +408,7 @@ function Dots() {
  * waits for its glass to be ready (RiseCtx), so the glass rides up with it; if the glass can't
  * draw, it goes anyway after a moment with the flat stand-in.
  */
-function Rise({ children }: { children: ReactNode }) {
+function Rise({ children, onHeight }: { children: ReactNode; onHeight: (h: number) => void }) {
   const reduce = useReduceMotion();
   const { height } = useWindowDimensions();
   const [t] = useState(() => new Animated.Value(reduce ? 1 : 0));
@@ -401,7 +424,7 @@ function Rise({ children }: { children: ReactNode }) {
   }, [reduce, go, t]);
   return (
     <RiseCtx.Provider value={ready}>
-      <Animated.View style={[styles.sheetWrap, { transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [height, 0] }) }] }]}>
+      <Animated.View onLayout={(e) => onHeight(e.nativeEvent.layout.height)} style={[styles.sheetWrap, { transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [height, 0] }) }] }]}>
         {children}
       </Animated.View>
     </RiseCtx.Provider>
@@ -414,6 +437,8 @@ function Rise({ children }: { children: ReactNode }) {
  */
 /** The camera's bottom row (iOS 26 sizes): the shutter's glass circle and the side circles. */
 const SHUTTER = 84;
+/** The most the scene drops for the result card (see dropBy). */
+const DROP_MAX = 160;
 const THUMB = 60;
 
 /** How long the hand takes to bring the sample page into the frame. */
@@ -502,6 +527,7 @@ const styles = StyleSheet.create({
   shutterDown: { transform: [{ scale: 0.92 }] },
   shutterIn: { width: SHUTTER - 20, height: SHUTTER - 20, borderRadius: (SHUTTER - 20) / 2, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', ...(Platform.OS === 'web' ? ({ boxShadow: '0 1px 3px rgba(0,0,0,0.12)' } as object) : null) },
   flash: { backgroundColor: WHITE },
+  scrimSvg: { position: 'absolute', left: 0 },
   doneHit: { height: THUMB, justifyContent: 'center' },
   doneText: { ...typo.labelControl, color: color.ink },
   doneOff: { color: color.faint },

@@ -103,7 +103,9 @@ export function LiquidSheet({ children, tint = SHEET_TINT }: { children: ReactNo
     let top = 0, tall = 1;
     // A fresh picture: the page now shows the lines it read, which the earlier one didn't.
     forget(bd);
-    void pictureOf(bd).then((p) => {
+    // After the scene has settled under where the card will sit (Scanner drops it ~0.5 s).
+    const wait = new Promise((ok) => setTimeout(ok, 560));
+    void wait.then(() => pictureOf(bd)).then((p) => {
       if (!p || gone) return;
       const sl = sliceAt(p, 0, p.slices[0]?.height ?? 0);
       top = sl.top;
