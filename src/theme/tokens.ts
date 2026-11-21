@@ -134,15 +134,15 @@ export const glass = {
   boxShadow: `${glassEdge}, ${glassLift}, ${glassRim}`,
 } as const;
 /**
- * Dense glass: the same glass (edge, lift, rims) with a thicker frosted fill, for glass over a
- * photo or anything dark and busy. 62% white over the blurred cab photo gives red text about
+ * Dense glass: the same glass (edge, lift, rims, the bar's 1px frost) with only the tint raised,
+ * for glass over a photo or anything dark and busy. Not frosted: frost isn't in the system. 62% white over the blurred cab photo gives red text about
  * 2.7:1; 82% brings it to about 4.6:1 and the grey text to about 6:1. Figma: effect style
  * "Glass / Dense", variable color/glass-dense.
  */
 export const glassDense = {
   backgroundColor: 'rgba(255,255,255,0.82)',
   boxShadow: `${glassEdge}, ${glassLift}, ${glassRim}`,
-  ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)' } as object) : null),
+  ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(1px)', WebkitBackdropFilter: 'blur(1px)' } as object) : null),
 } as const;
 
 /** A glass card with its own ring (flagged red, selected black): Figma drops the thin edge and keeps the lift. */
