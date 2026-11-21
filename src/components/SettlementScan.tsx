@@ -8,7 +8,7 @@ import { loadNo } from '../logic/sampleData';
 import { cleanAmount } from '../logic/settlement';
 import { useStore } from '../state/AppStore';
 import { DocReadError, DocReadingOff, pickFile, postDoc, shrinkPhoto, type DocFile } from '../state/readDoc';
-import { color, fontFamily, glass, radius } from '../theme/tokens';
+import { color, fontFamily, glass, glassDense, radius } from '../theme/tokens';
 import { BackBar, Screen } from './Chrome';
 import { Chip } from './Chip';
 import { DocIcon } from './Icons';
@@ -452,17 +452,8 @@ const styles = StyleSheet.create({
   edit: { paddingBottom: 14, gap: 10 },
   pair: { gap: 8 },
   missNote: { paddingBottom: 12 },
-  sheet: {
-    // The app's sheet: 24 squircle, 20 padding. Light glass, a touch denser than the cards'
-    // 62% white so it stays readable over a dark photo.
-    borderRadius: radius.sheet,
-    borderCurve: 'continuous',
-    padding: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    ...(Platform.OS === 'web'
-      ? ({ backdropFilter: 'blur(24px) saturate(160%)', WebkitBackdropFilter: 'blur(24px) saturate(160%)', boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.6)' } as object)
-      : null),
-  },
+  // The app's sheet (24 squircle, 20 padding) in dense glass, so it reads over the photo.
+  sheet: { ...glassDense, borderRadius: radius.sheet, borderCurve: 'continuous', padding: 20 },
   hero: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 10 },
   heroNote: { flexShrink: 1 },
   sheetRows: { maxHeight: 210, flexGrow: 0 },

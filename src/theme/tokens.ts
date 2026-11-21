@@ -5,6 +5,7 @@
  * This is the ONLY file allowed to contain raw color values. Everything else
  * imports from here.
  */
+import { Platform } from 'react-native';
 import type { TextStyle } from 'react-native';
 
 export const color = {
@@ -122,13 +123,28 @@ export const radius = {
  * card for it to bend.
  */
 export const glassEdge = '0 0 0 0.5px rgba(0,0,0,0.10)';
-/** More depth (20 Nov): a deeper, softer lift, and a faint shade on the lower inner rim under the bright top one. */
-export const glassLift = '0 10px 28px rgba(0,0,0,0.11)';
-export const glassRim = 'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(0,0,0,0.06), inset 0 0 0 1px rgba(255,255,255,0.45)';
+/**
+ * Depth: the lift and a faint shade on the lower inner rim under the bright top one. Deepened on
+ * 20 Nov (0 10 28 at 11%, shade 6%), then eased back halfway on 21 Nov.
+ */
+export const glassLift = '0 8px 24px rgba(0,0,0,0.095)';
+export const glassRim = 'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(0,0,0,0.04), inset 0 0 0 1px rgba(255,255,255,0.45)';
 export const glass = {
   backgroundColor: color.glass,
   boxShadow: `${glassEdge}, ${glassLift}, ${glassRim}`,
 } as const;
+/**
+ * Dense glass: the same glass (edge, lift, rims) with a thicker frosted fill, for glass over a
+ * photo or anything dark and busy. 62% white over the blurred cab photo gives red text about
+ * 2.7:1; 82% brings it to about 4.6:1 and the grey text to about 6:1. Figma: effect style
+ * "Glass / Dense", variable color/glass-dense.
+ */
+export const glassDense = {
+  backgroundColor: 'rgba(255,255,255,0.82)',
+  boxShadow: `${glassEdge}, ${glassLift}, ${glassRim}`,
+  ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)' } as object) : null),
+} as const;
+
 /** A glass card with its own ring (flagged red, selected black): Figma drops the thin edge and keeps the lift. */
 export const glassRing = (c: string, w = 1.5) => ({ boxShadow: `${glassLift}, inset 0 0 0 ${w}px ${c}` });
 
