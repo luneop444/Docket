@@ -329,11 +329,11 @@ export function Scanner({
             ) : null}
           </GlassPill>
           <View style={[styles.side, styles.sideRight]}>
-            {/* A text pill, at the app's text-pill height (44, like the title and File), so it's a
-                true capsule with a flat middle under its label. At the 60 of the circles beside
-                it, "Done" made it nearly round: all rim, so the glass bent everything behind the
-                label. */}
-            <GlassPill h={44} minW={44} pad={L.gapL}>
+            {/* As tall as the circles beside it (60), so the row stays balanced, and wide enough
+                to be a true capsule: a flat middle as wide as the label, the rounded ends either
+                side of it. Sized to the label alone, "Done" made it nearly round, all rim, so the
+                glass bent everything behind the label. */}
+            <GlassPill h={THUMB} minW={DONE_W} fixed>
               <Pressable accessibilityRole="button" accessibilityLabel={pages.length ? `Done, read ${pages.length} page${pages.length === 1 ? '' : 's'}` : 'Done'} accessibilityState={{ disabled: !pages.length }} disabled={!pages.length} onPress={onDone} style={({ pressed }) => [styles.doneHit, pressed && styles.pressed]}>
                 <Text style={[styles.doneText, !pages.length && styles.doneOff]}>Done</Text>
               </Pressable>
@@ -513,6 +513,8 @@ function Rise({ children, onHeight }: { children: ReactNode; onHeight: (h: numbe
  */
 /** The camera's bottom row (iOS 26 sizes): the shutter's glass circle and the side circles. */
 const SHUTTER = 80;
+/** Done: the circles' height plus a flat middle about the label's width ("Done" is ~38pt). */
+const DONE_W = 100;
 /**
  * Measured off the iPhone's own shutter (iOS 26, at 3x): an 80pt glass circle and a 68pt white
  * disc, the 6pt between them all glass. The iPhone's dark gap there is only its black preview
@@ -671,7 +673,7 @@ const styles = StyleSheet.create({
   shutterIn: { width: DISC, height: DISC, borderRadius: DISC / 2, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },
   flash: { backgroundColor: WHITE },
   scrimSvg: { position: 'absolute', left: 0 },
-  doneHit: { height: 44, justifyContent: 'center' },
+  doneHit: { height: THUMB, width: DONE_W, alignItems: 'center', justifyContent: 'center' },
   doneText: { ...typo.labelControl, color: color.ink },
   doneOff: { color: color.faint },
   ring: { position: 'absolute', top: 0, left: 0 },
