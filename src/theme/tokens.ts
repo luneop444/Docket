@@ -17,7 +17,7 @@ export const color = {
    */
   canvas: '#E8EAEC',
   /** Figma color/glass: white at 62%, the surface of every card and the tab bar. */
-  glass: 'rgba(255,255,255,0.62)',
+  glass: 'rgba(255,255,255,0.52)',
   /** The same half cool tint as the canvas, at their own lightness (were #F2F4F6, #E5E8EC). */
   raise: '#F3F4F5',
   raise2: '#E7E8EA',
@@ -125,10 +125,11 @@ export const radius = {
 export const glassEdge = '0 0 0 0.5px rgba(0,0,0,0.10)';
 /**
  * Depth: the lift and a faint shade on the lower inner rim under the bright top one. Deepened on
- * 20 Nov (0 10 28 at 11%, shade 6%), then eased back halfway on 21 Nov.
+ * 20 Nov (0 10 28 at 11%, shade 6%), eased back on 21 Nov (0 8 24 at 9.5%, 4%), then more
+ * depth again the same night: 0 12 32 at 12%, shade 6%.
  */
-export const glassLift = '0 8px 24px rgba(0,0,0,0.095)';
-export const glassRim = 'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(0,0,0,0.04), inset 0 0 0 1px rgba(255,255,255,0.45)';
+export const glassLift = '0 12px 32px rgba(0,0,0,0.12)';
+export const glassRim = 'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(0,0,0,0.06), inset 0 0 0 1px rgba(255,255,255,0.45)';
 export const glass = {
   backgroundColor: color.glass,
   boxShadow: `${glassEdge}, ${glassLift}, ${glassRim}`,

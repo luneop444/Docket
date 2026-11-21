@@ -27,6 +27,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  frosted: { backgroundColor: 'rgba(255,255,255,0.62)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(0,0,0,0.10)' },
+  frosted: { backgroundColor: 'rgba(255,255,255,0.52)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(0,0,0,0.10)' },
   letter: { fontFamily: fontFamily.semibold, fontSize: 28, color: color.ink },
 });

@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef, useState, type CSSProperties, type React
 import { BackdropCtx } from './backdrop';
 import { glassEdge, glassLift, radius } from '../theme/tokens';
 import { createGlass, type Glass } from './glassGL';
-import { BAR_TINT_GL, FROST, GLASS_CHROMA, GLASS_RIM, glassK, mapData } from './glassLook';
+import { BAR_TINT_GL, BEZEL, FROST, GLASS_CHROMA, GLASS_RIM, glassK, mapData } from './glassLook';
 import { frosted, SPEC } from './glassPicture';
 import { squircleExtent, squirclePath } from '../logic/squircle';
 
@@ -24,7 +24,7 @@ export { BackdropCtx };
  * so it bends like 120-point glass: about 47 points at the very edge, across a 50-point rim.
  */
 const RIM_H = 120;
-const BEZEL_PX = 0.42 * RIM_H;
+const BEZEL_PX = BEZEL * RIM_H;
 
 export function LiquidSheet({ children, tint = BAR_TINT_GL[3] }: { children: ReactNode; tint?: number }) {
   const backdrop = useContext(BackdropCtx);

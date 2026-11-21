@@ -8,7 +8,8 @@ import type { Slice } from './pagePicture';
  * step pills) is the very same: tint, frost, edge, lift, rims, lens maps.
  * Values from Edward's reference (Reddit's iOS 26 tab bar, 17 Nov) and Figma style "Glass".
  */
-export const BAR_TINT = 'rgba(255,255,255,0.62)';
+/** The glass's white: 52% since 21 Nov (less opacity, asked for on all glass; 62% before). */
+export const BAR_TINT = 'rgba(255,255,255,0.52)';
 /**
  * Frost on the picture under the glass, in points. 1 is the nav bar's approved glass; halving it
  * (19 Nov) made the bar read see-through, so it's back.
@@ -19,18 +20,19 @@ export const FROST = 1;
  * on all glass). The 19 Nov complaint about 1.5 was really the bar not drawing its glass at all
  * (fixed in cb1df35), so 1.5 had never been seen on the bar until now.
  */
-export const REFRACT = 1.5;
+export const REFRACT = 2.4; // 21 Nov: way more, asked for on all glass (1.5 before)
 /**
- * Splay, the colour split at the rim: red and green read this many times Aave's 0.88 and 0.43
- * further than blue (1 before 19 Nov). The fringe also grows with REFRACT.
+ * The colour split at the rim (dispersion): red and green read this many times Aave's 0.88 and
+ * 0.43 further than blue. The fringe grows with REFRACT, so when refraction went 1.5 → 2.4
+ * (21 Nov) this went 1 → 0.53 to leave the fringe slightly smaller than before (85%), as asked.
  */
-export const SPLAY = 1;
+export const SPLAY = 0.53;
 export const GLASS_CHROMA: [number, number, number] = [1 + (0.88 * SPLAY) / BEND, 1 + (0.43 * SPLAY) / BEND, 1];
 /** Room above and below the glass that the picture must also cover, for the bend to read. */
 export const M = 28;
 const rgba = (r: number, g: number, b: number, a: number): [number, number, number, number] => [r / 255, g / 255, b / 255, a];
 /** The tint as the shader takes it: colour and strength. */
-export const BAR_TINT_GL = rgba(255, 255, 255, 0.62);
+export const BAR_TINT_GL = rgba(255, 255, 255, 0.52);
 /** Stand-in while the lens loads or things move: the same tint, frosted the same, edge and lift. */
 export const GLASS_STANDIN: CSSProperties = {
   background: BAR_TINT,
@@ -58,7 +60,8 @@ function tryNum(key: string, def: number, min: number, max: number) {
  * (about 9px on the 64px bar), so more refraction only pushed a thin line harder. Apple's
  * glass bends a wide rim that magnifies what's under its edges. Try ?bezel=0.3 … 0.5.
  */
-export const BEZEL = tryNum('bezel', 0.42, 0.05, 0.5);
+/** 0.5 since 21 Nov (more splay: the bend spreads across a wider rim; 0.42 before). */
+export const BEZEL = tryNum('bezel', 0.5, 0.05, 0.5);
 /** How far the very edge reads in from the page, as a share of the glass's height, at REFRACT 1. 0.26 since 21 Nov (0.32 was a bit much). Try ?lens=. */
 export const LENS = tryNum('lens', 0.26, 0.05, 2);
 /** Bend for glass of this height: the map's strongest value (0.45 off neutral) reads LENS × height in. */
