@@ -112,9 +112,18 @@ export interface Glass {
 }
 
 /** A WebGL glass on one canvas; null where WebGL isn't available. */
+/** The glass on a canvas, or null where it can't run (no WebGL, a lost context): the CSS stand-in shows instead. */
 export function createGlass(canvas: HTMLCanvasElement): Glass | null {
+  try {
+    return makeGlass(canvas);
+  } catch {
+    return null;
+  }
+}
+
+function makeGlass(canvas: HTMLCanvasElement): Glass | null {
   const gl = canvas.getContext('webgl', { premultipliedAlpha: false, antialias: false, preserveDrawingBuffer: false });
-  if (!gl) return null;
+  if (!gl || gl.isContextLost()) return null;
   const sh = (type: number, src: string) => {
     const s = gl.createShader(type)!;
     gl.shaderSource(s, src);

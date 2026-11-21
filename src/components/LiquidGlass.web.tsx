@@ -176,7 +176,8 @@ export function LiquidPill({ w, h, on = true, children }: { w: number; h: number
   return (
     <div ref={el} style={{ ...S.pill, width: w, height: h, borderRadius: r }}>
       <div style={{ ...S.glass, borderRadius: r, opacity: on ? 1 : 0 }}>
-        <canvas ref={cv} aria-hidden style={{ ...S.cv, opacity: group?.live ? 1 : 0 }} />
+        {/* A new size gets a new canvas: the old one's WebGL context was let go with its glass. */}
+        <canvas key={`${w}x${h}`} ref={cv} aria-hidden style={{ ...S.cv, opacity: group?.live ? 1 : 0 }} />
         <div style={{ ...S.rim, borderRadius: r }} />
       </div>
       <div style={S.content}>{children}</div>
