@@ -91,7 +91,7 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
     const c = (backdrop ? backdrop.current : null) ?? (el ? ((scrollerUnder(el, el)?.firstElementChild as HTMLElement | null) ?? null) : null);
     if (!c) return false;
     content.current = c;
-    void pictureOf(c).then((p) => {
+    void pictureOf(c, null, !!(backdrop && backdrop.current === c)).then((p) => {
       if (!p || p.el !== content.current) return;
       pic.current = p;
       for (const r of recs.current) r.slice = null;

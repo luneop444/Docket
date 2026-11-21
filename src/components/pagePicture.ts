@@ -72,11 +72,11 @@ function settled(): Promise<void> {
 
 /** The current picture of `el`, taking it if it's missing or `el` has changed size. */
 /** `skip`: something inside `el` that the picture leaves out (the tab bar, when `el` is the whole app). */
-export function pictureOf(el: HTMLElement, skip?: Element | null): Promise<PagePicture | null> {
+export function pictureOf(el: HTMLElement, skip?: Element | null, scene = false): Promise<PagePicture | null> {
   const key = keyOf(el);
   const had = cache.get(el);
   if (had && had.key === key) return had.job;
-  const job = take(el, key, skip ?? null);
+  const job = take(el, key, skip ?? null, scene);
   cache.set(el, { key, job });
   return job;
 }
@@ -92,7 +92,7 @@ export function isStale(el: HTMLElement): boolean {
   return !had || had.key !== keyOf(el);
 }
 
-async function take(el: HTMLElement, key: string, skip: Element | null): Promise<PagePicture | null> {
+async function take(el: HTMLElement, key: string, skip: Element | null, scene: boolean): Promise<PagePicture | null> {
   await settled();
   // Changed again while waiting: the newer request takes over.
   if (keyOf(el) !== key || !el.isConnected) return null;
@@ -101,7 +101,7 @@ async function take(el: HTMLElement, key: string, skip: Element | null): Promise
   // As sharp as the screen, but the whole content must fit in one Safari canvas.
   const scale = Math.min(2, window.devicePixelRatio || 1, Math.sqrt(MAX_AREA / (w * h)));
   const { default: html2canvas } = (await import('html2canvas')) as unknown as { default: Html2Canvas };
-  const shot = await html2canvas(el, {
+  const shot = scene ? await paintScene(el, scale) : await html2canvas(el, {
     scale,
     backgroundColor: color.canvas,
     logging: false,
@@ -129,4 +129,78 @@ async function take(el: HTMLElement, key: string, skip: Element | null): Promise
 export function sliceAt(p: PagePicture, y: number, h: number): Slice {
   for (const s of p.slices) if (y >= s.top && y + h <= s.top + s.height) return s;
   return y < 0 ? p.slices[0] : p.slices[p.slices.length - 1];
+}
+
+/**
+ * A picture of a scene (the scanner's photo, its paper and its scrim) drawn straight from what
+ * is on screen: each photo, canvas and SVG at the box the browser shows it in. html2canvas gets
+ * this kind of layered, transformed scene wrong (the photo at the wrong scale and place, the
+ * paper's canvas missing), and the glass then bends that. Rotations aren't followed: the scene
+ * is pictured at rest, where there are none (the paper draws its own turn).
+ */
+async function paintScene(el: HTMLElement, scale: number): Promise<HTMLCanvasElement | null> {
+  const w = el.clientWidth, h = el.scrollHeight;
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * scale);
+  c.height = Math.round(h * scale);
+  const g = c.getContext('2d');
+  if (!g) return null;
+  g.scale(scale, scale);
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, w, h);
+  const o = el.getBoundingClientRect();
+  const opacityOf = (e: Element) => {
+    let a = 1;
+    for (let n: Element | null = e; n && n !== el.parentElement; n = n.parentElement) a *= parseFloat(getComputedStyle(n).opacity || '1');
+    return a;
+  };
+  const load = (src: string) =>
+    new Promise<HTMLImageElement | null>((done) => {
+      const im = new Image();
+      im.onload = () => (im.decode ? im.decode().then(() => done(im), () => done(im)) : done(im));
+      im.onerror = () => done(null);
+      im.src = src;
+    });
+  for (const e of Array.from(el.querySelectorAll('*'))) {
+    if (e.closest('[data-noglass="1"]')) continue;
+    if (e instanceof SVGElement && e.ownerSVGElement) continue; // drawn with its <svg>
+    const r = e.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    const a = opacityOf(e);
+    if (a <= 0.01) continue;
+    const x = r.left - o.left, y = r.top - o.top;
+    g.globalAlpha = a;
+    if (e instanceof HTMLCanvasElement) {
+      g.drawImage(e, x, y, r.width, r.height);
+    } else if (e instanceof SVGSVGElement) {
+      // Sized on a copy (its own width and height may be "100%", which means nothing alone).
+      const copy = e.cloneNode(true) as SVGSVGElement;
+      copy.setAttribute('width', String(r.width));
+      copy.setAttribute('height', String(r.height));
+      copy.removeAttribute('class');
+      copy.removeAttribute('style');
+      const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(copy)], { type: 'image/svg+xml' }));
+      const im = await load(url);
+      URL.revokeObjectURL(url);
+      if (im) g.drawImage(im, x, y, r.width, r.height);
+    } else if (e instanceof HTMLElement && !(e instanceof HTMLImageElement)) {
+      const cs = getComputedStyle(e);
+      const m = /url\(["']?([^"')]+)["']?\)/.exec(cs.backgroundImage);
+      if (!m) continue;
+      const im = await load(m[1]);
+      if (!im) continue;
+      // Cover (the photo) or contain, centred, as the browser sizes it.
+      const fit = cs.backgroundSize === 'contain' ? Math.min : Math.max;
+      const k = fit(r.width / im.naturalWidth, r.height / im.naturalHeight);
+      const iw = im.naturalWidth * k, ih = im.naturalHeight * k;
+      g.save();
+      g.beginPath();
+      g.rect(x, y, r.width, r.height);
+      g.clip();
+      g.drawImage(im, x + (r.width - iw) / 2, y + (r.height - ih) / 2, iw, ih);
+      g.restore();
+    }
+  }
+  g.globalAlpha = 1;
+  return c;
 }

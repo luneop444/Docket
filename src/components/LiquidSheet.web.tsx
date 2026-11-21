@@ -100,7 +100,7 @@ export function LiquidSheet({ children, tint = SHEET_TINT }: { children: ReactNo
     forget(bd);
     // After the scene has settled under where the card will sit (Scanner drops it ~0.5 s).
     const wait = new Promise((ok) => setTimeout(ok, 560));
-    void wait.then(() => pictureOf(bd)).then((p) => {
+    void wait.then(() => pictureOf(bd, null, true)).then((p) => {
       if (!p || gone) return;
       const sl = sliceAt(p, 0, p.slices[0]?.height ?? 0);
       top = sl.top;
