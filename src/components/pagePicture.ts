@@ -10,7 +10,7 @@
  * opens). Changes that keep the size (a tile turning lime) are not re-pictured: the glass
  * frosts what's behind it, and a running clock would otherwise re-picture every second.
  */
-import { color } from '../theme/tokens';
+import { color, protoColor } from '../theme/tokens';
 import { MOVE_EVENT } from './contentMove';
 
 type Html2Canvas = (el: HTMLElement, o: Record<string, unknown>) => Promise<HTMLCanvasElement>;
@@ -72,7 +72,14 @@ function settled(): Promise<void> {
 
 /** The current picture of `el`, taking it if it's missing or `el` has changed size. */
 /** `skip`: something inside `el` that the picture leaves out (the tab bar, when `el` is the whole app). */
-export function pictureOf(el: HTMLElement, skip?: Element | null, scene = false): Promise<PagePicture | null> {
+/**
+ * How to picture: the page (html2canvas); the scene as shown now; or the scene's moving layer
+ * at rest, transforms ignored, under the scrim's even dark (for glass that only sits outside
+ * the frame and slides its picture with the scene, see backdrop.ts sceneShift).
+ */
+export type PictureMode = 'page' | 'scene' | 'rest';
+export function pictureOf(el: HTMLElement, skip?: Element | null, mode: PictureMode | boolean = 'page'): Promise<PagePicture | null> {
+  const scene: PictureMode = mode === true ? 'scene' : mode === false ? 'page' : mode;
   const key = keyOf(el);
   const had = cache.get(el);
   if (had && had.key === key) return had.job;
@@ -92,7 +99,7 @@ export function isStale(el: HTMLElement): boolean {
   return !had || had.key !== keyOf(el);
 }
 
-async function take(el: HTMLElement, key: string, skip: Element | null, scene: boolean): Promise<PagePicture | null> {
+async function take(el: HTMLElement, key: string, skip: Element | null, scene: PictureMode): Promise<PagePicture | null> {
   await settled();
   // Changed again while waiting: the newer request takes over.
   if (keyOf(el) !== key || !el.isConnected) return null;
@@ -101,7 +108,7 @@ async function take(el: HTMLElement, key: string, skip: Element | null, scene: b
   // As sharp as the screen, but the whole content must fit in one Safari canvas.
   const scale = Math.min(2, window.devicePixelRatio || 1, Math.sqrt(MAX_AREA / (w * h)));
   const { default: html2canvas } = (await import('html2canvas')) as unknown as { default: Html2Canvas };
-  const shot = scene ? await paintScene(el, scale) : await html2canvas(el, {
+  const shot = scene !== 'page' ? await paintScene(el, scale, scene === 'rest') : await html2canvas(el, {
     scale,
     backgroundColor: color.canvas,
     logging: false,
@@ -138,7 +145,7 @@ export function sliceAt(p: PagePicture, y: number, h: number): Slice {
  * paper's canvas missing), and the glass then bends that. Rotations aren't followed: the scene
  * is pictured at rest, where there are none (the paper draws its own turn).
  */
-async function paintScene(el: HTMLElement, scale: number): Promise<HTMLCanvasElement | null> {
+async function paintScene(el: HTMLElement, scale: number, rest = false): Promise<HTMLCanvasElement | null> {
   const w = el.clientWidth, h = el.scrollHeight;
   const c = document.createElement('canvas');
   c.width = Math.round(w * scale);
@@ -161,14 +168,34 @@ async function paintScene(el: HTMLElement, scale: number): Promise<HTMLCanvasEle
       im.onerror = () => done(null);
       im.src = src;
     });
+  // At rest: each element's layout box, which CSS transforms don't move.
+  const restBox = (e: HTMLElement) => {
+    let x = 0, y = 0;
+    for (let n: HTMLElement | null = e; n && n !== el; n = n.offsetParent as HTMLElement | null) {
+      x += n.offsetLeft;
+      y += n.offsetTop;
+      if (n.offsetParent === el) break;
+    }
+    return { left: x, top: y, width: e.offsetWidth, height: e.offsetHeight };
+  };
   for (const e of Array.from(el.querySelectorAll('*'))) {
     if (e.closest('[data-noglass="1"]')) continue;
-    if (e instanceof SVGElement && e.ownerSVGElement) continue; // drawn with its <svg>
-    const r = e.getBoundingClientRect();
+    if (e instanceof SVGElement && (e.ownerSVGElement || rest)) continue; // drawn with its <svg>; at rest, the scrim is even
+    let x: number, y: number, r: { width: number; height: number };
+    if (rest && e instanceof HTMLElement) {
+      const b = restBox(e);
+      x = b.left;
+      y = b.top;
+      r = b;
+    } else {
+      const b = e.getBoundingClientRect();
+      x = b.left - o.left;
+      y = b.top - o.top;
+      r = b;
+    }
     if (!r.width || !r.height) continue;
     const a = opacityOf(e);
     if (a <= 0.01) continue;
-    const x = r.left - o.left, y = r.top - o.top;
     g.globalAlpha = a;
     if (e instanceof HTMLCanvasElement) {
       g.drawImage(e, x, y, r.width, r.height);
@@ -202,5 +229,9 @@ async function paintScene(el: HTMLElement, scale: number): Promise<HTMLCanvasEle
     }
   }
   g.globalAlpha = 1;
+  if (rest) {
+    g.fillStyle = protoColor.scrim;
+    g.fillRect(0, 0, w, h);
+  }
   return c;
 }

@@ -48,6 +48,12 @@ export const REPICTURE_EVENT = 'docket:glass-repicture';
 export const repicture = () => {
   if (typeof document !== 'undefined') document.dispatchEvent(new Event(REPICTURE_EVENT));
 };
+/**
+ * How far the scene behind the glass has moved from rest right now (the scanner's hand, the
+ * drop for the card), in points. Glass pictures the scene once, at rest, and slides that
+ * picture by this each frame, so it moves with the scene instead of freezing or re-picturing.
+ */
+export const sceneShift = { x: 0, y: 0 };
 export const GlassTuneCtx = createContext<GlassTune>(NO_TUNE);
 
 /**

@@ -6,7 +6,8 @@ import { color, colorDark, protoColor, radius, type as typo } from '../theme/tok
 import { useInsets, useTabSpace } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
-import { BackdropCtx, GlassTuneCtx, NO_TUNE, repicture, RiseCtx, SCAN_BEND, SCAN_SPLIT } from './backdrop';
+import { BackdropCtx, GlassTuneCtx, NO_TUNE, repicture, RiseCtx, SCAN_BEND, SCAN_SPLIT, sceneShift } from './backdrop';
+import { MOVE_EVENT } from './contentMove';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
 import { map, quad } from './paperGeometry';
 import { SamplePhoto } from './SamplePhoto';
@@ -113,11 +114,14 @@ export function Scanner({
   const [hand] = useState(() => new Animated.Value(reduce || !sample ? 1 : 0));
   // The hand starts once the paper is drawn, so its whole way in is seen.
   const [paperReady, setPaperReady] = useState(false);
-  const [onPaper] = useState(() => () => setPaperReady(true));
+  // Each time the paper draws, the glass re-pictures the scene (it may have pictured it before).
+  const [onPaper] = useState(() => () => {
+    setPaperReady(true);
+    repicture();
+  });
   useEffect(() => {
     if (!sample || reduce || !paperReady) return;
-    // At rest, the glass re-pictures the scene: its first picture was taken mid-motion.
-    Animated.timing(hand, { toValue: 1, duration: HAND_MS, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }).start(({ finished }) => finished && repicture());
+    Animated.timing(hand, { toValue: 1, duration: HAND_MS, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }).start();
   }, [sample, reduce, hand, paperReady]);
 
   // How far the scene drops for the result card: just enough that about 150 points of the
@@ -130,11 +134,33 @@ export function Scanner({
   const dropping = stage === 'found';
   useEffect(() => {
     const to = dropping ? dropBy : 0;
-    if (reduce) {
-      drop.setValue(to);
-      repicture();
-    } else Animated.timing(drop, { toValue: to, duration: 480, easing: Easing.inOut(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start(({ finished }) => finished && repicture());
+    if (reduce) drop.setValue(to);
+    else Animated.timing(drop, { toValue: to, duration: 480, easing: Easing.inOut(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
   }, [dropping, dropBy, reduce, drop]);
+
+  // The glass follows the scene: where the hand and the drop have it now, every frame.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const at = (out: number[], v: number) => {
+      const n = HAND.at.length - 1, f = Math.max(0, Math.min(1, v)) * n, i = Math.min(n - 1, Math.floor(f));
+      return out[i] + (out[i + 1] - out[i]) * (f - i);
+    };
+    let h = (hand as unknown as { _value: number })._value ?? 1;
+    let d = 0;
+    const push = () => {
+      sceneShift.x = at(HAND.x, h);
+      sceneShift.y = at(HAND.y, h) + d;
+      document.dispatchEvent(new Event(MOVE_EVENT));
+    };
+    const a = hand.addListener(({ value }) => ((h = value), push()));
+    const b = drop.addListener(({ value }) => ((d = value), push()));
+    push();
+    return () => {
+      hand.removeListener(a);
+      drop.removeListener(b);
+      sceneShift.x = sceneShift.y = 0;
+    };
+  }, [hand, drop]);
 
   // The sample's page is found once the hand has settled.
   useEffect(() => {

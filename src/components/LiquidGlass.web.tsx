@@ -4,7 +4,7 @@ import { SPEC } from './glassPicture';
 import { BAR_TINT_GL, chromaTimes, frostSlice, GLASS_RIM, GLASS_STANDIN, glassK, glassReach, lensMap, mapData, rimWith, scrollerUnder } from './glassLook';
 import { forget, isStale, pictureOf, sliceAt, type PagePicture, type Slice } from './pagePicture';
 import { MOVE_EVENT } from './contentMove';
-import { BackdropCtx, GlassTuneCtx, REPICTURE_EVENT } from './backdrop';
+import { BackdropCtx, GlassTuneCtx, REPICTURE_EVENT, sceneShift } from './backdrop';
 
 /**
  * The nav bar's liquid glass (TabBar.web.tsx) for small floating pills: the onboarding back
@@ -40,6 +40,7 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
   const recs = useRef(new Set<Rec>());
   const pic = useRef<PagePicture | null>(null);
   const content = useRef<HTMLElement | null>(null);
+  const scene = useRef(false);
   const [live, setLive] = useState(false);
   const scale = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
   const tune = useContext(GlassTuneCtx);
@@ -58,8 +59,10 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
       }
       if (!r.g.ready()) continue;
       const at: [number, number] = [b.left, b.top], size: [number, number] = [b.width, b.height];
+      // Over a scene, its picture is at rest; slide it to where the scene is now.
+      const sx = scene.current ? sceneShift.x : 0, sy = scene.current ? sceneShift.y : 0;
       r.g.draw({
-        pageOrigin: [cr.left, cr.top + s.top],
+        pageOrigin: [cr.left + sx, cr.top + s.top + sy],
         pageSize: [p.width, s.height],
         barOrigin: at,
         barSize: size,
@@ -73,7 +76,7 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
         chroma: chromaTimes(tune.split),
         spec: SPEC,
         barTint: tune.adapt
-          ? [BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2], whiteFor(r, s, p.scale, b.left - cr.left, b.top - cr.top - s.top, b.width, b.height, tune.adapt)]
+          ? [BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2], whiteFor(r, s, p.scale, b.left - cr.left - sx, b.top - cr.top - s.top - sy, b.width, b.height, tune.adapt)]
           : tune.tint == null
             ? BAR_TINT_GL
             : [BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2], tune.tint],
@@ -91,7 +94,8 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
     const c = (backdrop ? backdrop.current : null) ?? (el ? ((scrollerUnder(el, el)?.firstElementChild as HTMLElement | null) ?? null) : null);
     if (!c) return false;
     content.current = c;
-    void pictureOf(c, null, !!(backdrop && backdrop.current === c)).then((p) => {
+    scene.current = !!backdrop && backdrop.current === c;
+    void pictureOf(c, null, backdrop && backdrop.current === c ? 'rest' : 'page').then((p) => {
       if (!p || p.el !== content.current) return;
       pic.current = p;
       for (const r of recs.current) r.slice = null;
