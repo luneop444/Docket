@@ -284,13 +284,13 @@ export function Scanner({
       <View style={[styles.top, { top, height: L.bar }]} pointerEvents="box-none">
         <GlassPill h={44} minW={44}>
           <Pressable accessibilityRole="button" accessibilityLabel="Close the scanner" onPress={onClose} style={({ pressed }) => [styles.circle, pressed && styles.pressed]}>
-            <CloseIcon c={color.ink} size={16} />
+            <CloseIcon c={WHITE} size={16} />
           </Pressable>
         </GlassPill>
         {stage === 'capture' ? (
           <GlassPill h={44} minW={44}>
             <Pressable accessibilityRole="button" accessibilityLabel="Choose a PDF or screenshot instead" onPress={onFile} style={({ pressed }) => [styles.filePill, pressed && styles.pressed]}>
-              <DocIcon c={color.ink} size={16} />
+              <DocIcon c={WHITE} size={16} />
               <Text style={styles.fileText}>File</Text>
             </Pressable>
           </GlassPill>
@@ -564,16 +564,16 @@ const THUMB = 60;
 /** How long the hand takes to bring the sample page into the frame. */
 const HAND_MS = 1800;
 /**
- * The pills' white. The system's 0.62 is set for glass over the app's light pages; over a dark
- * camera scene it makes pale grey slabs with nothing showing through. So here each pill finds
- * its own: the least white that keeps its dark label at 4.5:1 over the darkest part of what's
- * behind it (LiquidGlass adapt). Over the seat that's about a third; over the dark footwell
- * about a half. It never goes past the system's 0.62, and never under 0.3, so the glass still
- * reads as a body over something bright. 0.5 is what it shows before it has measured.
- * Everything else about the glass stays the system's. The result card isn't a pill and keeps
- * the system's white: it carries numbers over a printed page.
+ * The pills are the glass's dark appearance, as iOS's own glass is over a camera: clear, with
+ * bright edges and white labels. The light appearance (white glass, dark labels) is for the
+ * app's light pages; over this dark scene it had to stay 30 to 50% white to keep dark labels
+ * readable, which made a grey film you can't see through. Here each pill dims only as much as
+ * keeps its white label at 4.5:1 over the brightest part of what's behind it (LiquidGlass
+ * adapt), never under 0.1 so it still reads as a body, never over 0.5. 0.25 is what it shows
+ * before it has measured. The result card keeps the light appearance: it's a sheet of dark
+ * text over a printed page.
  */
-const PILL_TUNE = { ...NO_TUNE, bend: SCAN_BEND, split: SCAN_SPLIT, frost: SCAN_FROST, bezel: BEZEL * SCAN_DEPTH, tint: 0.5, adapt: { ink: color.ink, min: 0.3, max: 0.62 } };
+const PILL_TUNE = { ...NO_TUNE, bend: SCAN_BEND, split: SCAN_SPLIT, frost: SCAN_FROST, bezel: BEZEL * SCAN_DEPTH, tint: 0.25, adapt: { ink: WHITE, min: 0.1, max: 0.5, dark: true } };
 
 /**
  * A hand's path into the frame, as the camera sees it, worked out once as motion rather than
@@ -674,14 +674,14 @@ const styles = StyleSheet.create({
   titleRow: { position: 'absolute', left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
   top: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: L.edge, gap: L.gap },
   circle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  title: { ...typo.labelControl, color: color.ink },
+  title: { ...typo.labelControl, color: WHITE },
   filePill: { height: 44, paddingHorizontal: L.gapL, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  fileText: { ...typo.labelControl, color: color.ink },
+  fileText: { ...typo.labelControl, color: WHITE },
   pressed: { opacity: 0.6 },
   chipRow: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: L.chip, borderRadius: L.chip / 2, paddingHorizontal: L.gap },
   chipLocked: { backgroundColor: color.signal },
-  chipText: { ...typo.labelSmall, color: color.ink },
+  chipText: { ...typo.labelSmall, color: WHITE },
   chipTextLocked: { color: color.ink },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', gap: L.gapL },
   // White with a soft shadow, like the camera's own labels: it reads over a light seat or a dark one.
@@ -701,17 +701,17 @@ const styles = StyleSheet.create({
   flash: { backgroundColor: WHITE },
   scrimSvg: { position: 'absolute', left: 0 },
   doneHit: { height: THUMB, width: DONE_W, alignItems: 'center', justifyContent: 'center' },
-  doneText: { ...typo.labelControl, color: color.ink },
-  doneOff: { color: color.faint },
+  doneText: { ...typo.labelControl, color: WHITE },
+  doneOff: { color: 'rgba(255,255,255,0.45)' },
   ring: { position: 'absolute', top: 0, left: 0 },
   bracket: { position: 'absolute' },
   still: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   circleSpace: { width: 44, height: 44 },
   progressRow: { position: 'absolute', left: L.edge, right: L.edge, alignItems: 'center' },
   progress: { flex: 1, height: 72, flexDirection: 'row', alignItems: 'center', paddingHorizontal: L.edge + 4, gap: L.gap },
-  pct: { ...typo.numberS, color: color.ink, minWidth: 48, fontVariant: ['tabular-nums'] },
-  progressText: { ...typo.labelButton, flex: 1, color: color.ink },
+  pct: { ...typo.numberS, color: WHITE, minWidth: 48, fontVariant: ['tabular-nums'] },
+  progressText: { ...typo.labelButton, flex: 1, color: WHITE },
   dots: { flexDirection: 'row', gap: 5 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.ink },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: WHITE },
   sheetWrap: { position: 'absolute', left: L.edge },
 });

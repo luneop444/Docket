@@ -28,7 +28,7 @@ export interface GlassTune {
    * `ink` readable (4.5:1) over the darkest part of its backdrop, between min and max. `tint`
    * is then what it shows before its picture is in. Null keeps one white for all.
    */
-  adapt: { ink: string; min: number; max: number } | null;
+  adapt: { ink: string; min: number; max: number; dark?: boolean } | null;
   /** The frost (blur of what's behind), in points. Null keeps the system's. */
   frost: number | null;
 }

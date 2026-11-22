@@ -61,9 +61,13 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
       const at: [number, number] = [b.left, b.top], size: [number, number] = [b.width, b.height];
       // Over a scene, its picture is at rest; slide it to where the scene is now.
       const sx = scene.current ? sceneShift.x : 0, sy = scene.current ? sceneShift.y : 0;
+      // The picture is in layout points; on screen the page may be scaled (the laptop's phone
+      // frame shows it at about 97%). Scale the picture with it, or what the glass bends drifts
+      // off what's around it, more the further from the top.
+      const z = p.width ? cr.width / p.width : 1;
       r.g.draw({
-        pageOrigin: [cr.left + sx, cr.top + s.top + sy],
-        pageSize: [p.width, s.height],
+        pageOrigin: [cr.left + sx * z, cr.top + (s.top + sy) * z],
+        pageSize: [p.width * z, s.height * z],
         barOrigin: at,
         barSize: size,
         pillOrigin: at,
@@ -76,7 +80,7 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
         chroma: chromaTimes(tune.split),
         spec: SPEC,
         barTint: tune.adapt
-          ? [BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2], whiteFor(r, s, p.scale, b.left - cr.left - sx, b.top - cr.top - s.top - sy, b.width, b.height, tune.adapt)]
+          ? [...(tune.adapt.dark ? ([0, 0, 0] as const) : ([BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2]] as const)), whiteFor(r, s, p.scale, (b.left - cr.left) / z - sx, (b.top - cr.top) / z - s.top - sy, b.width / z, b.height / z, tune.adapt)]
           : tune.tint == null
             ? BAR_TINT_GL
             : [BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2], tune.tint],
@@ -202,7 +206,7 @@ export function LiquidPill({ w, h, on = true, children }: { w: number; h: number
   const r = h / 2;
   const tune = useContext(GlassTuneCtx);
   const tuned: CSSProperties = {
-    ...(tune.tint == null ? null : { background: `rgba(255,255,255,${tune.tint})` }),
+    ...(tune.tint == null ? null : { background: tune.adapt?.dark ? `rgba(0,0,0,${tune.tint})` : `rgba(255,255,255,${tune.tint})` }),
     ...(tune.lift == null ? null : { boxShadow: `0 0 0 0.5px rgba(0,0,0,0.10), ${tune.lift}` }),
   };
   return (
@@ -245,7 +249,7 @@ const probe = typeof document === 'undefined' ? null : document.createElement('c
  * the ink, the same mix the shader does: white over the backdrop at strength t. Measured again
  * only when the glass sits over a different part of the picture.
  */
-function whiteFor(r: Rec, s: Slice, scale: number, x: number, y: number, w: number, h: number, a: { ink: string; min: number; max: number }) {
+function whiteFor(r: Rec, s: Slice, scale: number, x: number, y: number, w: number, h: number, a: { ink: string; min: number; max: number; dark?: boolean }) {
   const at = `${s.canvas.width}:${s.top}:${Math.round(x / 4)}:${Math.round(y / 4)}:${Math.round(w)}`;
   if (r.tint && r.tint.at === at) return r.tint.t;
   let t = a.max;
@@ -259,12 +263,20 @@ function whiteFor(r: Rec, s: Slice, scale: number, x: number, y: number, w: numb
     const L: number[] = [];
     for (let i = 0; i < d.length; i += 4) L.push(lumOf(d[i], d[i + 1], d[i + 2]));
     L.sort((m, n) => m - n);
-    const dark = L[Math.floor(L.length * 0.1)];
-    const need = 4.5 * (hexLum(a.ink) + 0.05) - 0.05;
-    // The shader mixes in sRGB: out = t·255 + (1 − t)·bg. Solve for t on the grey channel.
     const toS = (l: number) => 255 * (l <= 0.0031308 ? 12.92 * l : 1.055 * Math.pow(l, 1 / 2.4) - 0.055);
-    const bg = toS(dark), goal = toS(need);
-    t = Math.min(a.max, Math.max(a.min, bg >= goal ? 0 : (goal - bg) / (255 - bg)));
+    if (a.dark) {
+      // Light ink on dark glass: dim the brightest tenth until the ink holds 4.5:1 over it.
+      // The shader mixes in sRGB: out = (1 − t)·bg. Solve for t.
+      const bright = toS(L[Math.floor(L.length * 0.9)]);
+      const goal = toS((hexLum(a.ink) + 0.05) / 4.5 - 0.05);
+      t = Math.min(a.max, Math.max(a.min, bright <= goal ? 0 : 1 - goal / bright));
+    } else {
+      const dark = L[Math.floor(L.length * 0.1)];
+      const need = 4.5 * (hexLum(a.ink) + 0.05) - 0.05;
+      // The shader mixes in sRGB: out = t·255 + (1 − t)·bg. Solve for t on the grey channel.
+      const bg = toS(dark), goal = toS(need);
+      t = Math.min(a.max, Math.max(a.min, bg >= goal ? 0 : (goal - bg) / (255 - bg)));
+    }
   }
   r.tint = { at, t };
   return t;
