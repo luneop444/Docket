@@ -24,13 +24,21 @@ export interface GlassTune {
   /** The shade on the lower inner rim, 0 to 1. Null keeps the system's. */
   rimShade: number | null;
   /**
-   * Each glass sets its own white from what's behind it: the least that keeps a label in
-   * `ink` readable (4.5:1) over the darkest part of its backdrop, between min and max. `tint`
-   * is then what it shows before its picture is in. Null keeps one white for all.
+   * Each glass sets its own tint from what's behind it, the way Liquid Glass does: light over
+   * a light backdrop, dark over a dark one, each glass on its own. Per appearance: its label
+   * ink, and the least and most tint. The glass takes whichever appearance keeps its label at
+   * 4.5:1 with the least tint (the clearest glass), switching only when the other is clearly
+   * clearer, so it doesn't flicker. With only one appearance given, it keeps that one. `tint`
+   * is what it shows before it has measured.
    */
-  adapt: { ink: string; min: number; max: number; dark?: boolean } | null;
+  adapt: { light?: GlassLook; dark?: GlassLook } | null;
   /** The frost (blur of what's behind), in points. Null keeps the system's. */
   frost: number | null;
+}
+export interface GlassLook {
+  ink: string;
+  min: number;
+  max: number;
 }
 export const NO_TUNE: GlassTune = { bend: 1, bezel: null, split: 1, tint: null, lift: null, rimShade: null, adapt: null, frost: null };
 /**
@@ -67,3 +75,9 @@ export const GlassTuneCtx = createContext<GlassTune>(NO_TUNE);
  * the rise starts then and the glass is there the whole way up, not popping in at the end.
  */
 export const RiseCtx = createContext<(() => void) | null>(null);
+
+/**
+ * Which appearance the glass around a label has taken, and so the label's colour. Labels in
+ * adapting glass read it (GlassInk) and flip with it.
+ */
+export const GlassInkCtx = createContext<{ look: 'light' | 'dark'; ink: string } | null>(null);

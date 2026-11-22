@@ -4,7 +4,7 @@ import { SPEC } from './glassPicture';
 import { BAR_TINT_GL, chromaTimes, frostSlice, GLASS_RIM, GLASS_STANDIN, glassK, glassReach, lensMap, mapData, rimWith, scrollerUnder } from './glassLook';
 import { forget, isStale, pictureOf, sliceAt, type PagePicture, type Slice } from './pagePicture';
 import { MOVE_EVENT } from './contentMove';
-import { BackdropCtx, GlassTuneCtx, REPICTURE_EVENT, sceneShift } from './backdrop';
+import { BackdropCtx, GlassInkCtx, type GlassLook, GlassTuneCtx, REPICTURE_EVENT, sceneShift } from './backdrop';
 
 /**
  * The nav bar's liquid glass (TabBar.web.tsx) for small floating pills: the onboarding back
@@ -23,8 +23,10 @@ interface Rec {
   g: Glass;
   /** The slice this glass has loaded, so a new one is only uploaded when it moves to another. */
   slice: Slice | null;
-  /** Its own white, when the screen adapts it, and where that was measured. */
-  tint?: { at: string; t: number };
+  /** Its own tint and appearance, when the screen adapts it, and where that was measured. */
+  tint?: { at: string; t: number; dark: boolean };
+  /** Tells its pill which appearance it took, so the label can follow. */
+  look?: (dark: boolean) => void;
 }
 
 interface Group {
@@ -56,6 +58,8 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
       if (s !== r.slice) {
         r.g.setPage(frostSlice(s, p.scale, tune.frost ?? undefined));
         r.slice = s;
+        // A new picture: measure the tint again (keeping the appearance, for the switch's margin).
+        if (r.tint) r.tint.at = '';
       }
       if (!r.g.ready()) continue;
       const at: [number, number] = [b.left, b.top], size: [number, number] = [b.width, b.height];
@@ -80,7 +84,7 @@ export function LiquidGroup({ children }: { children: ReactNode }) {
         chroma: chromaTimes(tune.split),
         spec: SPEC,
         barTint: tune.adapt
-          ? [...(tune.adapt.dark ? ([0, 0, 0] as const) : ([BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2]] as const)), whiteFor(r, s, p.scale, (b.left - cr.left) / z - sx, (b.top - cr.top) / z - s.top - sy, b.width / z, b.height / z, tune.adapt)]
+          ? tintFor(r, s, p.scale, (b.left - cr.left) / z - sx, (b.top - cr.top) / z - s.top - sy, b.width / z, b.height / z, tune.adapt)
           : tune.tint == null
             ? BAR_TINT_GL
             : [BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2], tune.tint],
@@ -199,14 +203,17 @@ export function LiquidPill({ w, h, on = true, children }: { w: number; h: number
   const el = useRef<HTMLDivElement>(null);
   const cv = useRef<HTMLCanvasElement>(null);
   const add = group?.add;
+  const tune = useContext(GlassTuneCtx);
+  // Its appearance, when the screen adapts it: until measured, dark if it may be dark.
+  const [dark, setDark] = useState(!!tune.adapt?.dark);
   useEffect(() => {
     if (!add || !el.current || !cv.current) return;
-    return add({ el: el.current, cv: cv.current, w, h });
+    return add({ el: el.current, cv: cv.current, w, h, look: setDark });
   }, [add, w, h]);
   const r = h / 2;
-  const tune = useContext(GlassTuneCtx);
+  const look = tune.adapt ? (dark ? tune.adapt.dark : tune.adapt.light) : undefined;
   const tuned: CSSProperties = {
-    ...(tune.tint == null ? null : { background: tune.adapt?.dark ? `rgba(0,0,0,${tune.tint})` : `rgba(255,255,255,${tune.tint})` }),
+    ...(tune.tint == null ? null : { background: dark ? `rgba(0,0,0,${tune.tint})` : `rgba(255,255,255,${tune.tint})` }),
     ...(tune.lift == null ? null : { boxShadow: `0 0 0 0.5px rgba(0,0,0,0.10), ${tune.lift}` }),
   };
   return (
@@ -216,7 +223,7 @@ export function LiquidPill({ w, h, on = true, children }: { w: number; h: number
         <canvas key={`${w}x${h}`} ref={cv} aria-hidden style={{ ...S.cv, opacity: group?.live ? 1 : 0 }} />
         <div style={{ ...S.rim, ...(tune.rimShade == null ? null : { boxShadow: rimWith(tune.rimShade) }), borderRadius: r }} />
       </div>
-      <div style={S.content}>{children}</div>
+      <div style={S.content}>{look ? <GlassInkCtx.Provider value={{ look: dark ? 'dark' : 'light', ink: look.ink }}>{children}</GlassInkCtx.Provider> : children}</div>
     </div>
   );
 }
@@ -244,40 +251,48 @@ const hexLum = (hex: string) => {
 const probe = typeof document === 'undefined' ? null : document.createElement('canvas');
 
 /**
- * The least white this glass needs. It looks at the picture under it, takes the darkest tenth
- * (a label can sit anywhere on the glass), and finds the white that lifts that to 4.5:1 against
- * the ink, the same mix the shader does: white over the backdrop at strength t. Measured again
- * only when the glass sits over a different part of the picture.
+ * This glass's tint, from the picture under it. For each appearance it may take: light (white
+ * over the backdrop, dark ink) needs enough white to lift the darkest tenth of the backdrop to
+ * 4.5:1 against its ink; dark (black over the backdrop, light ink) needs enough black to bring
+ * the brightest tenth down to 4.5:1 (a label can sit anywhere on the glass). It takes the one
+ * that needs less: the clearest glass that keeps the label readable. Once it has an
+ * appearance it keeps it unless the other is clearer by 0.1, so a backdrop near the line
+ * doesn't make it flicker. The shader mixes in sRGB: light out = t·255 + (1 − t)·bg, dark
+ * out = (1 − t)·bg. Measured again only when the glass sits over a different part of the
+ * picture; tells its pill when the appearance changes.
  */
-function whiteFor(r: Rec, s: Slice, scale: number, x: number, y: number, w: number, h: number, a: { ink: string; min: number; max: number; dark?: boolean }) {
+function tintFor(r: Rec, s: Slice, scale: number, x: number, y: number, w: number, h: number, a: { light?: GlassLook; dark?: GlassLook }): [number, number, number, number] {
   const at = `${s.canvas.width}:${s.top}:${Math.round(x / 4)}:${Math.round(y / 4)}:${Math.round(w)}`;
-  if (r.tint && r.tint.at === at) return r.tint.t;
-  let t = a.max;
-  const g = probe?.getContext('2d', { willReadFrequently: true });
-  if (probe && g) {
-    const PW = 32, PH = 12;
-    probe.width = PW;
-    probe.height = PH;
-    g.drawImage(s.canvas, x * scale, y * scale, w * scale, h * scale, 0, 0, PW, PH);
-    const d = g.getImageData(0, 0, PW, PH).data;
-    const L: number[] = [];
-    for (let i = 0; i < d.length; i += 4) L.push(lumOf(d[i], d[i + 1], d[i + 2]));
-    L.sort((m, n) => m - n);
-    const toS = (l: number) => 255 * (l <= 0.0031308 ? 12.92 * l : 1.055 * Math.pow(l, 1 / 2.4) - 0.055);
-    if (a.dark) {
-      // Light ink on dark glass: dim the brightest tenth until the ink holds 4.5:1 over it.
-      // The shader mixes in sRGB: out = (1 − t)·bg. Solve for t.
-      const bright = toS(L[Math.floor(L.length * 0.9)]);
-      const goal = toS((hexLum(a.ink) + 0.05) / 4.5 - 0.05);
-      t = Math.min(a.max, Math.max(a.min, bright <= goal ? 0 : 1 - goal / bright));
-    } else {
-      const dark = L[Math.floor(L.length * 0.1)];
-      const need = 4.5 * (hexLum(a.ink) + 0.05) - 0.05;
-      // The shader mixes in sRGB: out = t·255 + (1 − t)·bg. Solve for t on the grey channel.
-      const bg = toS(dark), goal = toS(need);
-      t = Math.min(a.max, Math.max(a.min, bg >= goal ? 0 : (goal - bg) / (255 - bg)));
+  if (!r.tint || r.tint.at !== at) {
+    const was = r.tint?.dark;
+    let t = (a.dark ?? a.light)!.max, dark = !!a.dark && !a.light;
+    const g = probe?.getContext('2d', { willReadFrequently: true });
+    if (probe && g) {
+      const PW = 32, PH = 12;
+      probe.width = PW;
+      probe.height = PH;
+      g.drawImage(s.canvas, x * scale, y * scale, w * scale, h * scale, 0, 0, PW, PH);
+      const d = g.getImageData(0, 0, PW, PH).data;
+      const L: number[] = [];
+      for (let i = 0; i < d.length; i += 4) L.push(lumOf(d[i], d[i + 1], d[i + 2]));
+      L.sort((m, n) => m - n);
+      const toS = (l: number) => 255 * (l <= 0.0031308 ? 12.92 * l : 1.055 * Math.pow(l, 1 / 2.4) - 0.055);
+      const clamp = (v: number, k: GlassLook) => Math.min(k.max, Math.max(k.min, v));
+      let tl = Infinity, td = Infinity;
+      if (a.light) {
+        const bg = toS(L[Math.floor(L.length * 0.1)]), goal = toS(4.5 * (hexLum(a.light.ink) + 0.05) - 0.05);
+        tl = clamp(bg >= goal ? 0 : (goal - bg) / (255 - bg), a.light);
+      }
+      if (a.dark) {
+        const bg = toS(L[Math.floor(L.length * 0.9)]), goal = toS((hexLum(a.dark.ink) + 0.05) / 4.5 - 0.05);
+        td = clamp(bg <= goal ? 0 : 1 - goal / bg, a.dark);
+      }
+      dark = was === undefined ? td < tl : was ? !(tl < td - 0.1) : td < tl - 0.1;
+      t = dark ? td : tl;
     }
+    r.tint = { at, t, dark };
+    if (was !== dark) r.look?.(dark);
   }
-  r.tint = { at, t };
-  return t;
+  const { t, dark } = r.tint;
+  return dark ? [0, 0, 0, t] : [BAR_TINT_GL[0], BAR_TINT_GL[1], BAR_TINT_GL[2], t];
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Path } from 'react-native-svg';
 import { squircleExtent, squirclePath } from '../logic/squircle';
@@ -6,9 +6,10 @@ import { color, colorDark, protoColor, radius, type as typo } from '../theme/tok
 import { useInsets, useTabSpace } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
-import { BackdropCtx, GlassTuneCtx, NO_TUNE, repicture, RiseCtx, SCAN_BEND, SCAN_DEPTH, SCAN_FROST, SCAN_SPLIT, sceneShift } from './backdrop';
+import { BackdropCtx, GlassInkCtx, GlassTuneCtx, NO_TUNE, repicture, RiseCtx, SCAN_BEND, SCAN_DEPTH, SCAN_FROST, SCAN_SPLIT, sceneShift } from './backdrop';
 import { BEZEL } from './glassLook';
 import { MOVE_EVENT } from './contentMove';
+import { GlassInk } from './GlassInk';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
 import { map, quad } from './paperGeometry';
 import { SamplePhoto } from './SamplePhoto';
@@ -278,20 +279,26 @@ export function Scanner({
       {/* The title sits on the screen's centre line whatever is either side of it. */}
       <View style={[styles.titleRow, { top, height: L.bar }]} pointerEvents="box-none">
         <GlassPill h={44} minW={80} pad={L.gapL}>
-          <Text style={styles.title} numberOfLines={1}>{title}</Text>
+          <GlassInk fallback={color.ink}>{(c) => <Text style={[styles.title, { color: c }]} numberOfLines={1}>{title}</Text>}</GlassInk>
         </GlassPill>
       </View>
       <View style={[styles.top, { top, height: L.bar }]} pointerEvents="box-none">
         <GlassPill h={44} minW={44}>
           <Pressable accessibilityRole="button" accessibilityLabel="Close the scanner" onPress={onClose} style={({ pressed }) => [styles.circle, pressed && styles.pressed]}>
-            <CloseIcon c={WHITE} size={16} />
+            <GlassInk fallback={color.ink}>{(c) => <CloseIcon c={c} size={16} />}</GlassInk>
           </Pressable>
         </GlassPill>
         {stage === 'capture' ? (
           <GlassPill h={44} minW={44}>
             <Pressable accessibilityRole="button" accessibilityLabel="Choose a PDF or screenshot instead" onPress={onFile} style={({ pressed }) => [styles.filePill, pressed && styles.pressed]}>
-              <DocIcon c={WHITE} size={16} />
-              <Text style={styles.fileText}>File</Text>
+              <GlassInk fallback={color.ink}>
+                {(c) => (
+                  <>
+                    <DocIcon c={c} size={16} />
+                    <Text style={[styles.fileText, { color: c }]}>File</Text>
+                  </>
+                )}
+              </GlassInk>
             </Pressable>
           </GlassPill>
         ) : (
@@ -307,7 +314,7 @@ export function Scanner({
           </View>
         ) : (
           <GlassPill h={L.chip} minW={60} pad={L.gap}>
-            <Text style={styles.chipText}>{chip}</Text>
+            <GlassInk fallback={color.ink}>{(c) => <Text style={[styles.chipText, { color: c }]}>{chip}</Text>}</GlassInk>
           </GlassPill>
         )}
       </View>
@@ -362,7 +369,7 @@ export function Scanner({
                 glass bent everything behind the label. */}
             <GlassPill h={THUMB} minW={DONE_W} fixed>
               <Pressable accessibilityRole="button" accessibilityLabel={pages.length ? `Done, read ${pages.length} page${pages.length === 1 ? '' : 's'}` : 'Done'} accessibilityState={{ disabled: !pages.length }} disabled={!pages.length} onPress={onDone} style={({ pressed }) => [styles.doneHit, pressed && styles.pressed]}>
-                <Text style={[styles.doneText, !pages.length && styles.doneOff]}>Done</Text>
+                <GlassInk fallback={color.ink}>{(c) => <Text style={[styles.doneText, { color: c }, !pages.length && styles.doneOff]}>Done</Text>}</GlassInk>
               </Pressable>
             </GlassPill>
           </View>
@@ -375,8 +382,14 @@ export function Scanner({
         <View style={[styles.progressRow, { bottom: footerBottom + (SHUTTER - 72) / 2 }]} pointerEvents="none">
           <GlassPill h={72} minW={width - L.edge * 2} fixed>
             <View style={styles.progress} accessibilityRole="progressbar" accessibilityLabel={`${progress.text}, ${progress.pct}%`}>
-              <Text style={styles.pct}>{progress.pct}%</Text>
-              <Text style={styles.progressText} numberOfLines={1}>{progress.text}</Text>
+              <GlassInk fallback={color.ink}>
+                {(c) => (
+                  <>
+                    <Text style={[styles.pct, { color: c }]}>{progress.pct}%</Text>
+                    <Text style={[styles.progressText, { color: c }]} numberOfLines={1}>{progress.text}</Text>
+                  </>
+                )}
+              </GlassInk>
               <Dots />
             </View>
           </GlassPill>
@@ -484,6 +497,7 @@ function Beam({ x, y, w, h, paper }: { x: number; y: number; w: number; h: numbe
 
 /** Three dots that breathe, like the reference's "scanning" pill. */
 function Dots() {
+  const ink = useContext(GlassInkCtx)?.ink ?? color.ink;
   const reduce = useReduceMotion();
   const [t] = useState(() => new Animated.Value(0));
   useEffect(() => {
@@ -497,7 +511,7 @@ function Dots() {
       {[0, 1, 2].map((i) => (
         <Animated.View
           key={i}
-          style={[styles.dot, { opacity: reduce ? 1 - i * 0.3 : t.interpolate({ inputRange: [0, 1, 2, 3], outputRange: i === 0 ? [1, 0.3, 0.55, 1] : i === 1 ? [0.55, 1, 0.3, 0.55] : [0.3, 0.55, 1, 0.3] }) }]}
+          style={[styles.dot, { backgroundColor: ink, opacity: reduce ? 1 - i * 0.3 : t.interpolate({ inputRange: [0, 1, 2, 3], outputRange: i === 0 ? [1, 0.3, 0.55, 1] : i === 1 ? [0.55, 1, 0.3, 0.55] : [0.3, 0.55, 1, 0.3] }) }]}
         />
       ))}
     </View>
@@ -564,16 +578,17 @@ const THUMB = 60;
 /** How long the hand takes to bring the sample page into the frame. */
 const HAND_MS = 1800;
 /**
- * The pills are the glass's dark appearance, as iOS's own glass is over a camera: clear, with
- * bright edges and white labels. The light appearance (white glass, dark labels) is for the
- * app's light pages; over this dark scene it had to stay 30 to 50% white to keep dark labels
- * readable, which made a grey film you can't see through. Here each pill dims only as much as
- * keeps its white label at 4.5:1 over the brightest part of what's behind it (LiquidGlass
- * adapt), never under 0.1 so it still reads as a body, never over 0.5. 0.25 is what it shows
- * before it has measured. The result card keeps the light appearance: it's a sheet of dark
- * text over a printed page.
+ * The pills' glass takes its appearance from what's behind it, as Liquid Glass does (Apple HIG,
+ * Materials: the regular variant appears darker over a dark background, lighter over a light
+ * one, and each element switches on its own). Over the cab's dark footwell and seat that's
+ * dark: clear glass, bright rims, white labels. Over something bright (a white desk, the page
+ * itself) it turns light: the app's white glass with ink labels. Each pill takes the clearest
+ * tint that keeps its label at 4.5:1 (LiquidGlass tintFor). Light keeps the system's range
+ * (0.3 to 0.62 white); dark dims 0.1 to 0.5 (Apple suggests about 35% over bright media).
+ * 0.25 dark is what it shows before it has measured. The result card keeps the light
+ * appearance: its backdrop is the white page.
  */
-const PILL_TUNE = { ...NO_TUNE, bend: SCAN_BEND, split: SCAN_SPLIT, frost: SCAN_FROST, bezel: BEZEL * SCAN_DEPTH, tint: 0.25, adapt: { ink: WHITE, min: 0.1, max: 0.5, dark: true } };
+const PILL_TUNE = { ...NO_TUNE, bend: SCAN_BEND, split: SCAN_SPLIT, frost: SCAN_FROST, bezel: BEZEL * SCAN_DEPTH, tint: 0.25, adapt: { light: { ink: color.ink, min: 0.3, max: 0.62 }, dark: { ink: WHITE, min: 0.1, max: 0.5 } } };
 
 /**
  * A hand's path into the frame, as the camera sees it, worked out once as motion rather than
@@ -702,7 +717,7 @@ const styles = StyleSheet.create({
   scrimSvg: { position: 'absolute', left: 0 },
   doneHit: { height: THUMB, width: DONE_W, alignItems: 'center', justifyContent: 'center' },
   doneText: { ...typo.labelControl, color: WHITE },
-  doneOff: { color: 'rgba(255,255,255,0.45)' },
+  doneOff: { opacity: 0.45 },
   ring: { position: 'absolute', top: 0, left: 0 },
   bracket: { position: 'absolute' },
   still: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
