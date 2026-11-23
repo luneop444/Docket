@@ -32,6 +32,7 @@ uniform vec2 barK;        // bar bend, px across and down
 uniform vec2 lensK;       // pill bend, px across and down
 uniform vec3 chroma;      // how far red, green and blue read (blue = 1)
 uniform float spec;       // rim shading strength
+uniform float pillSpec;   // the pill's own rim shading (0: none)
 uniform vec4 barTint;     // colour and strength of the bar's tint
 uniform vec4 pillTint;    // colour and strength of the pill's tint
 uniform float isPill;     // 0 draws the bar, 1 draws the pill
@@ -76,9 +77,11 @@ void main() {
     c.r = throughBar(at + d * chroma.r, 0, chroma.r);
     c.g = throughBar(at + d * chroma.g, 1, chroma.g);
     c.b = throughBar(at + d * chroma.b, 2, chroma.b);
-    c *= barShade(at + d);
+    // Not the bar's rim shading: the pill sits 4pt inside the bar, right on the bar's bright rim
+    // band, which then ran round the pill like an outline.
+    if (pillSpec > 0.0) c *= barShade(at + d);
     c = mix(c, barTint.rgb, barTint.a);
-    c *= max(0.0, 1.0 + spec * 128.0 / 255.0 - spec * m.b);
+    c *= max(0.0, 1.0 + pillSpec * 128.0 / 255.0 - pillSpec * m.b);
     col = mix(c, pillTint.rgb, pillTint.a);
   }
   gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);
@@ -99,6 +102,8 @@ export interface Frame {
   lensK: [number, number];
   chroma: [number, number, number];
   spec: number;
+  /** The selection pill's rim shading; defaults to spec. */
+  pillSpec?: number;
   barTint: [number, number, number, number];
   pillTint: [number, number, number, number];
   isPill: boolean;
@@ -198,6 +203,7 @@ function makeGlass(canvas: HTMLCanvasElement): Glass | null {
       gl.uniform2f(u('lensK'), ...f.lensK);
       gl.uniform3f(u('chroma'), ...f.chroma);
       gl.uniform1f(u('spec'), f.spec);
+      gl.uniform1f(u('pillSpec'), f.pillSpec ?? f.spec);
       gl.uniform4f(u('barTint'), ...f.barTint);
       gl.uniform4f(u('pillTint'), ...f.pillTint);
       gl.uniform1f(u('isPill'), f.isPill ? 1 : 0);

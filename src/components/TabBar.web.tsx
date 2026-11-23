@@ -1,7 +1,7 @@
 import { router, usePathname } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createGlass, type Glass } from './glassGL';
-import { color, type } from '../theme/tokens';
+import { color, glassLift, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
 import { BAR_TINT_GL, GLASS_CHROMA, frostSlice, GLASS_RIM, GLASS_STANDIN, glassK, glassReach, lensMap, mapData, scrollerUnder } from './glassLook';
 import { MOVE_EVENT } from './contentMove';
@@ -120,6 +120,9 @@ export function TabBar() {
       lensK: glassK(pr.height),
       chroma: GLASS_CHROMA,
       spec: SPEC,
+      // No rim on the selection pill: inside the bar its bright top and dark bottom read as an
+      // outline. It's told apart by its grey against the bar's white, as in iOS 26's tab bar.
+      pillSpec: 0,
       barTint: BAR_TINT_GL,
       pillTint: PILL_TINT_GL,
     };
@@ -262,7 +265,6 @@ export function TabBar() {
           style={{ ...S.pill, width: tabW || 0, transform: `translate3d(${x}px, 0, 0)` }}
         >
           <canvas ref={pillCv} style={{ ...S.cv, opacity: live ? 1 : 0, borderRadius: PILL_H / 2 }} />
-          <div style={S.pillRim} />
         </div>
         <div style={S.rim} />
         <div style={S.row}>
@@ -292,6 +294,11 @@ const S: Record<string, CSSProperties> = {
     overflow: 'hidden',
     pointerEvents: 'auto',
     ...GLASS_STANDIN,
+    // No dark hairline round the bar. The selection pill sits 4pt inside it, so the hairline and
+    // the 4pt of bright bar between them drew a ring round the pill, read as a stroke. The bar
+    // floats over scrolling content and is held apart by its lift and blur; cards keep the
+    // hairline, where it's their edge against the canvas.
+    boxShadow: glassLift,
   },
   cv: { position: 'absolute', inset: 0, width: '100%', height: '100%', transition: 'opacity 120ms', pointerEvents: 'none' },
   rim: {
@@ -311,14 +318,6 @@ const S: Record<string, CSSProperties> = {
     pointerEvents: 'none',
     transition: SLIDE,
     willChange: 'transform',
-  },
-  pillRim: {
-    position: 'absolute',
-    inset: 0,
-    borderRadius: PILL_H / 2,
-    // The same faint edge all the way round. A bright top line disappeared into the white bar
-    // and made the pill read about 0.75pt low, though it sits 4pt in on every side.
-    boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.10)',
   },
   row: { position: 'absolute', inset: 0, display: 'flex', padding: PAD },
   tab: {
