@@ -2,8 +2,9 @@
  * What the Companies tab says about one company: its detention rules in words,
  * and questions a driver can ask a recruiter before signing on.
  */
-import { dur, money } from './format';
+import { dur, durShort, money, rateShort } from './format';
 import { COMPANIES, MIN_REPORTS, SAMPLE_BOARD, SUGGESTED, type Company } from './sampleData';
+import type { CompanySort } from './state';
 
 /** A company on the board, or any carrier Docket knows. */
 export function findCompany(name: string | undefined | null): Company | null {
@@ -57,4 +58,35 @@ export function recruiterQuestions(c: Company): string[] {
 
 export function recruiterText(c: Company): string {
   return [`Questions for ${c.name} about detention pay:`, ...recruiterQuestions(c).map((q, i) => `${i + 1}. ${q}`)].join('\n');
+}
+
+/** Pay first, then when it starts: "$20/hr after 2h free". */
+export function payLine(c: Company): string {
+  return `${rateShort(c.rules.rate)} after ${durShort(c.rules.free)} free`;
+}
+
+/** The figure a row leads with, following the sort: the wait, or how often it was paid. */
+export function headline(c: Company, sort: CompanySort): { value: string; label: string } {
+  return sort === 'paid' ? { value: `${c.paid}%`, label: 'say it was paid' } : { value: c.avg, label: 'average wait' };
+}
+
+/** The other two figures, in one quiet line under the pay. */
+export function otherStats(c: Company, sort: CompanySort): string {
+  const past = `${c.past}% past free time`;
+  return sort === 'paid' ? `${c.avg} wait · ${past}` : `${c.paid}% paid · ${past}`;
+}
+
+/** "1h 44m" → 104, so the list sorts by the real wait. */
+export function avgMinutes(avg: string): number {
+  const h = /(\d+)\s*h/.exec(avg), m = /(\d+)\s*m/.exec(avg);
+  return (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0);
+}
+
+/** Companies with stats first; then shortest wait, or most often paid. */
+export function sortBoard(list: Company[], sort: CompanySort): Company[] {
+  return [...list].sort(
+    (x, y) =>
+      Number(showsStats(y)) - Number(showsStats(x)) ||
+      (sort === 'wait' ? avgMinutes(x.avg) - avgMinutes(y.avg) || x.past - y.past : y.paid - x.paid),
+  );
 }

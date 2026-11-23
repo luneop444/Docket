@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { findCompany, hasEnoughReports, initials, isRealCarrier, noStatsNote, REAL_CARRIERS, recruiterText, rulesRows, showsStats } from '../companyInfo';
+import { avgMinutes, findCompany, sortBoard, hasEnoughReports, headline, initials, otherStats, payLine, isRealCarrier, noStatsNote, REAL_CARRIERS, recruiterText, rulesRows, showsStats } from '../companyInfo';
 import { COMPANIES, MIN_REPORTS, SAMPLE_BOARD } from '../sampleData';
 
 describe('companyInfo', () => {
@@ -45,5 +45,23 @@ describe('companyInfo', () => {
     expect(initials('Small Fleet Co.')).toBe('SF');
     expect(initials('Prairie Line Logistics')).toBe('PL');
     expect(initials('Acme')).toBe('A');
+  });
+  it('leads each row with the figure the list is sorted by', () => {
+    const c = { ...SAMPLE_BOARD[0], avg: '1h 44m', past: 21, paid: 64, rules: { free: 120, start: 'appt' as const, rate: 20, breaksCount: false } };
+    expect(payLine(c)).toBe('$20/hr after 2h free');
+    expect(headline(c, 'wait')).toEqual({ value: '1h 44m', label: 'average wait' });
+    expect(headline(c, 'paid')).toEqual({ value: '64%', label: 'say it was paid' });
+    expect(otherStats(c, 'wait')).toBe('64% paid · 21% past free time');
+    expect(otherStats(c, 'paid')).toBe('1h 44m wait · 21% past free time');
+  });
+  it('sorts by the real wait, not just the hours', () => {
+    expect(avgMinutes('1h 44m')).toBe(104);
+    expect(avgMinutes('2h 05m')).toBe(125);
+    expect(avgMinutes('45m')).toBe(45);
+    const waits = sortBoard(SAMPLE_BOARD, 'wait').filter(showsStats).map((c) => avgMinutes(c.avg));
+    expect(waits).toEqual([...waits].sort((a, b) => a - b));
+    const paid = sortBoard(SAMPLE_BOARD, 'paid').filter(showsStats).map((c) => c.paid);
+    expect(paid).toEqual([...paid].sort((a, b) => b - a));
+    expect(showsStats(sortBoard(SAMPLE_BOARD, 'wait').at(-1)!)).toBe(false);
   });
 });
