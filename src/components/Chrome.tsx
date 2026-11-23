@@ -329,7 +329,9 @@ export function Screen({
   const inline = !over;
   // Scroll only when the content needs it: the room left under it (PAD_BOTTOM, or the tab
   // pill's space) is not a reason to scroll when everything above it already fits.
-  const padBottom = tabs ? space : PAD_BOTTOM;
+  // On a tab screen that room is where the tab pill floats, over the content: anything that
+  // reaches into it is hidden behind the pill, so it has to be able to scroll up past it.
+  const padBottom = tabs ? 0 : PAD_BOTTOM;
   const [viewH, setViewH] = useState(0);
   const [contentH, setContentH] = useState(0);
   const needsScroll = !viewH || !contentH || contentH - padBottom > viewH + 0.5;
