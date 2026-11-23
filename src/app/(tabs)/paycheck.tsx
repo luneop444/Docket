@@ -47,7 +47,7 @@ export default function Claims() {
         <Gap h={12} />
         <View style={styles.rules}>
           <T v="bodyTiny" style={styles.flex}>Figured with {rulesLine(s.rules)}.</T>
-          <Pressable accessibilityRole="button" accessibilityLabel="Change rules" onPress={() => router.push('/rules')} hitSlop={10} style={({ pressed }) => pressed && press.link}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Change rules" onPress={() => router.push('/rules')} hitSlop={10} style={({ pressed }) => [press.hit, pressed && press.link]}>
             <T v="bodyTiny" c={color.ink} style={styles.link}>Change</T>
           </Pressable>
         </View>

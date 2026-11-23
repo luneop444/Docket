@@ -286,7 +286,7 @@ function AtStop() {
           </>
         ) : (
           <>
-            <Pressable accessibilityRole="button" onPress={() => router.push(`/claim?id=${encodeURIComponent(claim.id)}`)} style={({ pressed }) => pressed && press.link}>
+            <Pressable accessibilityRole="button" onPress={() => router.push(`/claim?id=${encodeURIComponent(claim.id)}`)} style={({ pressed }) => [press.hit, pressed && press.link]}>
               <T v="labelSmall">Claim sent · see it in Claims</T>
             </Pressable>
             <Gap h={16} />
@@ -309,7 +309,7 @@ function AtStop() {
 
 function Link({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={12} style={({ pressed }) => pressed && press.link}>
+    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={12} style={({ pressed }) => [press.hit, pressed && press.link]}>
       <T v="bodySmall" c={color.sub} style={styles.link}>
         {label}
       </T>
@@ -327,7 +327,7 @@ function Stops() {
 
   if (!stops.length) {
     return (
-      <Pressable accessibilityRole="button" onPress={() => router.push('/add-load')} style={({ pressed }) => pressed && press.link}>
+      <Pressable accessibilityRole="button" onPress={() => router.push('/add-load')} style={({ pressed }) => [press.section, pressed && press.link]}>
         <T v="bodyStrong">Add today’s load</T>
         <Gap h={4} />
         <T v="bodySmall" c={color.sub}>

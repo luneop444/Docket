@@ -54,7 +54,7 @@ export function StopsEditor({
           <View style={styles.stopHead}>
             <T v="bodyStrong">Stop {i + 1}</T>
             {stops.length > 1 ? (
-              <Pressable accessibilityRole="button" onPress={() => onStops(stops.filter((_, j) => j !== i))} hitSlop={8} style={({ pressed }) => pressed && press.link}>
+              <Pressable accessibilityRole="button" onPress={() => onStops(stops.filter((_, j) => j !== i))} hitSlop={8} style={({ pressed }) => [press.hit, pressed && press.link]}>
                 <T v="bodySmall">Remove</T>
               </Pressable>
             ) : null}
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   inputFocus: { boxShadow: `inset 0 0 0 2px ${color.ink}` },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   time: { width: 104, textAlign: 'center', paddingHorizontal: 6, fontVariant: ['tabular-nums'] },
-  stepPressed: { backgroundColor: color.line },
+  stepPressed: { backgroundColor: color.signal },
   step: {
     width: 44,
     height: 44,

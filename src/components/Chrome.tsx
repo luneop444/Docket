@@ -418,8 +418,8 @@ const styles = StyleSheet.create({
   topFade: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 4 },
   glassRow: { height: BAR_H, flexDirection: 'row', alignItems: 'center', paddingLeft: 14 },
   centerAbs: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
-  // Press: the glass stays, the chevron dims (press.link elsewhere uses 0.3; a back tap is brief).
-  backPressed: { opacity: 0.5 },
+  // Press: the glass lights up lime, like every other control (design system press highlight).
+  backPressed: { backgroundColor: color.signal },
   topbar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pressedBg: { backgroundColor: color.raise },
+  pressedBg: { backgroundColor: color.signal },
   back: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -462,13 +462,14 @@ const styles = StyleSheet.create({
     borderRadius: 22, borderCurve: 'continuous',
   },
   backText: { fontFamily: fontFamily.medium, fontSize: 17, color: color.ink },
+  // Same row as the Today top bar, so the title sits where the wordmark does on every tab.
   pagehead: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 4,
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingBottom: 6,
+    minHeight: 52,
   },
   pageTitle: { fontSize: 19 },
 });

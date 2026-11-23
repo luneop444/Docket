@@ -1,25 +1,65 @@
-import { StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
+import { type ReactNode } from 'react';
+import { Image, StyleSheet, View } from 'react-native';
+import { LOGOS } from '../../components/carrierLogos';
 import { PageHead, Screen } from '../../components/Chrome';
-import { Card, Fake, Gap, Pill, Row, Seg, T } from '../../components/ui';
-import { dur, money } from '../../logic/format';
+import { ChevronRight } from '../../components/Icons';
+import { glideNext, useReduceMotion } from '../../components/stepMotion';
+import { Fake, Gap, ListCard, ListRow, Pill, Seg, T } from '../../components/ui';
+import { headline, noStatsNote, otherStats, payLine, REAL_CARRIERS, showsStats, sortBoard } from '../../logic/companyInfo';
+import { durShort, rateShort } from '../../logic/format';
 import { MIN_REPORTS, SAMPLE_BOARD } from '../../logic/sampleData';
 import type { CompanySort } from '../../logic/state';
 import { useStore } from '../../state/AppStore';
 import { color } from '../../theme/tokens';
 
-/** v1 18: Companies */
+const open = (name: string) => router.push({ pathname: '/company-info', params: { name } });
+
+/**
+ * v1 18: Companies, as two lists. Each row leads with its key figure on the right (pay for
+ * the real carriers; the wait or % paid, following the sort, for what drivers report), so
+ * the numbers read at a glance and nothing inside a row looks like its own button.
+ */
 export default function Companies() {
   const { s, a } = useStore();
-  const enough = (c: { reported: number }) => c.reported >= MIN_REPORTS;
-  const list = [...SAMPLE_BOARD].sort(
-    (x, y) =>
-      Number(enough(y)) - Number(enough(x)) ||
-      (s.sort === 'wait' ? parseFloat(x.avg) - parseFloat(y.avg) || x.past - y.past : y.paid - x.paid),
-  );
+  const reduce = useReduceMotion();
+  const board = sortBoard(SAMPLE_BOARD, s.sort);
   return (
     <Screen tabs header={<PageHead title="Companies" />}>
       <T v="bodySmall">What waiting looks like at each company</T>
-      <Gap h={12} />
+
+      <Gap h={24} />
+      <T v="bodyStrong">Popular carriers</T>
+      <Gap h={10} />
+      {/* A ListCard: each row spans the card, so a pressed row lights up to its edges and dividers. */}
+      <ListCard>
+        {REAL_CARRIERS.map((c) => (
+          <Row
+            key={c.name}
+            label={`${c.name}, ${payLine(c)}`}
+            onPress={() => open(c.name)}
+            lead={
+              <View style={styles.logoBox}>
+                <Image
+                  source={LOGOS[c.name].src}
+                  style={{ width: LOGOS[c.name].w, height: LOGOS[c.name].h }}
+                  resizeMode="contain"
+                  accessibilityIgnoresInvertColors
+                />
+              </View>
+            }
+            body={c.name === s.company ? <Pill label="Yours" tone="signal" /> : null}
+            value={rateShort(c.rules.rate)}
+            caption={`after ${durShort(c.rules.free)} free`}
+          />
+        ))}
+      </ListCard>
+      <Gap h={8} />
+      <T v="bodyTiny">{noStatsNote(REAL_CARRIERS[0])}</T>
+
+      <Gap h={32} />
+      <T v="bodyStrong">What drivers report</T>
+      <Gap h={10} />
       <Seg<CompanySort>
         label="Sort companies by"
         options={[
@@ -27,62 +67,81 @@ export default function Companies() {
           { key: 'paid', label: 'Most often paid' },
         ]}
         value={s.sort}
-        onChange={a.setSort}
+        onChange={(k) => {
+          // The rows glide to their new order, so you can follow a company as the list re-sorts.
+          glideNext(reduce);
+          a.setSort(k);
+        }}
       />
-      <Gap h={16} />
-      <View style={{ gap: 12 }}>
-        {list.map((c) => (
-          <Card key={c.name}>
-            <Row base>
-              <T v="bodyStrong">{c.name}</T>
-              {c.name === s.company ? <Pill label="Yours" tone="signal" /> : null}
-            </Row>
-            <T v="bodyTiny">
-              {dur(c.rules.free)} free from {c.rules.start === 'appt' ? 'appointment' : 'arrival'}, then{' '}
-              {money(c.rules.rate)}/hr
-            </T>
-            {enough(c) ? (
-              <View style={styles.stats}>
-                <Stat value={c.avg} label="average wait per stop" />
-                <Stat value={`${c.past}%`} label="of stops past free time" />
-                <Stat value={`${c.paid}%`} label="say detention was paid" />
-              </View>
-            ) : (
-              // Too few reports: showing numbers could point to the few drivers who reported.
-              <View style={[styles.stats, styles.hidden]}>
-                <T v="bodySmall">
-                  Not enough reports yet. Stats show once {MIN_REPORTS} drivers have reported, so no one can be singled
-                  out.
-                </T>
-              </View>
-            )}
-            <Gap h={8} />
-            <T v="bodyTiny">{enough(c) ? `${c.reported} drivers reported` : `${c.reported} of ${MIN_REPORTS} reports so far`}</T>
-          </Card>
-        ))}
-      </View>
+      <Gap h={12} />
+      <ListCard>
+        {board.map((c) => {
+          const stats = showsStats(c);
+          const h = headline(c, s.sort);
+          return (
+            <Row
+              key={c.name}
+              label={stats ? `${c.name}, ${h.value} ${h.label}, ${payLine(c)}` : `${c.name}, not enough reports yet`}
+              onPress={() => open(c.name)}
+              lead={null}
+              body={
+                <>
+                  <T v="bodyStrong">{c.name}</T>
+                  {c.name === s.company ? <Pill label="Yours" tone="signal" /> : null}
+                  <T v="bodySmall" c={color.ink}>{payLine(c)}</T>
+                  <T v="bodyTiny">{stats ? otherStats(c, s.sort) : `Stats show at ${MIN_REPORTS} reports`}</T>
+                </>
+              }
+              value={stats ? h.value : `${c.reported}/${MIN_REPORTS}`}
+              caption={stats ? h.label : 'reports so far'}
+              muted={!stats}
+            />
+          );
+        })}
+      </ListCard>
       <Gap h={16} />
       <T v="bodyTiny">
-        <Fake label="Sample data" /> Made-up companies and numbers. Real carriers only appear here once their own drivers have
-        reported. After Concept Lock this is a secondary feature, not part of the core use case.
+        <Fake label="Sample data" /> Made-up companies and numbers until drivers report for real.
       </T>
     </Screen>
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+/** One list row: who on the left, the key figure on the right, a quiet chevron. */
+function Row({
+  label,
+  onPress,
+  lead,
+  body,
+  value,
+  caption,
+  muted,
+}: {
+  label: string;
+  onPress: () => void;
+  lead: ReactNode;
+  body: ReactNode;
+  value: string;
+  caption: string;
+  muted?: boolean;
+}) {
   return (
-    <View style={styles.stat}>
-      <T v="numberS" style={styles.statValue} numberOfLines={1}>{value}</T>
-      <T v="bodyTiny" style={styles.statLabel}>{label}</T>
-    </View>
+    <ListRow accessibilityLabel={label} onPress={onPress}>
+      {lead}
+      <View style={styles.body}>{body}</View>
+      <View style={styles.figure}>
+        <T v="numberS" c={muted ? color.sub : color.ink} numberOfLines={1}>{value}</T>
+        <T v="bodyTiny" style={styles.right}>{caption}</T>
+      </View>
+      <ChevronRight size={16} c={color.faint} />
+    </ListRow>
   );
 }
 
 const styles = StyleSheet.create({
-  stats: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  stat: { flex: 1, backgroundColor: color.bg, borderRadius: 10, borderCurve: 'continuous', padding: 10 },
-  statValue: { fontSize: 17 },
-  hidden: { backgroundColor: color.bg, borderRadius: 10, borderCurve: 'continuous', padding: 12 },
-  statLabel: { fontSize: 12, lineHeight: 15.6, marginTop: 2 },
+  body: { flex: 1, minWidth: 0, gap: 2, alignItems: 'flex-start' },
+  figure: { alignItems: 'flex-end', maxWidth: 96 },
+  right: { textAlign: 'right' },
+  // The widest Figma logo is 108; one box keeps the rows lined up.
+  logoBox: { width: 108, height: 36, justifyContent: 'center' },
 });

@@ -90,3 +90,27 @@ Expo Go can't run background location. To test it, make a development build:
 Developer account to install on a phone) or `npx expo run:ios` on a Mac with
 Xcode. Still to do: a native Live Activity / Dynamic Island widget and
 receiving a shared rate con (a share extension).
+
+### TestFlight
+
+`eas.json` is set up for TestFlight. From this folder, signed in with the Apple
+ID that has the Developer Program membership:
+
+```sh
+npm install -g eas-cli
+eas login                                  # your Expo account (free)
+eas init                                   # first time only: links the project to Expo
+eas build -p ios --profile production      # cloud build, about 15–30 min; makes the certificates
+eas submit -p ios --latest                 # uploads to App Store Connect / TestFlight
+```
+
+Then in App Store Connect → Docket → TestFlight, add internal testers (your team,
+no review) or an external group / public link (a short Beta App Review first).
+
+- `EXPO_PUBLIC_API_BASE` in `eas.json` is the site whose Netlify functions read
+  BOLs, rate cons and settlements. It must be the one with `ANTHROPIC_API_KEY` set.
+- Build numbers count up on their own (`autoIncrement`, versions kept by EAS).
+- `usesNonExemptEncryption: false` answers the export-compliance question, so
+  builds go straight to testing.
+- If Apple says the bundle ID `app.docket.driver` is taken, change
+  `ios.bundleIdentifier` in `app.json` (e.g. `edu.cmu.docket`) and build again.

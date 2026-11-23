@@ -1,16 +1,17 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, StyleSheet, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
 import { CameraIcon } from '../components/Icons';
-import { Button, Card, Gap, press, T } from '../components/ui';
+import { Button, Card, Gap, T } from '../components/ui';
 import { clock } from '../logic/format';
 import { placeOf } from '../logic/state';
 import { bolFromReading } from '../logic/stop';
 import { useStore } from '../state/AppStore';
 import { BolReadError, BolReadingOff, readBol } from '../state/readBol';
 import { color, glass, protoColor } from '../theme/tokens';
+import { Tappable } from '../components/Tappable';
 
 /** Opens the camera (phone) or file picker (desktop). Falls back to the photo library. */
 async function takePhoto(): Promise<string | null> {
@@ -97,7 +98,7 @@ export default function SnapBol() {
         records that agree are hard to argue with.
       </T>
       <Gap h={24} />
-      <Pressable accessibilityRole="button" accessibilityLabel="Take a photo of your BOL" onPress={pick} style={({ pressed }) => [styles.photo, pressed && press.give]}>
+      <Tappable accessibilityRole="button" accessibilityLabel="Take a photo of your BOL" onPress={pick} style={[styles.photo]}>
         {ui.photoUri ? (
           <>
             <Image source={{ uri: ui.photoUri }} style={styles.img} accessibilityLabel="Your BOL photo" />
@@ -113,7 +114,7 @@ export default function SnapBol() {
             <T v="bodySmall">Tap to take a photo</T>
           </View>
         )}
-      </Pressable>
+      </Tappable>
       <Gap h={12} />
       {/* Audit #1: say where the photo goes before the driver sends it, with an equal way out. */}
       <Card>

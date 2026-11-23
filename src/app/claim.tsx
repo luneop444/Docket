@@ -107,7 +107,7 @@ export default function ClaimDetail() {
           {removing ? (
             <View style={styles.confirm}>
               <T v="bodyTiny" style={styles.flex}>Remove {c.load.name} from your stops?</T>
-              <Pressable accessibilityRole="button" onPress={() => setRemoving(false)} hitSlop={10} style={({ pressed }) => pressed && press.link}>
+              <Pressable accessibilityRole="button" onPress={() => setRemoving(false)} hitSlop={10} style={({ pressed }) => [press.hit, pressed && press.link]}>
                 <T v="labelSmall">Keep</T>
               </Pressable>
               <Pressable
@@ -117,13 +117,13 @@ export default function ClaimDetail() {
                   back();
                 }}
                 hitSlop={10}
-                style={({ pressed }) => pressed && press.link}
+                style={({ pressed }) => [press.hit, pressed && press.link]}
               >
                 <T v="labelSmall" c={color.flag}>Remove</T>
               </Pressable>
             </View>
           ) : (
-            <Pressable accessibilityRole="button" onPress={() => setRemoving(true)} hitSlop={8} style={({ pressed }) => [styles.remove, pressed && press.link]}>
+            <Pressable accessibilityRole="button" onPress={() => setRemoving(true)} hitSlop={8} style={({ pressed }) => [press.hit, styles.remove, pressed && press.link]}>
               <T v="bodyTiny">Not a real stop? Remove it</T>
             </Pressable>
           )}

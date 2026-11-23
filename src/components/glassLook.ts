@@ -104,8 +104,9 @@ export function mapData(src: string | Promise<string>, w: number, h: number, box
         const img = new Image();
         img.onload = () => {
           const c = document.createElement('canvas');
-          c.width = Math.round(w * scale);
-          c.height = Math.round(h * scale);
+          // A glass that hasn't been laid out yet is 0 wide; reading 0 pixels throws.
+          c.width = Math.max(1, Math.round(w * scale));
+          c.height = Math.max(1, Math.round(h * scale));
           const ctx = c.getContext('2d')!;
           ctx.fillStyle = 'rgb(128,128,128)';
           ctx.fillRect(0, 0, c.width, c.height);

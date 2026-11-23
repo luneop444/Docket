@@ -44,7 +44,7 @@ export function PaydayCard() {
           {sample ? <Fake label="Sample data" /> : null}
         </T>
         <Gap h={16} />
-        <Button label="Scan the settlement" icon={<DocIcon c={color.bg} />} onPress={() => go('scan')} />
+        <Button label="Scan the settlement" icon={(c) => <DocIcon c={c} />} onPress={() => go('scan')} />
         <Gap h={8} />
         {/* The second way in, as the design system's secondary button on a card (white). */}
         <Button label="Type the detention total" variant="white" onPress={() => go('type')} />
