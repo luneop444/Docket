@@ -4,7 +4,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
 import { DemoDrawer } from '../../components/DemoDrawer';
 import { FreeBar } from '../../components/FreeBar';
-import { Appear } from '../../components/Appear';
 import { RollText } from '../../components/RollText';
 import { Timeline } from '../../components/Timeline';
 import { Button, Gap, press, T } from '../../components/ui';
@@ -114,7 +113,7 @@ function Head({ name, since }: { name: string; since: number }) {
 
 /**
  * Figma 08 "At the dock, free time" and 09 "At the dock, detention running": the place and
- * load, the time waited, one status line, the lime "Detention so far" once it runs, then
+ * load, the time waited, one status line, "Detention so far" under it once it runs, then
  * the timeline of the stop.
  */
 function AtTheDock() {
@@ -135,7 +134,7 @@ function AtTheDock() {
   // Times carry the day once a stop runs past midnight.
   const at = stopTime(st, s.now);
   const status = inDetention
-    ? `Detention since ${at(c.freeEnd)} · ${rateShort(s.rules.rate)}`
+    ? `Waited ${dur(waited)} · ${rateShort(s.rules.rate)} since ${at(c.freeEnd)}`
     : beforeClock
       ? `Clock starts at your ${at(c.start)} ${fromAppt ? 'appointment' : 'arrival'}`
       : `Detention starts at ${at(c.freeEnd)}`;
@@ -157,18 +156,24 @@ function AtTheDock() {
         ) : null}
       </View>
       <Gap h={16} />
-      {/* Label above the figure, as "Detention so far" is in the lime card, so the figure
+      {/* Label above the figure, as "Detention so far" is above its own, so the figure
           has the full width and hours and minutes never split across lines. */}
       <View
         accessible
         accessibilityRole="timer"
         accessibilityLabel={`Waited ${dur(waited)}. ${status}${inDetention ? `. Detention so far ${money(c.owed)}` : ''}`}
       >
+        {/* The figure answers the question of the moment: in free time how long you've waited
+            toward detention, in detention what you're owed. The wait moves to the line under it. */}
         <T v="bodyTiny" c={color.sub}>
-          Waited
+          {inDetention ? 'Detention so far' : 'Waited'}
         </T>
         <Gap h={4} />
-        <WaitFigure min={waited} />
+        {inDetention ? (
+          <RollText text={money(c.owed)} style={[type.displayTimer, styles.tabular, styles.optical, { color: color.ink }]} />
+        ) : (
+          <WaitFigure min={waited} />
+        )}
       </View>
       <Gap h={8} />
       <View style={styles.status}>
@@ -176,18 +181,6 @@ function AtTheDock() {
         <T v="labelSmall">{status}</T>
       </View>
       <Gap h={24} />
-      {inDetention ? (
-        <>
-          <Appear style={styles.owed}>
-            <T v="bodyTiny" c={color.ink}>
-              Detention so far
-            </T>
-            <Gap h={4} />
-            <RollText text={money(c.owed)} style={[type.numberL, styles.tabular, { color: color.ink }]} />
-          </Appear>
-          <Gap h={16} />
-        </>
-      ) : null}
       {/* The times can be fixed (arrival, leaving, break), or a wrong stop cancelled from the same
           sheet: the way in sits with them, worded as the way out when Docket got it wrong. */}
       <Timeline events={events} footer={<Link label={FIX_LABEL} onPress={a.openFix} />} />
@@ -410,5 +403,4 @@ const styles = StyleSheet.create({
   unit: { ...type.numberM, color: color.ink },
   status: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3.5 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.signal },
-  owed: { backgroundColor: color.signal, borderRadius: 24, borderCurve: 'continuous', padding: 20 },
 });
