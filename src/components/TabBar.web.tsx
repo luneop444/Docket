@@ -3,12 +3,17 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { createGlass, type Glass } from './glassGL';
 import { color, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
-import { GLASS_MAP } from './glassMap';
+import { BAR_TINT_GL, GLASS_CHROMA, frostSlice, GLASS_RIM, GLASS_STANDIN, glassK, glassReach, lensMap, mapData, scrollerUnder } from './glassLook';
+import { MOVE_EVENT } from './contentMove';
+import { isStale, pictureOf, sliceAt, type PagePicture, type Slice } from './pagePicture';
+import { BEND, SPEC } from './glassPicture';
 import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
+
+export { mapData, scrollerUnder };
 
 const TABS = [
   { href: '/today', label: 'Today', Icon: TabTodayIcon },
-  { href: '/paycheck', label: 'Paycheck', Icon: TabPaycheckIcon },
+  { href: '/paycheck', label: 'Claims', Icon: TabPaycheckIcon },
   { href: '/companies', label: 'Companies', Icon: TabCompaniesIcon },
 ] as const;
 
@@ -18,76 +23,32 @@ const SLIDE_MS = 320;
 const SLIDE = `transform ${SLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
 
 /**
- * Matched to Edward's reference (Reddit's iOS 26 tab bar, screen recording 17 Nov): a
- * compact bar centered over the page, white glass heavy enough that what's behind reads
- * only as soft shapes, a light grey pill, black icons (filled when selected, outlined
- * otherwise) and black labels. The bend stays at the rim; no visible colour fringe.
+ * Tint, pill and icons from Edward's reference (Reddit's iOS 26 tab bar, 17 Nov): white
+ * glass at 62%, a light grey pill, black icons (filled when selected, outlined otherwise)
+ * and black labels. Size, frost and bend stay as they were.
  */
-const BAR_TINT = 'rgba(255,255,255,0.62)';
-const FROST = 9;
 /** The selected pill: light grey glass over the bar. */
-const PILL_TINT = 'rgba(214,216,220,0.5)';
-/** 88 per tab (fits "Companies"), 4 around the pill: 272 wide, as the reference's ~271. */
-const TAB_W = 88;
-const BAR_W = TAB_W * 3 + PAD * 2;
-/**
- * Aave's glass ("Building glass for the web"): their lens map, drawn for an 88x40 lens.
- * Their map only bends the outer rim (the middle is flat, as in their demos), so the bend
- * shows as warping at the ends and edges, not across the middle.
- * Bend: BEND times their 27.3px across and 9.46px down. Prototype switch: open any page
- * with ?bend=8 (or ?bend=max for 12, ?bend=reset) to try another strength; it sticks for
- * the tab.
- */
-const BEND_DEFAULT = 5;
-function bendSetting() {
-  try {
-    const q = new URLSearchParams(window.location.search).get('bend');
-    if (q === 'reset') sessionStorage.removeItem('bend');
-    else if (q) sessionStorage.setItem('bend', q === 'max' ? '12' : q);
-    const v = parseFloat(sessionStorage.getItem('bend') ?? '');
-    return v > 0 && v <= 20 ? v : BEND_DEFAULT;
-  } catch {
-    return BEND_DEFAULT;
-  }
-}
-const BEND = typeof window === 'undefined' ? BEND_DEFAULT : bendSetting();
-const AAVE = { w: 88, h: 40, x: 27.3 * BEND, y: 9.46 * BEND };
-// Colour fringe = bend × (split − 1). The reference shows none, so it's a sixth of what it
-// was (red 0.15, green 0.07 of Aave's offset past blue): enough to keep the edge from
-// looking flat, not enough to read as a rainbow.
-const CHROMA = [1 + 0.15 / BEND, 1 + 0.07 / BEND, 1];
-const SPEC = 1.5;
-/** Room above and below the bar that the picture must also cover, for the bend to read. */
-const M = 28;
+const PILL_TINT = 'rgba(215,216,218,0.5)';
 
-type Html2Canvas = (el: HTMLElement, o: Record<string, unknown>) => Promise<HTMLCanvasElement>;
 
 const rgba = (r: number, g: number, b: number, a: number): [number, number, number, number] => [r / 255, g / 255, b / 255, a];
 /** The tints as the shader takes them: colour and strength. */
-const BAR_TINT_GL = rgba(255, 255, 255, 0.62);
-const PILL_TINT_GL = rgba(214, 216, 220, 0.5);
+const PILL_TINT_GL = rgba(215, 216, 218, 0.5);
 
-interface Picture {
-  el: HTMLElement;
+
+interface Current {
   path: string;
-  /** Content y the picture's top row shows, and the band it covers. */
-  top: number;
-  bandTop: number;
-  height: number;
-  w: number;
-  h: number;
-  /** An element under the bar when the picture was taken, and where it sits in the picture. */
-  anchor: HTMLElement;
-  ax: number;
-  ay: number;
+  p: PagePicture;
+  /** The slice the glass has loaded. */
+  slice: Slice | null;
 }
 
 /**
  * Web tab bar in liquid glass: a clear glass bar holding a grey glass pill that slides
  * between tabs. Both bend the page under them at their rims, with a colour split and a
- * shaded edge, live on every frame (see glassGL.ts). The page is drawn to a picture once
- * per screen, a band around the bar (html2canvas), and drawn again only when a scroll
- * leaves the band; each frame then only says where things are now.
+ * shaded edge, live on every frame (see glassGL.ts). The page is the screen's one picture of
+ * its content (pagePicture.ts), shared with any other glass on it and taken once the screen
+ * settles; scrolling only moves the glass over it, so nothing is pictured mid-scroll.
  */
 export function TabBar() {
   const path = usePathname();
@@ -128,123 +89,73 @@ export function TabBar() {
   const scale = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
 
   const gls = useRef<{ bar: Glass; pill: Glass } | null>(null);
-  const pic = useRef<Picture | null>(null);
-  const busy = useRef(false);
-  const takePicture = useRef<() => void>(() => {});
-  const lastShot = useRef(0);
-  const retries = useRef(0);
+  const pic = useRef<Current | null>(null);
 
   // One frame: where the page, the bar and the pill are now.
   const frame = useCallback(() => {
     const g = gls.current, p = pic.current, bar = barRef.current, pill = pillRef.current;
-    if (!g || !p || !bar || !pill || !g.bar.ready()) return;
-    const cr = p.el.getBoundingClientRect(), br = bar.getBoundingClientRect(), pr = pill.getBoundingClientRect();
-    // The picture follows the element that was under the bar when it was taken, so it moves
-    // with the page whichever element scrolls (on a phone that isn't always the one found).
-    const ar = p.anchor.isConnected ? p.anchor.getBoundingClientRect() : null;
-    const origin: [number, number] = ar && ar.height > 0 ? [ar.left - p.ax, ar.top - p.ay] : [cr.left, cr.top + p.top];
+    if (!g || !p || !bar || !pill) return;
+    const cr = p.p.el.getBoundingClientRect(), br = bar.getBoundingClientRect(), pr = pill.getBoundingClientRect();
+    // The slice holding the bar and everything its rim reads.
+    const reach = glassReach(TAB_PILL);
+    const sl = sliceAt(p.p, br.top - cr.top - reach, TAB_PILL + reach * 2);
+    if (sl !== p.slice) {
+      const f = frostSlice(sl, p.p.scale);
+      g.bar.setPage(f);
+      g.pill.setPage(f);
+      p.slice = sl;
+    }
+    // Ready once both the page (just above) and the lens maps are in. Checking before handing
+    // the page over (19 Nov) meant it never drew, and the bar showed its plain stand-in.
+    if (!g.bar.ready() || !g.pill.ready()) return;
     const base = {
-      pageOrigin: origin,
-      pageSize: [p.w, p.h] as [number, number],
+      pageOrigin: [cr.left, cr.top + sl.top] as [number, number],
+      pageSize: [p.p.width, sl.height] as [number, number],
       barOrigin: [br.left, br.top] as [number, number],
       barSize: [br.width, br.height] as [number, number],
       pillOrigin: [pr.left, pr.top] as [number, number],
       pillSize: [pr.width, pr.height] as [number, number],
       scale,
-      barK: [AAVE.x * (TAB_PILL / AAVE.h), 0.5556 * AAVE.y * (TAB_PILL / AAVE.h)] as [number, number],
-      lensK: [AAVE.x * (pr.width / AAVE.w), 0.5556 * AAVE.y * (pr.height / AAVE.h)] as [number, number],
-      chroma: CHROMA as [number, number, number],
+      barK: glassK(TAB_PILL),
+      lensK: glassK(pr.height),
+      chroma: GLASS_CHROMA,
       spec: SPEC,
       barTint: BAR_TINT_GL,
       pillTint: PILL_TINT_GL,
     };
     g.bar.draw({ ...base, outOrigin: [br.left, br.top], outSize: [br.width, br.height], isPill: false });
     g.pill.draw({ ...base, outOrigin: [pr.left, pr.top], outSize: [pr.width, pr.height], isPill: true });
-    // A scroll that leaves the band asks for a new picture of the part now under the bar.
-    // Past the end of the content there is nothing more to draw, so that doesn't count as
-    // leaving the band (on Paycheck, scrolled to the bottom, it re-drew in a loop).
-    const need = br.top - M - cr.top, end = p.el.scrollHeight;
-    const below = need + TAB_PILL + M * 2 > p.bandTop + p.height && p.bandTop + p.height < end - 1;
-    if (!busy.current && (need < p.bandTop - 1 || below) && performance.now() - lastShot.current > 500) takePicture.current();
+    // The content changed size (a section opened): its new picture comes once nothing scrolls.
+    if (isStale(p.p.el)) takePicture.current();
   }, [scale]);
 
-  // The picture: a band of the screen around the bar, frosted, handed to the glass.
-  const picture = useCallback(async () => {
-    const bar = barRef.current, g = gls.current;
-    if (!bar || !g || busy.current) return;
-    busy.current = true;
-    lastShot.current = performance.now();
-    try {
-      const r = bar.getBoundingClientRect();
-      const scroller = scrollerUnder(bar);
-      // Right after a tab switch the new screen may not be laid out yet; until its scroller
-      // is there, draw what's there and look again shortly.
-      if (!scroller && retries.current < 4) {
-        retries.current++;
-        setTimeout(() => takePicture.current(), 400);
-      }
-      // A screen too short to scroll: draw the whole app root.
-      const content = ((scroller?.firstElementChild as HTMLElement | null) ?? document.getElementById('root')) as HTMLElement | null;
-      if (!content) return setNote('nothing under the bar to draw');
-      setNote('drawing this part of the screen');
-      const cr0 = content.getBoundingClientRect();
-      const need = r.top - M - cr0.top;
-      const band = Math.round(window.innerHeight * 1.5);
-      const top = Math.max(0, Math.min(content.scrollHeight - band, need - band / 2));
-      // html2canvas copies the whole page before drawing; rows far from the bar are left
-      // out of that copy, the bulk of the work on a long list. Leaving rows out moves the
-      // rest up, so one element under the bar is marked and measured in the copy to put the
-      // picture back in place.
-      const hit = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2).find((e) => content.contains(e) && e !== content) as HTMLElement | undefined;
-      const anchor = hit ?? content;
-      const anchorY = anchor.getBoundingClientRect().top - cr0.top;
-      content.setAttribute('data-glass-root', '');
-      anchor.setAttribute('data-glass-anchor', '');
-      let shift = 0;
-      const { default: html2canvas } = (await import('html2canvas')) as unknown as { default: Html2Canvas };
-      const cv = await html2canvas(content, {
-        scale,
-        backgroundColor: color.bg,
-        logging: false,
-        ignoreElements: (el: Element) => {
-          if (el === bar.parentElement) return true;
-          if (!content.contains(el) || el === content || el.contains(anchor)) return false;
-          const b = el.getBoundingClientRect();
-          return b.bottom - cr0.top < top || b.top - cr0.top > top + band;
-        },
-        onclone: (doc: Document) => {
-          const root = doc.querySelector('[data-glass-root]'), a = doc.querySelector('[data-glass-anchor]');
-          if (root && a) shift = anchorY - (a.getBoundingClientRect().top - root.getBoundingClientRect().top);
-        },
-      }).catch((e: unknown) => {
-        setNote(`picture failed: ${e instanceof Error ? e.message : String(e)}`);
-        return null;
-      });
-      anchor.removeAttribute('data-glass-anchor');
-      content.removeAttribute('data-glass-root');
-      if (!cv) return;
-      g.bar.setPage(frosted(cv, scale));
-      g.pill.setPage(frosted(cv, scale));
-      const ar0 = anchor.getBoundingClientRect();
-      pic.current = {
-        el: content,
-        path,
-        top: shift,
-        bandTop: top,
-        height: Math.min(band, content.scrollHeight - top),
-        w: cv.width / scale,
-        h: cv.height / scale,
-        anchor,
-        ax: ar0.left - cr0.left,
-        ay: anchorY - shift,
-      };
-      setLiveFor(path);
-      setNote(`live · ${scroller ? 'scrolling list' : 'whole screen'} · ${Math.round(scale)}x · ${navigator.userAgent.includes('Chrome/') ? 'Chrome' : 'Safari'}`);
-      requestAnimationFrame(frame);
-    } finally {
-      busy.current = false;
+  // The screen's picture, shared and taken once it settles.
+  const retries = useRef(0);
+  const takePicture = useRef<() => void>(() => {});
+  const picture = useCallback(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const scroller = scrollerUnder(bar);
+    // Right after a tab switch the new screen may not be laid out yet: look again shortly.
+    if (!scroller && retries.current < 4) {
+      retries.current++;
+      setTimeout(() => takePicture.current(), 400);
+      return;
     }
-  }, [path, scale, frame]);
+    // A screen too short to scroll: the whole app root, less the bar itself.
+    const content = ((scroller?.firstElementChild as HTMLElement | null) ?? document.getElementById('root')) as HTMLElement | null;
+    if (!content) return setNote('nothing under the bar to draw');
+    setNote('picturing the screen');
+    const at = path;
+    void pictureOf(content, bar.parentElement).then((p) => {
+      if (!p) return;
+      if (at !== path) return;
+      pic.current = { path: at, p, slice: null };
+      setLiveFor(at);
+      setNote(`live · ${scroller ? 'scrolling list' : 'whole screen'} · ${p.slices.length} slice(s) at ${p.scale.toFixed(2)}x`);
+      requestAnimationFrame(frame);
+    });
+  }, [path, frame]);
   useEffect(() => {
     takePicture.current = () => void picture();
   }, [picture]);
@@ -269,8 +180,8 @@ export function TabBar() {
     const g = gls.current;
     let alive = true;
     Promise.all([
-      mapData(sliceMap(width, TAB_PILL), width, TAB_PILL, { x: 0, y: 0, w: width, h: TAB_PILL }, scale),
-      mapData(GLASS_MAP, tabW, PILL_H, { x: 0, y: 0, w: tabW, h: PILL_H }, scale),
+      mapData(lensMap(width, TAB_PILL), width, TAB_PILL, { x: 0, y: 0, w: width, h: TAB_PILL }, scale),
+      mapData(lensMap(tabW, PILL_H), tabW, PILL_H, { x: 0, y: 0, w: tabW, h: PILL_H }, scale),
     ]).then(([bm, lm]) => {
       if (!alive) return;
       g.bar.setMaps(bm, lm);
@@ -289,12 +200,9 @@ export function TabBar() {
     // The new screen fades in, so a picture taken mid-fade comes out washed white, and a
     // short screen like Paycheck never scrolls far enough to take another. So a second
     // picture follows once the fade is done.
-    const t = setTimeout(() => void picture(), 250);
-    const t2 = setTimeout(() => takePicture.current(), 900);
-    return () => {
-      clearTimeout(t);
-      clearTimeout(t2);
-    };
+    // The new screen fades in; a picture taken mid-fade comes out washed white, so wait it out.
+    const t = setTimeout(() => picture(), 700);
+    return () => clearTimeout(t);
   }, [path, picture]);
 
   // Every frame something moves: scrolling, and the pill's slide.
@@ -307,15 +215,17 @@ export function TabBar() {
       });
     };
     document.addEventListener('scroll', kick, { capture: true, passive: true });
+    document.addEventListener(MOVE_EVENT, kick);
     const onResize = () => {
       pic.current = null;
       setLiveFor(null);
-      setTimeout(() => void picture(), 250);
+      setTimeout(() => picture(), 250);
     };
     window.addEventListener('resize', onResize);
     return () => {
       cancelAnimationFrame(raf);
       document.removeEventListener('scroll', kick, { capture: true });
+      document.removeEventListener(MOVE_EVENT, kick);
       window.removeEventListener('resize', onResize);
     };
   }, [frame, picture]);
@@ -371,118 +281,8 @@ export function TabBar() {
   );
 }
 
-/**
- * The page frosted, on pixels (a box blur run three times, close to a Gaussian), so it
- * looks the same in Safari, whose canvas has no blur filter.
- */
-function frosted(src: HTMLCanvasElement, scale: number): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.width = src.width;
-  c.height = src.height;
-  const ctx = c.getContext('2d')!;
-  ctx.drawImage(src, 0, 0);
-  const img = ctx.getImageData(0, 0, c.width, c.height);
-  const r = Math.max(1, Math.round(FROST * scale * 0.8));
-  for (let k = 0; k < 3; k++) {
-    boxBlur(img.data, c.width, c.height, r, true);
-    boxBlur(img.data, c.width, c.height, r, false);
-  }
-  ctx.putImageData(img, 0, 0);
-  return c;
-}
-
-function boxBlur(d: Uint8ClampedArray, w: number, h: number, r: number, across: boolean) {
-  const n = across ? w : h, lines = across ? h : w, line = new Float32Array(n * 3), win = r * 2 + 1;
-  for (let l = 0; l < lines; l++) {
-    for (let i = 0; i < n; i++) {
-      const p = (across ? l * w + i : i * w + l) * 4;
-      line[i * 3] = d[p];
-      line[i * 3 + 1] = d[p + 1];
-      line[i * 3 + 2] = d[p + 2];
-    }
-    for (let ch = 0; ch < 3; ch++) {
-      let sum = 0;
-      for (let i = -r; i <= r; i++) sum += line[Math.min(n - 1, Math.max(0, i)) * 3 + ch];
-      for (let i = 0; i < n; i++) {
-        const p = (across ? l * w + i : i * w + l) * 4;
-        d[p + ch] = sum / win;
-        sum += line[Math.min(n - 1, i + r + 1) * 3 + ch] - line[Math.max(0, i - r) * 3 + ch];
-      }
-    }
-  }
-}
-
-/**
- * The scrolling element under the bar: the nearest scroll area around whatever is actually
- * showing under the bar's middle. Screens the app keeps loaded behind the current one
- * (Today stays loaded under Paycheck) are skipped, because they aren't what's showing.
- */
-function scrollerUnder(bar: HTMLElement): HTMLElement | null {
-  const r = bar.getBoundingClientRect();
-  const hits = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-  let fallback: HTMLElement | null = null;
-  // From the top layer down: transparent layers over the list (a drawer's hit area) have no
-  // scroll area of their own, so the first hit that sits in one that scrolls wins.
-  for (const h of hits) {
-    if (bar.parentElement?.contains(h) || h === document.documentElement || h === document.body) continue;
-    let e: HTMLElement | null = h as HTMLElement;
-    while (e && e !== document.body) {
-      const oy = getComputedStyle(e).overflowY;
-      if (oy === 'auto' || oy === 'scroll') {
-        if (e.scrollHeight > e.clientHeight + 1) return e;
-        fallback = fallback ?? e;
-        break;
-      }
-      e = e.parentElement;
-    }
-  }
-  return fallback;
-}
-
-/** A map image laid on a neutral (128) field the size of the glass's window, at device scale. */
-function mapData(src: string | Promise<string>, w: number, h: number, box: { x: number; y: number; w: number; h: number }, scale: number) {
-  return Promise.resolve(src).then(
-    (url) =>
-      new Promise<ImageData>((res) => {
-        const img = new Image();
-        img.onload = () => {
-          const c = document.createElement('canvas');
-          c.width = Math.round(w * scale);
-          c.height = Math.round(h * scale);
-          const ctx = c.getContext('2d')!;
-          ctx.fillStyle = 'rgb(128,128,128)';
-          ctx.fillRect(0, 0, c.width, c.height);
-          ctx.drawImage(img, box.x * scale, box.y * scale, box.w * scale, box.h * scale);
-          res(ctx.getImageData(0, 0, c.width, c.height));
-        };
-        img.src = url;
-      }),
-  );
-}
-
-/** Aave's map 9-sliced onto a bar: its ends at lens size for the bar's height, its middle column stretched. */
-function sliceMap(w: number, h: number): Promise<string> {
-  return new Promise((res) => {
-    const img = new Image();
-    img.onload = () => {
-      const W = Math.round(w), Hh = Math.round(h);
-      const cap = Math.min(W / 2, Math.round((AAVE.w / 2) * (Hh / AAVE.h)));
-      const c = document.createElement('canvas');
-      c.width = W;
-      c.height = Hh;
-      const ctx = c.getContext('2d')!;
-      const half = img.width / 2;
-      ctx.drawImage(img, 0, 0, half, img.height, 0, 0, cap, Hh);
-      ctx.drawImage(img, half - 1, 0, 2, img.height, cap, 0, W - cap * 2, Hh);
-      ctx.drawImage(img, half, 0, half, img.height, W - cap, 0, cap, Hh);
-      res(c.toDataURL());
-    };
-    img.src = GLASS_MAP;
-  });
-}
-
 const S: Record<string, CSSProperties> = {
-  wrap: { position: 'absolute', left: '50%', width: BAR_W, marginLeft: -BAR_W / 2, pointerEvents: 'none' },
+  wrap: { position: 'absolute', left: 20, right: 20, pointerEvents: 'none' },
   debug: { position: 'absolute', bottom: TAB_PILL + 8, left: 0, right: 0, textAlign: 'center', fontSize: 12, color: color.ink, background: 'rgba(255,255,255,0.9)', borderRadius: 8, padding: 4 },
   // Stand-in glass while things move: the same tint over the page, frosted the same.
   bar: {
@@ -491,10 +291,7 @@ const S: Record<string, CSSProperties> = {
     borderRadius: TAB_PILL / 2,
     overflow: 'hidden',
     pointerEvents: 'auto',
-    background: BAR_TINT,
-    backdropFilter: `blur(${FROST}px)`,
-    WebkitBackdropFilter: `blur(${FROST}px)`,
-    boxShadow: '0 0 0 0.5px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.10)',
+    ...GLASS_STANDIN,
   },
   cv: { position: 'absolute', inset: 0, width: '100%', height: '100%', transition: 'opacity 120ms', pointerEvents: 'none' },
   rim: {
@@ -502,7 +299,7 @@ const S: Record<string, CSSProperties> = {
     inset: 0,
     borderRadius: TAB_PILL / 2,
     pointerEvents: 'none',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 0 1px rgba(255,255,255,0.45)',
+    boxShadow: GLASS_RIM,
   },
   pill: {
     position: 'absolute',
@@ -519,7 +316,9 @@ const S: Record<string, CSSProperties> = {
     position: 'absolute',
     inset: 0,
     borderRadius: PILL_H / 2,
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75), inset 0 0 0 0.5px rgba(0,0,0,0.08)',
+    // The same faint edge all the way round. A bright top line disappeared into the white bar
+    // and made the pill read about 0.75pt low, though it sits 4pt in on every side.
+    boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.10)',
   },
   row: { position: 'absolute', inset: 0, display: 'flex', padding: PAD },
   tab: {

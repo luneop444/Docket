@@ -15,9 +15,10 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import { color, fontFamily, protoColor, radius, type, type TypeToken } from '../theme/tokens';
+import { color, fontFamily, glass, glassRing, protoColor, radius, type, type TypeToken } from '../theme/tokens';
 import { noWidow } from '../logic/text';
 import { CheckIcon, ChevronRight } from './Icons';
+import { tick } from '../logic/haptics';
 
 /* ---------- text ---------- */
 
@@ -86,13 +87,26 @@ export function Card({
   const s = [styles.card, tone === 'signal' && styles.cardSignal, flagged && styles.cardFlagged, style];
   if (onPress) {
     return (
-      <Pressable accessibilityRole="button" onPress={onPress} style={s}>
+      <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [s, pressed && styles.pressed]}>
         {children}
       </Pressable>
     );
   }
   return <View style={s}>{children}</View>;
 }
+
+/**
+ * Press feedback everywhere: cards, tiles and buttons give a little (0.98); text links
+ * dim, as an iOS text button does.
+ */
+export const press = {
+  get give() {
+    return styles.pressed;
+  },
+  get link() {
+    return styles.linkPressed;
+  },
+};
 
 /* ---------- Button (Figma: Primary / Signal / Ghost / Text) ---------- */
 
@@ -118,7 +132,7 @@ export function Button({
   const bg: Record<ButtonVariant, string | undefined> = {
     primary: color.ink,
     signal: color.signal,
-    quiet: color.raise,
+    quiet: color.glass,
     text: undefined,
     white: color.bg,
   };
@@ -131,6 +145,7 @@ export function Button({
       style={({ pressed }) => [
         styles.btn,
         { backgroundColor: bg[variant] },
+        variant === 'quiet' && styles.btnGlass,
         small && styles.btnSmall,
         variant === 'text' && styles.btnText,
         disabled && styles.disabled,
@@ -189,7 +204,8 @@ export function Option({
   const text = (
     <View style={styles.flex}>
       <T v="bodyStrong">{label}</T>
-      {sub ? <T v="bodyTiny">{sub}</T> : null}
+      {/* Figma E1 icon options: the line under is 14 grey, 1 below the title. */}
+      {sub ? icon ? <T v="bodySmall" c={color.sub} style={{ marginTop: 1 }}>{sub}</T> : <T v="bodyTiny">{sub}</T> : null}
     </View>
   );
   if (radio) {
@@ -199,8 +215,11 @@ export function Option({
       <Pressable
         accessibilityRole="radio"
         accessibilityState={{ checked: !!selected }}
-        onPress={onPress}
-        style={[styles.option, styles.optionRadio, selected && styles.optionOn]}
+        onPress={() => {
+          if (!selected) tick();
+          onPress();
+        }}
+        style={({ pressed }) => [styles.option, styles.optionRadio, selected && styles.optionOn, pressed && styles.pressed]}
       >
         <View style={[styles.radio, selected && styles.radioOn]} />
         {text}
@@ -212,11 +231,11 @@ export function Option({
       accessibilityRole="button"
       accessibilityLabel={sub ? `${label}. ${sub}` : label}
       onPress={onPress}
-      style={[styles.option, icon && styles.optionIcon, selected && styles.optionOn]}
+      style={({ pressed }) => [styles.option, icon && styles.optionIcon, selected && styles.optionOn, pressed && styles.pressed]}
     >
       {icon ? <IconTile icon={icon} tone="white" size={40} /> : null}
       {text}
-      <ChevronRight />
+      <ChevronRight c={icon ? color.faint : undefined} />
     </Pressable>
   );
 }
@@ -248,8 +267,11 @@ export function Seg<K extends string>({
             key={o.key}
             accessibilityRole="radio"
             accessibilityState={{ checked: on }}
-            onPress={() => onChange(o.key)}
-            style={[styles.segBtn, on && { backgroundColor: o.flag ? color.flag : color.ink }]}
+            onPress={() => {
+              if (!on) tick();
+              onChange(o.key);
+            }}
+            style={({ pressed }) => [styles.segBtn, on && { backgroundColor: o.flag ? color.flag : color.ink }, pressed && styles.pressed]}
           >
             <Text style={[type.labelSmall, { color: on ? color.bg : color.ink }]}>{o.label}</Text>
           </Pressable>
@@ -328,7 +350,7 @@ export function IconTile({ icon, tone = 'raise', size = 40 }: { icon: IconFn; to
     <View
       // Web: keep this tile's own squircle instead of the concentric inner corner (Squircles.web.tsx).
       {...({ dataSet: { squircle: 'own' } } as object)}
-      style={[styles.iconTile, sized, { backgroundColor: bg }]}
+      style={[styles.iconTile, sized, tone === 'raise' ? glass : { backgroundColor: bg }]}
     >
       {icon(fg)}
     </View>
@@ -344,12 +366,16 @@ export function ChoiceTile({
   icon,
   label,
   sub,
+  plain,
   selected,
   onPress,
 }: {
-  icon: IconFn;
+  /** Optional: answers that need no picture (Does this match your paperwork?) go without. */
+  icon?: IconFn;
   label: string;
   sub?: string;
+  /** Regular-weight label: plain answers to a question, where bold would only add noise. */
+  plain?: boolean;
   selected: boolean;
   onPress: () => void;
 }) {
@@ -358,12 +384,15 @@ export function ChoiceTile({
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
       accessibilityLabel={sub ? `${label}. ${sub}` : label}
-      onPress={onPress}
+      onPress={() => {
+        if (!selected) tick();
+        onPress();
+      }}
       style={({ pressed }) => [styles.choice, selected && styles.choiceOn, pressed && styles.pressed]}
     >
-      <IconTile icon={icon} tone={selected ? 'ink' : 'white'} size={48} />
+      {icon ? <IconTile icon={icon} tone={selected ? 'ink' : 'white'} size={48} /> : null}
       <View style={styles.flexGap2}>
-        <T v="bodyStrong" c={selected ? color.onSignal : color.ink}>
+        <T v={plain ? 'body' : 'bodyStrong'} c={selected ? color.onSignal : color.ink}>
           {label}
         </T>
         {sub ? (
@@ -377,7 +406,10 @@ export function ChoiceTile({
           <CheckIcon c={color.bg} size={16} />
         </View>
       ) : (
-        <View style={styles.choiceRing} />
+        // The 24 ring sits in the check's 28 slot, so picking an answer doesn't change its height.
+        <View style={styles.choiceSlot}>
+          <View style={styles.choiceRing} />
+        </View>
       )}
     </Pressable>
   );
@@ -443,6 +475,7 @@ const styles = StyleSheet.create({
   flexGap1: { flex: 1, minWidth: 0, gap: 1 },
   flexGap2: { flex: 1, minWidth: 0, gap: 2 },
   iconTile: { borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center' },
+  btnGlass: { boxShadow: glass.boxShadow },
   tile40: { width: 40, height: 40, borderRadius: 12 },
   tile44: { width: 44, height: 44, borderRadius: 13 },
   tile48: { width: 48, height: 48, borderRadius: 14 },
@@ -453,12 +486,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: radius.option,
     borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
   },
   // Figma E1 Pick company: 14 around a 40 tile, 20 corners (14 + 40/2 keeps it concentric with the tile's 11).
   optionIcon: { padding: 14, borderRadius: 20, justifyContent: 'flex-start' },
-  choiceOn: { backgroundColor: color.signal },
+  choiceOn: { backgroundColor: color.signal, boxShadow: 'none' },
   choiceRing: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: color.track },
+  choiceSlot: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   choiceCheck: {
     width: 28,
     height: 28,
@@ -477,13 +511,13 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
   },
   actionPrimary: { backgroundColor: color.ink },
-  actionSecondary: { backgroundColor: color.bg, borderWidth: 1.5, borderColor: color.line },
+  actionSecondary: { ...glass },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   rowBase: { alignItems: 'baseline' },
   hr: { height: 1, backgroundColor: color.line, marginVertical: 14 },
-  card: { backgroundColor: color.raise, borderRadius: radius.card, borderCurve: 'continuous', padding: 20 },
-  cardSignal: { backgroundColor: color.signal },
-  cardFlagged: { boxShadow: `inset 0 0 0 1.5px ${color.flag}` },
+  card: { ...glass, borderRadius: radius.card, borderCurve: 'continuous', padding: 20 },
+  cardSignal: { backgroundColor: color.signal, boxShadow: 'none' },
+  cardFlagged: glassRing(color.flag),
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -497,6 +531,7 @@ const styles = StyleSheet.create({
   btnText: { height: 44 },
   disabled: { opacity: 0.35 },
   pressed: { transform: [{ scale: 0.98 }] },
+  linkPressed: { opacity: 0.3 },
   pill: { height: 26, paddingHorizontal: 10, borderRadius: 13, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
   fake: {
     fontFamily: fontFamily.semibold,
@@ -516,7 +551,7 @@ const styles = StyleSheet.create({
     // Even 20 on every side, equal to the corner radius; 62px tall with one line.
     padding: 20,
     borderRadius: radius.option, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
   },
   optionOn: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
   optionRadio: { justifyContent: 'flex-start', gap: 14 },
@@ -545,7 +580,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
 import { CameraIcon } from '../components/Icons';
-import { Button, Card, Gap, T } from '../components/ui';
+import { Button, Card, Gap, press, T } from '../components/ui';
 import { clock } from '../logic/format';
 import { placeOf } from '../logic/state';
 import { bolFromReading } from '../logic/stop';
 import { useStore } from '../state/AppStore';
 import { BolReadError, BolReadingOff, readBol } from '../state/readBol';
-import { color, protoColor } from '../theme/tokens';
+import { color, glass, protoColor } from '../theme/tokens';
 
 /** Opens the camera (phone) or file picker (desktop). Falls back to the photo library. */
 async function takePhoto(): Promise<string | null> {
@@ -97,7 +97,7 @@ export default function SnapBol() {
         records that agree are hard to argue with.
       </T>
       <Gap h={24} />
-      <Pressable accessibilityRole="button" accessibilityLabel="Take a photo of your BOL" onPress={pick} style={styles.photo}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Take a photo of your BOL" onPress={pick} style={({ pressed }) => [styles.photo, pressed && press.give]}>
         {ui.photoUri ? (
           <>
             <Image source={{ uri: ui.photoUri }} style={styles.img} accessibilityLabel="Your BOL photo" />
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 4 / 3,
     borderRadius: 24, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

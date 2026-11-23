@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { done, tick } from '../logic/haptics';
 import {
   createContext,
   useCallback,
@@ -12,9 +13,10 @@ import {
 import { ASK_AFTER_MIN, demoState, type DemoState } from '../logic/demo';
 import type { Rules } from '../logic/detention';
 import type { LatLon } from '../logic/geo';
-import { toLogged, upsert, type PayWeek } from '../logic/history';
-import { COMPANIES, SAMPLE_SETTLEMENT, SIM_MINUTES_PER_SECOND, START_NOW, type Marks } from '../logic/sampleData';
-import { claimText, cleanAmount, weekTotals } from '../logic/settlement';
+import { actTime, claimsOf, type ClaimEvent } from '../logic/claims';
+import { toLogged, upsert } from '../logic/history';
+import { COMPANIES, SIM_MINUTES_PER_SECOND, START_NOW } from '../logic/sampleData';
+import { demoClaimLoad } from './demoClaim';
 import {
   parseState,
   freshState,
@@ -28,8 +30,11 @@ import {
 import { applyFix, type BolTimes, freshStop, startLiveStop, stepFix, stopCalc, stopNow, type FixDraft } from '../logic/stop';
 import { clockBare } from '../logic/format';
 
+/** What sending a message does to the claims it's about. */
+export type MessageStep = 'sent' | 'asked' | 'payroll';
+
 export type Sheet =
-  | { kind: 'message'; text: string }
+  | { kind: 'message'; text: string; ids: string[]; step: MessageStep }
   | { kind: 'fix'; draft: FixDraft }
   /** Location says the driver drove away from a live stop: confirm the time (epoch ms). */
   | { kind: 'left'; at: number }
@@ -186,6 +191,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
           stop: { ...s.stop, phase: 'dock' },
           knownPlaces: remember(s.knownPlaces, placeOf(s.load).name),
         }));
+        done();
         flashIsland();
       },
       /** C2 "Not a stop" or E1 "Undo": back to watching, nothing logged. */
@@ -198,11 +204,15 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         setUi((u) => ({ ...u, undo: null }));
         clearTimeout(timers.current.undo);
       },
-      checkIn: () => setS((s) => ({ ...s, stop: { ...s.stop, checkin: Math.round(stopNow(s.stop, s.now, Date.now())) } })),
+      checkIn: () => {
+        setS((s) => ({ ...s, stop: { ...s.stop, checkin: Math.round(stopNow(s.stop, s.now, Date.now())) } }));
+        done();
+      },
       /** E4: App Intent stand-in. Same safety net as everywhere else: Undo. */
       siriCheckIn: () => {
         setS((s) => ({ ...s, stop: { ...s.stop, checkin: Math.round(stopNow(s.stop, s.now, Date.now())) } }));
         setUi((u) => ({ ...u, siri: true }));
+        done();
       },
       undoCheckIn: () => {
         setS((s) => ({ ...s, stop: { ...s.stop, checkin: null } }));
@@ -218,10 +228,12 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
           return { ...s, now, stop: { ...s.stop, leave: Math.max(Math.round(now), (s.stop.arrive ?? 0) + 1), phase: 'left' } };
         });
         setUi((u) => ({ ...u, undo: null, sheet: u.sheet?.kind === 'left' ? null : u.sheet }));
+        done();
         flashIsland();
       },
       logStop: (bol: boolean, bolTimes?: BolTimes) => {
         setS((s) => saveToHistory({ ...s, stop: { ...s.stop, bol, bolTimes, phase: 'logged' } }));
+        done();
         flashIsland();
       },
       /** Prototype: jump straight to one Home state, for links and screenshots (?state=). */
@@ -241,43 +253,60 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
           sheet: { kind: 'fix', draft: { arrive: st.arrive ?? 0, leave: st.leave, brk: st.brk || 0 } },
         }));
       },
-      fixStep: (k: 'arrive' | 'leave' | 'brk', dir: 1 | -1) =>
-        setUi((u) => (u.sheet?.kind === 'fix' ? { ...u, sheet: { kind: 'fix', draft: stepFix(u.sheet.draft, k, dir) } } : u)),
+      fixStep: (k: 'arrive' | 'leave' | 'brk', dir: 1 | -1) => {
+        tick();
+        setUi((u) => (u.sheet?.kind === 'fix' ? { ...u, sheet: { kind: 'fix', draft: stepFix(u.sheet.draft, k, dir) } } : u));
+      },
       saveFix: (d: FixDraft) => {
         setS((s) => saveToHistory({ ...s, stop: applyFix(s.stop, d) }));
         setUi((u) => ({ ...u, sheet: null }));
+        done();
         toast('Time fixed. The GPS time stays on record.');
       },
 
-      /* paycheck */
-      mark: (id: string, m: 'paid' | 'less' | 'none') =>
-        setS((s) => ({ ...s, marks: { ...s.marks, [id]: { ...(s.marks[id] ?? {}), m } }, sent: false })),
-      setAmt: (id: string, v: string) =>
-        setS((s) => ({ ...s, marks: { ...s.marks, [id]: { ...(s.marks[id] ?? { m: 'less' }), amt: cleanAmount(v) } } })),
-      /** Marks read off a real settlement; the driver's own marks on other loads stay. */
-      applySettlement: (marks: Marks) => setS((s) => ({ ...s, marks: { ...s.marks, ...marks }, sent: false })),
-      scanSample: () => {
-        setS((s) => ({ ...s, marks: JSON.parse(JSON.stringify(SAMPLE_SETTLEMENT)), sent: false }));
-        toast('Sample settlement read. Check each load.');
+      /* claims */
+      /** Add a step to claims, by id. A sample claim's made-up steps are kept underneath it. */
+      addClaimEvents: (evs: Record<string, ClaimEvent>) => {
+        setS((s) => {
+          const cs = claimsOf(s.history, s.rules, s.claims, demoClaimLoad(s));
+          const claims = { ...s.claims };
+          for (const [id, e] of Object.entries(evs)) {
+            claims[id] = [...(claims[id] ?? cs.find((c) => c.id === id)?.events ?? []), e];
+          }
+          return { ...s, claims };
+        });
       },
-      openMessage: (week: PayWeek) => {
-        const s = sRef.current;
-        const text = claimText(weekTotals(week.loads, s.rules, s.marks), s.rules, week.label);
-        setUi((u) => ({ ...u, sheet: { kind: 'message', text } }));
+      markClaimPaid: (id: string) => {
+        setS((s) => {
+          const c = claimsOf(s.history, s.rules, s.claims, demoClaimLoad(s)).find((x) => x.id === id);
+          return { ...s, claims: { ...s.claims, [id]: [...(s.claims[id] ?? c?.events ?? []), { k: 'paid', at: actTime(c, Date.now()) }] } };
+        });
+        done();
+        toast('Marked paid.');
       },
-      markSent: () => {
-        setS((s) => ({ ...s, sent: true }));
+      openClaimMessage: (ids: string[], step: MessageStep, text: string) =>
+        setUi((u) => ({ ...u, sheet: { kind: 'message', text, ids, step } })),
+      /** The message went out: each claim it was about moves on a step. */
+      claimMessageSent: (ids: string[], step: MessageStep) => {
+        setS((s) => {
+          const cs = claimsOf(s.history, s.rules, s.claims, demoClaimLoad(s));
+          const claims = { ...s.claims };
+          for (const id of ids) {
+            const c = cs.find((x) => x.id === id);
+            claims[id] = [...(claims[id] ?? c?.events ?? []), { k: step, at: actTime(c, Date.now()) }];
+          }
+          return { ...s, claims };
+        });
+        done();
         setUi((u) => ({ ...u, sheet: null }));
+        toast(step === 'sent' ? 'Claim sent. It’s in Claims until it’s paid.' : step === 'asked' ? 'Asked. Docket checks the next settlement for it.' : 'Sent to payroll. Your dated record is saved.');
       },
-      setAnon: (anon: AppState['anon']) => {
-        setS((s) => ({ ...s, anon }));
-        toast('Thanks. Added anonymously.');
-      },
-      /** Take a logged stop out of the paycheck check (a test tap, a stop that wasn't one). */
+      /** Take a logged stop out of the claims (a test tap, a stop that wasn't one). */
       removeLogged: (id: string) => {
         setS((s) => {
           const { [id]: _gone, ...marks } = s.marks;
-          return { ...s, history: s.history.filter((h) => h.id !== id), marks };
+          const { [id]: _log, ...claims } = s.claims;
+          return { ...s, history: s.history.filter((h) => h.id !== id), marks, claims };
         });
         toast('Stop removed.');
       },

@@ -37,13 +37,25 @@ describe('dockTimeline (Figma C3 Timeline / Event states)', () => {
     expect(ev[3].state).toBe('upcoming');
   });
 
-  it('in detention (Figma C3): free time ends done on a paid segment, detention current at 21m', () => {
+  it('in detention (Figma C3): events in the order they happened, detention now', () => {
     const ev = dockTimeline(atDock({ checkin: t(13, 49) }), t(16, 21), defaultRules);
+    expect(ev.map((e) => e.title)).toEqual(['Arrived at gate', 'Checked in', 'Appointment time', 'Free time ends', 'Detention']);
     expect(ev.map((e) => e.state)).toEqual(['done', 'done', 'done', 'done', 'current']);
-    expect(ev[2].time).toBe('1:49 PM');
+    expect(ev[1].time).toBe('1:49 PM');
     expect(ev[3].segment).toBe('paid');
-    expect(ev[4].time).toBe('21m');
-    expect(ev[4].detail).toBe('$30.00 an hour');
+    expect(ev[4].time).toBe('Now');
+    expect(ev[4].detail).toBe('21m so far');
+  });
+
+  it('a stop past midnight lists the late check-in after free time, with days on every time', () => {
+    const rules = { ...defaultRules, start: 'arrival' as const, free: 60, rate: 25 };
+    const day = new Date(2026, 10, 16).getTime(); // Mon Nov 16
+    const st = atDock({ arrive: t(13, 12), checkin: 24 * 60 + t(5, 56), dayStart: day });
+    const ev = dockTimeline(st, 24 * 60 + t(6, 6), rules);
+    expect(ev.map((e) => e.title)).toEqual(['Arrived at gate', 'Free time ends', 'Checked in', 'Detention']);
+    expect(ev.map((e) => e.time)).toEqual(['Mon 1:12 PM', 'Mon 2:12 PM', 'Tue 5:56 AM', 'Now']);
+    expect(ev.map((e) => e.segment)).toEqual(['free', 'paid', 'paid', 'none']);
+    expect(ev[1].detail).toBe('1 hour free after arrival');
   });
 
   it('arrival rules have no appointment event', () => {

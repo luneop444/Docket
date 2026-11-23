@@ -6,7 +6,7 @@ export default function TabsLayout() {
   return (
     <Tabs
       tabBar={() => <TabBar />}
-      screenOptions={{ headerShown: false, animation: 'none', sceneStyle: { backgroundColor: color.bg } }}
+      screenOptions={{ headerShown: false, animation: 'none', sceneStyle: { backgroundColor: color.canvas } }}
     >
       <Tabs.Screen name="today" />
       <Tabs.Screen name="paycheck" />

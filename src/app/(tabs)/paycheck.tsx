@@ -1,320 +1,120 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Chip } from '../../components/Chip';
 import { PageHead, Screen } from '../../components/Chrome';
-import { ChevronLeft, ChevronRight, DocIcon } from '../../components/Icons';
-import { Button, Card, Fake, Gap, noFocusRing, Row, Seg, T, TimeBar } from '../../components/ui';
-import { calc, rulesLine } from '../../logic/detention';
-import { marksFromSettlement, type SettlementReading } from '../../logic/documents';
-import { clock, dur, money } from '../../logic/format';
-import { payWeeks, type PayWeek } from '../../logic/history';
-import { loadNo, type WeekLoad } from '../../logic/sampleData';
-import { isFlagged, weekTotals } from '../../logic/settlement';
-import type { AnonAnswer } from '../../logic/state';
+import { ChevronRight } from '../../components/Icons';
+import { Button, Card, Fake, Gap, press, Row, T } from '../../components/ui';
+import { isOpen, settlementDue, stageWords, type Claim } from '../../logic/claims';
+import { rulesLine } from '../../logic/detention';
+import { money } from '../../logic/format';
+import { loadNo } from '../../logic/sampleData';
 import { useStore } from '../../state/AppStore';
-import { DocReadError, DocReadingOff, pickFile, pickScreenshot, postDoc, type DocFile } from '../../state/readDoc';
-import { color, fontFamily, radius } from '../../theme/tokens';
+import { useClaims } from '../../state/useClaims';
+import { useNow } from '../../state/useNow';
+import { color } from '../../theme/tokens';
 
-/** v1 14–17: Paycheck check */
-export default function Paycheck() {
-  const { s, a } = useStore();
-  const weeks = payWeeks(s.history);
-  const [pick, setPick] = useState(0);
-  const i = Math.min(pick, weeks.length - 1);
-  const week = weeks[i];
-  const w = weekTotals(week.loads, s.rules, s.marks);
-  const loads = week.loads.map((l) => ({ l, c: calc(l.arrive, l.appt, l.leave, l.brk, s.rules) }));
-  const owedLoads = loads.filter((x) => x.c.owed > 0);
-  const inFree = loads.filter((x) => x.c.owed <= 0);
-  const [reading, setReading] = useState(false);
-
-  /** Claude reads the settlement; loads are matched by load number and marked. */
-  async function scan() {
-    let file: DocFile | null;
-    try {
-      file = await (Platform.OS === 'web' ? pickFile() : pickScreenshot());
-    } catch (e) {
-      a.toast(e instanceof DocReadError ? e.message : 'Couldn’t open that file.');
-      return;
-    }
-    if (!file) return;
-    setReading(true);
-    try {
-      const r = await postDoc<SettlementReading>('read-settlement', file, 'settlement');
-      if (!r.found) {
-        a.toast(r.note || 'No loads found on that page. Mark them below.');
-        return;
-      }
-      const got = marksFromSettlement(week.loads, s.rules, r);
-      a.applySettlement(got.marks);
-      a.toast(
-        !got.matched
-          ? 'None of these loads are on that settlement. Check the load numbers, or mark them below.'
-          : got.missing.length
-            ? `Marked ${got.matched} of ${got.matched + got.missing.length}. Mark the rest below.`
-            : `Marked all ${got.matched} from your settlement. Check each one.`,
-      );
-    } catch (e) {
-      a.toast(e instanceof DocReadingOff || e instanceof DocReadError ? e.message : 'Couldn’t read the settlement. Try again.');
-    } finally {
-      setReading(false);
-    }
-  }
+/**
+ * Claims: every load you're owed detention for, and where each one stands, from the claim
+ * sent at the dock until it's paid. The weekly settlement check lives on Today; this is
+ * what's still owed and the next step for each.
+ */
+export default function Claims() {
+  const { s } = useStore();
+  const claims = useClaims();
+  const now = useNow();
+  const open = claims.filter(isOpen);
+  const paid = claims.filter((c) => !isOpen(c));
+  const owed = open.reduce((t, c) => t + c.left, 0);
+  const oldest = open.length ? Math.max(...open.map((c) => Math.floor((now - c.day) / 864e5))) : 0;
+  const due = settlementDue(claims, now);
+  const sample = claims[0]?.sample;
 
   return (
-    <Screen tabs header={<PageHead title="Paycheck check" right={weeks.length > 1 ? undefined : week.label} />}>
-      {weeks.length > 1 ? (
-        <>
-          <View style={styles.weekNav}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Newer week"
-              disabled={i === 0}
-              onPress={() => setPick(i - 1)}
-              style={[styles.weekBtn, i === 0 && styles.off]}
-            >
-              <ChevronLeft size={20} />
-            </Pressable>
-            <T v="bodyStrong">{week.label}</T>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Older week"
-              disabled={i === weeks.length - 1}
-              onPress={() => setPick(i + 1)}
-              style={[styles.weekBtn, i === weeks.length - 1 && styles.off]}
-            >
-              <ChevronRight size={20} c={color.ink} />
-            </Pressable>
-          </View>
-          <Gap h={12} />
-        </>
-      ) : null}
+    <Screen tabs header={<PageHead title="Claims" right={open.length ? `${open.length} open` : undefined} />}>
       <Card>
-        <T v="bodyTiny">Detention Docket expects on this settlement</T>
+        <T v="bodyTiny">Still owed to you</T>
         <Gap h={8} />
-        <T v="numberL">{money(w.expected)}</T>
+        <T v="numberL">{money(owed)}</T>
         <Gap h={8} />
         <T v="bodySmall">
-          {w.eligible} load{w.eligible === 1 ? '' : 's'}, {rulesLine(s.rules)}.
+          {open.length
+            ? `Across ${open.length} claim${open.length > 1 ? 's' : ''}${!sample && oldest > 1 ? `, oldest ${oldest} days` : ''}.`
+            : claims.length
+              ? 'Every claim is paid.'
+              : 'Nothing yet. A stop past free time becomes a claim here.'}
+          {sample ? <Fake label="Sample data" /> : null}
         </T>
         <Gap h={12} />
-        <T v="bodyTiny">
-          {week.sample ? (
-            <>
-              <Fake label="Sample data" /> A made-up week. Stops you time with “I’m here” show here instead. Scan fills in a
-              sample settlement.
-            </>
-          ) : (
-            'From the stops you timed. Scan your settlement and Claude marks each load by its number, or mark them below.'
-          )}
-        </T>
-        <Gap h={20} />
-        <Row style={{ gap: 12 }}>
-          <Button label="Change rules" variant="white" small style={styles.flex} onPress={() => router.push('/rules')} />
-          {w.eligible ? (
-            <Button
-              label={reading ? 'Reading…' : 'Scan'}
-              variant="white"
-              small
-              style={styles.flex}
-              icon={<DocIcon />}
-              disabled={reading}
-              onPress={week.sample ? a.scanSample : scan}
-            />
-          ) : null}
-        </Row>
+        <View style={styles.rules}>
+          <T v="bodyTiny" style={styles.flex}>Figured with {rulesLine(s.rules)}.</T>
+          <Pressable accessibilityRole="button" accessibilityLabel="Change rules" onPress={() => router.push('/rules')} hitSlop={10} style={({ pressed }) => pressed && press.link}>
+            <T v="bodyTiny" c={color.ink} style={styles.link}>Change</T>
+          </Pressable>
+        </View>
+        {due ? (
+          <>
+            <Gap h={16} />
+            <Button label="Check a settlement" variant="white" onPress={() => router.push('/settlement')} />
+          </>
+        ) : null}
       </Card>
-      <Gap h={32} />
-      <T v="bodySmall">
-        {loads.length ? 'Find each load on your settlement and mark what you see.' : 'No stops this week.'}
-      </T>
-      <Gap h={12} />
-      <View style={{ gap: 12 }}>
-        {owedLoads.map(({ l, c }) => (
-          <LoadCard
-            key={l.id}
-            l={l}
-            owed={c.owed}
-            freeEnd={c.freeEnd}
-            paidMin={c.paidMin}
-            onRemove={week.sample ? undefined : () => a.removeLogged(l.id)}
-          />
-        ))}
-        {inFree.length ? (
-          <Card>
-            <T v="bodySmall">
-              {inFree.length} {owedLoads.length ? 'other ' : ''}load{inFree.length > 1 ? 's' : ''} stayed within free time:{' '}
-              {inFree.map((x) => x.l.name).join(', ').replace(/\.$/, '')}.
-            </T>
-          </Card>
-        ) : null}
-        <Summary week={week} />
-        {s.history.length ? (
+      {open.length ? (
+        <>
+          <Gap h={24} />
+          <T v="labelSmall">Open</T>
+          <Gap h={8} />
+          <View style={styles.list}>
+            {open.map((c) => <ClaimRow key={c.id} c={c} />)}
+          </View>
+        </>
+      ) : null}
+      {paid.length ? (
+        <>
+          <Gap h={24} />
+          <T v="labelSmall">Paid</T>
+          <Gap h={8} />
+          <View style={styles.list}>
+            {paid.map((c) => <ClaimRow key={c.id} c={c} />)}
+          </View>
+        </>
+      ) : null}
+      {s.history.length ? (
+        <>
+          <Gap h={16} />
           <Button label="All your stops · copy or export" variant="text" onPress={() => router.push('/history')} />
-        ) : null}
-      </View>
+        </>
+      ) : null}
     </Screen>
   );
 }
 
-function LoadCard({
-  l,
-  owed,
-  freeEnd,
-  paidMin,
-  onRemove,
-}: {
-  l: WeekLoad;
-  owed: number;
-  freeEnd: number;
-  paidMin: number;
-  onRemove?: () => void;
-}) {
-  const { s, a } = useStore();
-  const m = s.marks[l.id];
-  const total = l.leave - l.arrive;
-  const free = Math.max(0, freeEnd - l.arrive);
+function ClaimRow({ c }: { c: Claim }) {
+  const w = stageWords(c);
+  const no = loadNo(c.load);
   return (
-    <Card flagged={isFlagged(owed, m)}>
+    <Card flagged={w.tone === 'flag'} onPress={() => router.push(`/claim?id=${encodeURIComponent(c.id)}`)}>
       <Row base>
-        <T v="bodyStrong">{l.name}</T>
-        <T v="numberS">{money(owed)}</T>
+        <T v="bodyStrong" style={styles.flex}>{c.load.name}</T>
+        <T v="numberS">{money(c.stage === 'paid' ? c.owed : c.left)}</T>
       </Row>
       <T v="bodyTiny">
-        {loadNo(l) ? `Load ${loadNo(l)}, ` : ''}
-        {l.day}, {clock(l.arrive)} to {clock(l.leave)}
+        {no ? `Load ${no} · ` : ''}
+        {c.load.day}
       </T>
-      <Gap h={16} />
-      <TimeBar free={Math.min(free, total)} detention={Math.max(0, total - free)} />
-      <Gap h={8} />
-      <T v="bodyTiny">{dur(paidMin)} past free time</T>
-      <Gap h={16} />
-      <Seg
-        label={`What your settlement shows for ${l.name}${loadNo(l) ? `, load ${loadNo(l)}` : ''}`}
-        options={[
-          { key: 'paid' as const, label: 'Paid' },
-          { key: 'less' as const, label: 'Less', flag: true },
-          { key: 'none' as const, label: 'Not there', flag: true },
-        ]}
-        value={m?.m}
-        onChange={(k) => a.mark(l.id, k)}
-      />
-      {m?.m === 'less' ? (
-        <View style={styles.amount}>
-          <Text style={styles.amountLabel}>Settlement shows $</Text>
-          <TextInput
-            value={m.amt ?? ''}
-            onChangeText={(v) => a.setAmt(l.id, v)}
-            placeholder="0.00"
-            placeholderTextColor={color.sub}
-            inputMode="decimal"
-            keyboardType="decimal-pad"
-            style={styles.amountInput}
-            accessibilityLabel={`Amount on settlement for load ${l.id}`}
-          />
-        </View>
-      ) : null}
-      {onRemove ? (
-        <Pressable accessibilityRole="button" onPress={onRemove} style={styles.remove} hitSlop={8}>
-          <T v="bodyTiny">Not a real stop? Remove it</T>
-        </Pressable>
-      ) : null}
+      <Gap h={10} />
+      <Row style={styles.status}>
+        <Chip text={w.chip} tone={w.tone} />
+        <T v="bodyTiny" style={styles.flex} numberOfLines={1}>{w.note}</T>
+        <ChevronRight />
+      </Row>
     </Card>
   );
 }
 
-function Summary({ week }: { week: PayWeek }) {
-  const { s, a } = useStore();
-  const w = weekTotals(week.loads, s.rules, s.marks);
-
-  if (s.sent) {
-    return (
-      <>
-        <Card>
-          <T v="bodyStrong">Sent to your fleet manager</T>
-          <Gap h={8} />
-          <T v="bodySmall">Docket will remind you if next week’s settlement still leaves these out.</T>
-        </Card>
-        <Card>
-          <T v="bodyStrong">Was your detention paid this week?</T>
-          <Gap h={8} />
-          <T v="bodySmall">
-            One tap, shared anonymously under {s.company || 'your company'}. No pay documents are shared.
-          </T>
-          <Gap h={12} />
-          <Seg<AnonAnswer>
-            label="Was your detention paid this week?"
-            options={(['Paid', 'Partly', 'Not paid'] as const).map((x) => ({ key: x, label: x }))}
-            value={s.anon}
-            onChange={a.setAnon}
-          />
-          <Gap h={8} />
-          <T v="bodyTiny">
-            <Fake /> Saved on this phone only. Nothing is shared in the prototype.
-          </T>
-        </Card>
-      </>
-    );
-  }
-  if (w.flagged.length) {
-    const n = w.flagged.length;
-    return (
-      <Card flagged>
-        <Row base>
-          <T v="bodyStrong">
-            {n} load{n > 1 ? 's look' : ' looks'} short
-          </T>
-          <T v="numberS" c={color.flag}>{money(w.short)}</T>
-        </Row>
-        <Gap h={8} />
-        <T v="bodySmall">Detention is sometimes paid a pay period late. You can wait a week, or ask now.</T>
-        <Gap h={12} />
-        <Button label="Ask my fleet manager" onPress={() => a.openMessage(week)} />
-      </Card>
-    );
-  }
-  if (w.checked) {
-    return (
-      <Card tone="signal">
-        <T v="bodyStrong" c={color.onSignal}>All detention looks paid</T>
-        <Gap h={8} />
-        <T v="bodySmall" c={color.onSignal}>Every load matched what your rules say you’re owed.</T>
-      </Card>
-    );
-  }
-  return null;
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  weekBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.chip, borderCurve: 'continuous',
-    backgroundColor: color.raise,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  off: { opacity: 0.35 },
-  remove: { marginTop: 12, alignSelf: 'flex-start' },
-  amount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 48,
-    paddingHorizontal: 14,
-    borderRadius: 14, borderCurve: 'continuous',
-    backgroundColor: color.bg,
-    marginTop: 10,
-  },
-  amountLabel: { fontFamily: fontFamily.regular, fontSize: 17, color: color.sub },
-  amountInput: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: fontFamily.regular,
-    fontSize: 17,
-    color: color.ink,
-    ...noFocusRing,
-  },
+  list: { gap: 12 },
+  rules: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  link: { textDecorationLine: 'underline' },
+  status: { alignItems: 'center', gap: 10 },
 });

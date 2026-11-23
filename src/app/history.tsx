@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { Fragment, useState } from 'react';
 import { Platform, Pressable, Share, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
-import { Button, Card, Gap, Pill, Row, T, TimeBar } from '../components/ui';
+import { Button, Card, Gap, Pill, press, Row, T, TimeBar } from '../components/ui';
 import { csvFileName, historyCsv, historyText, stopRows, type StopRow } from '../logic/export';
 import { clock, dur, money } from '../logic/format';
 import { dayLabel, weekLabel, weekStart } from '../logic/history';
@@ -133,7 +133,7 @@ function StopCard({ r, onRemove }: { r: StopRow; onRemove: () => void }) {
         accessibilityRole="button"
         onPress={() => (sure ? onRemove() : setSure(true))}
         hitSlop={8}
-        style={{ marginTop: 10, alignSelf: 'flex-start' }}
+        style={({ pressed }) => [{ marginTop: 10, alignSelf: 'flex-start' }, pressed && press.link]}
       >
         <T v="bodyTiny" c={sure ? color.flag : undefined}>
           {sure ? 'Tap again to remove this stop for good' : 'Not a real stop? Remove it'}

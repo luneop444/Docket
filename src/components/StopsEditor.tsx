@@ -1,17 +1,32 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { clock, parseClock } from '../logic/format';
+import { tick } from '../logic/haptics';
 import type { LoadStop } from '../logic/sampleData';
 import { shiftStop } from '../logic/stop';
-import { color, radius, type } from '../theme/tokens';
+import { color, glass, radius, type } from '../theme/tokens';
 import { MinusIcon, PlusIcon } from './Icons';
-import { Button, noFocusRing, Seg, T } from './ui';
+import { Button, noFocusRing, press, Seg, T } from './ui';
+import { useRepeat } from './useRepeat';
 
 /** A blank stop for the driver to fill in. */
 export const blankStop = (kind: LoadStop['kind'], at: number): LoadStop => ({ name: '', kind, at });
 
 /** Every stop has a name. */
 export const stopsReady = (stops: LoadStop[]) => stops.length > 0 && stops.every((st) => st.name.trim());
+
+/** − or + on an appointment: 15 minutes a tap, and holding keeps stepping, each with a tick. */
+function Shift({ label, onStep, children }: { label: string; onStep: () => void; children: ReactNode }) {
+  const r = useRepeat(() => {
+    tick();
+    onStep();
+  });
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} {...r} style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}>
+      {children}
+    </Pressable>
+  );
+}
 
 /**
  * Edit a load by hand: load number, then each stop's name, pickup or drop,
@@ -39,7 +54,7 @@ export function StopsEditor({
           <View style={styles.stopHead}>
             <T v="bodyStrong">Stop {i + 1}</T>
             {stops.length > 1 ? (
-              <Pressable accessibilityRole="button" onPress={() => onStops(stops.filter((_, j) => j !== i))} hitSlop={8}>
+              <Pressable accessibilityRole="button" onPress={() => onStops(stops.filter((_, j) => j !== i))} hitSlop={8} style={({ pressed }) => pressed && press.link}>
                 <T v="bodySmall">Remove</T>
               </Pressable>
             ) : null}
@@ -62,24 +77,14 @@ export function StopsEditor({
           />
           <View style={styles.timeRow}>
             <T v="bodySmall" style={{ flex: 1 }}>Appointment</T>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Stop ${i + 1} 15 minutes earlier`}
-              onPress={() => onStops(shiftStop(stops, i, -1))}
-              style={styles.step}
-            >
+            <Shift label={`Stop ${i + 1} 15 minutes earlier`} onStep={() => onStops(shiftStop(stops, i, -1))}>
               <MinusIcon size={24} />
-            </Pressable>
+            </Shift>
             {/* Keyed by the time so −/+ resets what's typed. */}
             <TimeField key={st.at} at={st.at} onChange={(at) => set(i, { at })} label={`Stop ${i + 1} appointment`} />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Stop ${i + 1} 15 minutes later`}
-              onPress={() => onStops(shiftStop(stops, i, 1))}
-              style={styles.step}
-            >
+            <Shift label={`Stop ${i + 1} 15 minutes later`} onStep={() => onStops(shiftStop(stops, i, 1))}>
               <PlusIcon size={24} />
-            </Pressable>
+            </Shift>
           </View>
         </View>
       ))}
@@ -155,14 +160,14 @@ function TimeField({ at, onChange, label }: { at: number; onChange: (m: number) 
 }
 
 const styles = StyleSheet.create({
-  stop: { backgroundColor: color.raise, borderRadius: 14, borderCurve: 'continuous', padding: 14, gap: 10 },
+  stop: { ...glass, borderRadius: 14, borderCurve: 'continuous', padding: 14, gap: 10 },
   stopHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   input: {
     ...type.body,
     height: 48,
     paddingHorizontal: 14,
     borderRadius: radius.chip, borderCurve: 'continuous',
-    backgroundColor: color.raise,
+    ...glass,
     color: color.ink,
     ...noFocusRing,
   },
@@ -170,6 +175,7 @@ const styles = StyleSheet.create({
   inputFocus: { boxShadow: `inset 0 0 0 2px ${color.ink}` },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   time: { width: 104, textAlign: 'center', paddingHorizontal: 6, fontVariant: ['tabular-nums'] },
+  stepPressed: { backgroundColor: color.line },
   step: {
     width: 44,
     height: 44,

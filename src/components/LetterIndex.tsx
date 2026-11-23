@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View, type GestureResponderEvent, type HostInstance } from 'react-native';
+import { tick } from '../logic/haptics';
+import { BUBBLE, IndexBubble } from './IndexBubble';
 import { useReduceMotion } from './stepMotion';
 import { color, fontFamily } from '../theme/tokens';
 
@@ -30,8 +32,11 @@ export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) 
   const [active, setActive] = useState<string | null>(null);
   // The bubble beside your thumb: its letter, its height on the strip, and its fade.
   const [bubble, setBubble] = useState({ letter: '', y: 0 });
+  // Whether a thumb is on the strip: the glass draws live only while it is.
+  const [scrubbing, setScrubbing] = useState(false);
   const [bubbleOn] = useState(() => new Animated.Value(0));
   function showBubble(on: boolean) {
+    setScrubbing(on);
     bubbleOn.stopAnimation();
     Animated.timing(bubbleOn, {
       toValue: on ? 1 : 0,
@@ -54,6 +59,8 @@ export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) 
     const y = Math.max(0, Math.min(box.current.height, pageY - box.current.top));
     setBubble({ letter: l, y });
     if (l !== active) {
+      // A tick per letter, as the iOS index gives under the thumb.
+      tick();
       setActive(l);
       onLetter(l);
     }
@@ -67,6 +74,8 @@ export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) 
   return (
     <>
       <Animated.View
+        // The glass leaves this column out of its picture of the list.
+        {...({ dataSet: { letterIndex: '' } } as object)}
         style={[
           styles.column,
           { opacity: shown, transform: [{ translateX: shown.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] },
@@ -125,15 +134,13 @@ export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) 
               },
             ]}
           >
-            <Text style={styles.bubbleText}>{bubble.letter}</Text>
+            <IndexBubble letter={bubble.letter} active={scrubbing} warm={visible} />
           </Animated.View>
         </View>
       </Animated.View>
     </>
   );
 }
-
-const BUBBLE = 56;
 
 const styles = StyleSheet.create({
   // Centered and compact like iOS Contacts, so it never runs into the rounded screen corners.
@@ -161,21 +168,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   letterOn: { color: color.sub },
-  // Just left of the thumb, clear of it, following it up and down.
+  // Just left of the thumb, clear of it, following it up and down. The glass is IndexBubble.
   bubble: {
     position: 'absolute',
     right: 48,
     width: BUBBLE,
     height: BUBBLE,
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    backgroundColor: color.ink,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bubbleText: {
-    fontFamily: fontFamily.semibold,
-    fontSize: 28,
-    color: color.bg,
   },
 });

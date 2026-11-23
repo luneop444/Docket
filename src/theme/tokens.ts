@@ -5,36 +5,53 @@
  * This is the ONLY file allowed to contain raw color values. Everything else
  * imports from here.
  */
+import { Platform } from 'react-native';
 import type { TextStyle } from 'react-native';
 
 export const color = {
   bg: '#FFFFFF',
-  raise: '#F2F4F6',
-  raise2: '#E5E8EC',
-  line: '#D7DBE0',
-  ink: '#000000',
-  sub: '#5C6168',
   /**
-   * Non-text only (icons, dividers, inactive bars). 4.26:1 on white, below the
-   * 4.5:1 text minimum, so never use it for text or placeholders: use `sub`.
+   * Figma color/canvas: the flat grey behind every screen, so glass cards lift off it.
+   * Half the old cool tint (#E9ECF0, then neutral #E8E8E8): a hint of cool keeps the
+   * lime reading warm beside it.
    */
-  faint: '#767B82',
+  canvas: '#E8EAEC',
+  /** Figma color/glass: white at 62%, the surface of every card and the tab bar. */
+  glass: 'rgba(255,255,255,0.62)',
+  /** The same half cool tint as the canvas, at their own lightness (were #F2F4F6, #E5E8EC). */
+  raise: '#F3F4F5',
+  raise2: '#E7E8EA',
+  /**
+   * Ink: one soft near-black, #1C1C1C (the reference's), instead of pure black. Every grey
+   * below is this ink faded, so they share its hue on any surface (canvas, glass, lime),
+   * each at the opacity that keeps its old weight on white (was its own blue-grey hex).
+   * Contrast on the darkest surface it sits on, canvas, in each note (#E8EAEC).
+   */
+  ink: '#1C1C1C',
+  /** Dividers: 16% (was #D7DBE0, 1.39:1 on white; 1.38:1 now on every surface). */
+  line: 'rgba(28,28,28,0.16)',
+  /** Secondary text: 70% (was #5C6168). 6.29:1 on white, 5.74:1 on canvas, 5.72:1 on lime. */
+  sub: 'rgba(28,28,28,0.70)',
+  /**
+   * Non-text only (icons, dividers, inactive bars): 58% (was #767B82). 4.23:1 on white,
+   * 3.94:1 on canvas, below the 4.5:1 text minimum, so never text or placeholders: `sub`.
+   */
+  faint: 'rgba(28,28,28,0.58)',
   signal: '#D4F54C',
-  signalInk: '#000000',
-  onSignal: '#000000',
+  signalInk: '#1C1C1C',
+  onSignal: '#1C1C1C',
   /**
-   * Inactive onboarding progress segment. Not a Figma variable: the reference
-   * uses a very light gray, darkened here to 3.06:1 on white (WCAG 1.4.11).
+   * Inactive onboarding progress segment, radio and choice rings, switch off: 53% (was
+   * #82888F). Passes WCAG 1.4.11 (3:1) everywhere: 3.42:1 on canvas, 3.54:1 on glass.
    */
-  track: '#8E949B',
+  track: 'rgba(28,28,28,0.53)',
   /**
-   * Bar segment for time inside free time. Darkened from the Figma #B9C2C8
-   * (1.64:1 on raise) to pass WCAG 1.4.11: 3.09:1 on raise, 3.33:1 on white,
-   * 6.17:1 against the black detention segment.
+   * Bar segment for time inside free time: 51% (was #858C93). 3.24:1 on canvas, 3.32:1 on
+   * raise, 3.41:1 on white (WCAG 1.4.11).
    */
-  free: '#858C93',
+  free: 'rgba(28,28,28,0.51)',
   /** Bar segment for paid detention time. */
-  detention: '#000000',
+  detention: '#1C1C1C',
   flag: '#C9311F',
   flagBg: '#FDECEA',
 } as const;
@@ -98,6 +115,39 @@ export const radius = {
   sheet: 24,
 } as const;
 
+/**
+ * Figma effect style "Glass", the one glass for every card and the tab bar: a 0.5 black 10%
+ * edge outside, a soft lift (0 6 20 at 8%), a bright top rim (white 90%, 1 down) and a light
+ * edge all round (white 45%, 1 spread). Spread onto any surface that was `raise`.
+ * Figma's liquid-glass refraction is left out: over the flat canvas there is nothing behind a
+ * card for it to bend.
+ */
+export const glassEdge = '0 0 0 0.5px rgba(0,0,0,0.10)';
+/**
+ * Depth: the lift and a faint shade on the lower inner rim under the bright top one. Deepened on
+ * 20 Nov (0 10 28 at 11%, shade 6%), then eased back halfway on 21 Nov.
+ */
+export const glassLift = '0 8px 24px rgba(0,0,0,0.095)';
+export const glassRim = 'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(0,0,0,0.04), inset 0 0 0 1px rgba(255,255,255,0.45)';
+export const glass = {
+  backgroundColor: color.glass,
+  boxShadow: `${glassEdge}, ${glassLift}, ${glassRim}`,
+} as const;
+/**
+ * Dense glass: the same glass (edge, lift, rims, the bar's 1px frost) with only the tint raised,
+ * for glass over a photo or anything dark and busy. Not frosted: frost isn't in the system. 62% white over the blurred cab photo gives red text about
+ * 2.7:1; 82% brings it to about 4.6:1 and the grey text to about 6:1. Figma: effect style
+ * "Glass / Dense", variable color/glass-dense.
+ */
+export const glassDense = {
+  backgroundColor: 'rgba(255,255,255,0.82)',
+  boxShadow: `${glassEdge}, ${glassLift}, ${glassRim}`,
+  ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(1px)', WebkitBackdropFilter: 'blur(1px)' } as object) : null),
+} as const;
+
+/** A glass card with its own ring (flagged red, selected black): Figma drops the thin edge and keeps the lift. */
+export const glassRing = (c: string, w = 1.5) => ({ boxShadow: `${glassLift}, inset 0 0 0 ${w}px ${c}` });
+
 /** Font family names registered with expo-font in the root layout. */
 export const fontFamily = {
   regular: 'GoogleSansFlex-Regular',
@@ -142,7 +192,7 @@ export const type = {
   bodyTiny: style('regular', 13, 1.4, 0),
   labelButton: style('semibold', 17, 1.2, 0),
   labelSmall: style('semibold', 15, 1.2, 0),
-  labelTab: style('medium', 11, 1.2, 0),
+  labelTab: style('medium', 12, 1.2, 0),
   labelPill: style('medium', 13, 1.2, 0),
   labelControl: style('medium', 15, 1.2, 0),
 } as const;

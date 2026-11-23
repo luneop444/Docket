@@ -7,6 +7,8 @@ import { clock, dur, money } from '../logic/format';
 import { placeOf } from '../logic/state';
 import { bolGap, bolTimesOf, stopCalc } from '../logic/stop';
 import { useStore } from '../state/AppStore';
+import { currentClaimId } from '../state/currentClaim';
+import { useClaims } from '../state/useClaims';
 import { color, fontFamily, type } from '../theme/tokens';
 
 /** A time, with the original location time struck through if the driver fixed it. */
@@ -56,13 +58,21 @@ export default function StopSummary() {
   const bol = aiRead && check !== 'no' ? read : null;
   const gap = bolGap(st);
   const orig = st.edited;
+  // Owed detention: the claim goes to dispatch from here, while the deadline is far off.
+  const id = currentClaimId(s);
+  const claim = useClaims().find((c) => c.id === id);
+  const sendable = claim && claim.stage === 'unsent';
 
   return (
     <Screen
       header={<BackBar label="Today" onPress={() => router.navigate('/today')} />}
       footer={
         <>
-          <Button label="Done" onPress={() => router.navigate('/today')} />
+          {sendable ? (
+            <Button label="Send claim to dispatch" onPress={() => router.push(`/claim-sheet?id=${encodeURIComponent(claim.id)}`)} />
+          ) : (
+            <Button label="Done" onPress={() => router.navigate('/today')} />
+          )}
           <Button label="Fix a time" variant="text" onPress={a.openFix} />
         </>
       }

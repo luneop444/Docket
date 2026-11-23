@@ -1,16 +1,21 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Fragment, useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Fragment, useEffect, useRef } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
 import { DemoDrawer } from '../../components/DemoDrawer';
 import { FreeBar } from '../../components/FreeBar';
-import { Button, Gap, T } from '../../components/ui';
+import { Timeline } from '../../components/Timeline';
+import { Button, Gap, press, T } from '../../components/ui';
 import { isDemoState } from '../../logic/demo';
+import { heads } from '../../logic/haptics';
 import { clock, dur, money, rateShort } from '../../logic/format';
 import { placeOf, watchedStop } from '../../logic/state';
-import { dockTimeline, stopCalc } from '../../logic/stop';
+import { dockTimeline, stopCalc, stopTime } from '../../logic/stop';
 import { useStore } from '../../state/AppStore';
-import { color } from '../../theme/tokens';
+import { currentClaimId } from '../../state/currentClaim';
+import { useClaims } from '../../state/useClaims';
+import { PaydayCard } from '../../components/PaydayCard';
+import { color, type } from '../../theme/tokens';
 
 /** "Sunday, Nov 15": the title is the day, not the app's name. */
 const TITLE = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
@@ -22,7 +27,7 @@ const TITLE = new Date().toLocaleDateString('en-US', { weekday: 'long', month: '
  * save/home-v1-black-card.
  */
 export default function Today() {
-  const { a } = useStore();
+  const { s, a } = useStore();
   const { state } = useLocalSearchParams<{ state?: string }>();
   const linked = isDemoState(state);
 
@@ -35,11 +40,19 @@ export default function Today() {
   return (
     <Screen
       tabs
-      header={<TopBar title={TITLE} trailing={<ProfileTrailing noDate />} />}
+      header={
+        // At the dock the place leads, so the header is Figma 09's: the wordmark and a small date.
+        s.stop.phase === 'dock' ? (
+          <TopBar trailing={<ProfileTrailing />} />
+        ) : (
+          <TopBar title={TITLE} trailing={<ProfileTrailing noDate />} />
+        )
+      }
       overlay={linked ? null : <DemoDrawer />}
     >
       <Gap h={16} />
       <Current />
+      <PaydayCard />
       <Gap h={40} />
       <Stops />
     </Screen>
@@ -53,6 +66,7 @@ function Current() {
   const phase = s.stop.phase;
   if (phase === 'idle') return <NoStop />;
   if (phase === 'arriving') return <Parked />;
+  if (phase === 'dock') return <AtTheDock />;
   return <AtStop />;
 }
 
@@ -95,6 +109,119 @@ function Head({ name, since }: { name: string; since: number }) {
   );
 }
 
+/**
+ * Figma 08 "At the dock, free time" and 09 "At the dock, detention running": the place and
+ * load, the time waited, one status line, the lime "Detention so far" once it runs, then
+ * the timeline of the stop.
+ */
+function AtTheDock() {
+  const { s, a } = useStore();
+  const st = s.stop;
+  const c = stopCalc(st, s.now, s.rules);
+  const place = placeOf(s.load);
+  const inDetention = s.now >= c.freeEnd;
+  // Free time running out while you watch is the one moment worth a warning tap.
+  const wasDetention = useRef(inDetention);
+  useEffect(() => {
+    if (inDetention && !wasDetention.current) heads();
+    wasDetention.current = inDetention;
+  }, [inDetention]);
+  const beforeClock = s.now < c.start;
+  const fromAppt = s.rules.start === 'appt';
+  const waited = s.now - (st.arrive ?? s.now);
+  // Times carry the day once a stop runs past midnight.
+  const at = stopTime(st, s.now);
+  const status = inDetention
+    ? `Detention since ${at(c.freeEnd)} · ${rateShort(s.rules.rate)}`
+    : beforeClock
+      ? `Clock starts at your ${at(c.start)} ${fromAppt ? 'appointment' : 'arrival'}`
+      : `Detention starts at ${at(c.freeEnd)}`;
+  const events = dockTimeline(st, s.now, s.rules).map(({ canCheckIn, ...e }) =>
+    canCheckIn ? { ...e, action: { label: 'I checked in', onPress: a.checkIn } } : e,
+  );
+
+  return (
+    <View>
+      {/* The place leads (Heading/H2); the date is small in the header. */}
+      <View style={styles.head}>
+        <T v="h2" style={styles.flex} numberOfLines={1}>
+          {place.name}
+        </T>
+        {place.load ? (
+          <T v="bodyTiny" c={color.sub}>
+            {`Load ${place.load}`}
+          </T>
+        ) : null}
+      </View>
+      <Gap h={16} />
+      {/* Label above the figure, as "Detention so far" is in the lime card, so the figure
+          has the full width and hours and minutes never split across lines. */}
+      <View
+        accessible
+        accessibilityRole="timer"
+        accessibilityLabel={`Waited ${dur(waited)}. ${status}${inDetention ? `. Detention so far ${money(c.owed)}` : ''}`}
+      >
+        <T v="bodyTiny" c={color.sub}>
+          Waited
+        </T>
+        <Gap h={4} />
+        <WaitFigure min={waited} />
+      </View>
+      <Gap h={8} />
+      <View style={styles.status}>
+        <View style={styles.dot} />
+        <T v="labelSmall">{status}</T>
+      </View>
+      <Gap h={24} />
+      {inDetention ? (
+        <>
+          <View style={styles.owed}>
+            <T v="bodyTiny" c={color.ink}>
+              Detention so far
+            </T>
+            <Gap h={4} />
+            <T v="numberL" style={styles.tabular}>
+              {money(c.owed)}
+            </T>
+          </View>
+          <Gap h={16} />
+        </>
+      ) : null}
+      {/* The times can be fixed (arrival, leaving, break): the way in sits with them. */}
+      <Timeline events={events} footer={<Link label="Fix a time" onPress={a.openFix} />} />
+      <Gap h={16} />
+      {st.live ? (
+        <>
+          <Button label="I left" onPress={() => a.leave()} />
+          <Gap h={16} />
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * "16h 54m" on one line: digits at Display/Timer, the units at Number/M, so the digits are
+ * what's read and the units only label them (Figma 09 · clarity pass).
+ */
+function WaitFigure({ min }: { min: number }) {
+  const m = Math.max(0, Math.floor(min));
+  const h = Math.floor(m / 60);
+  const mm = h ? String(m % 60).padStart(2, '0') : String(m);
+  return (
+    <T v="displayTimer" numberOfLines={1} style={[styles.tabular, styles.optical]}>
+      {h ? (
+        <>
+          {h}
+          <Text style={styles.unit}>h</Text>{' '}
+        </>
+      ) : null}
+      {mm}
+      <Text style={styles.unit}>m</Text>
+    </T>
+  );
+}
+
 /** At the dock, or just left: one figure, what it means, the bar, and the one fix. */
 function AtStop() {
   const { s, a } = useStore();
@@ -114,6 +241,9 @@ function AtStop() {
     : `Detention starts at ${clock(c.freeEnd)}, ${rate}`;
 
   const checkIn = st.phase === 'dock' && dockTimeline(st, s.now, s.rules).some((e) => e.canCheckIn);
+  const id = currentClaimId(s);
+  const claim = useClaims().find((x) => x.id === id);
+  const toClaim = () => router.push(`/claim-sheet?id=${encodeURIComponent(id ?? '')}`);
 
   // One spoken summary for the figure (from main's v2 accessibility pass), so VoiceOver
   // reads "Detention owed. $43.67. 2h 11m past free time, at $20/hr" in one go.
@@ -145,6 +275,24 @@ function AtStop() {
           <Gap h={16} />
         </>
       ) : null}
+      {/* Done and owed detention: the claim goes to dispatch now, with the proof. */}
+      {st.phase === 'logged' && claim ? (
+        claim.stage === 'unsent' ? (
+          <>
+            <Button label="Send claim to dispatch" onPress={toClaim} />
+            <Gap h={8} />
+            <T v="bodyTiny">Many companies set a 24 to 48 hour deadline for detention claims.</T>
+            <Gap h={16} />
+          </>
+        ) : (
+          <>
+            <Pressable accessibilityRole="button" onPress={() => router.push(`/claim?id=${encodeURIComponent(claim.id)}`)} style={({ pressed }) => pressed && press.link}>
+              <T v="labelSmall">Claim sent · see it in Claims</T>
+            </Pressable>
+            <Gap h={16} />
+          </>
+        )
+      ) : null}
       {st.live && st.phase === 'dock' ? (
         <>
           <Button label="I left" onPress={() => a.leave()} />
@@ -152,7 +300,7 @@ function AtStop() {
         </>
       ) : null}
       <View style={styles.links}>
-        <Link label="Edit arrival time" onPress={a.openFix} />
+        <Link label="Fix a time" onPress={a.openFix} />
         {checkIn ? <Link label="I checked in" onPress={a.checkIn} /> : null}
       </View>
     </View>
@@ -161,7 +309,7 @@ function AtStop() {
 
 function Link({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={12}>
+    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={12} style={({ pressed }) => pressed && press.link}>
       <T v="bodySmall" c={color.sub} style={styles.link}>
         {label}
       </T>
@@ -179,7 +327,7 @@ function Stops() {
 
   if (!stops.length) {
     return (
-      <Pressable accessibilityRole="button" onPress={() => router.push('/add-load')}>
+      <Pressable accessibilityRole="button" onPress={() => router.push('/add-load')} style={({ pressed }) => pressed && press.link}>
         <T v="bodyStrong">Add today’s load</T>
         <Gap h={4} />
         <T v="bodySmall" c={color.sub}>
@@ -246,4 +394,9 @@ const styles = StyleSheet.create({
   link: { textDecorationLine: 'underline' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: color.raise2 },
+  // Number/M: the h and m after the digits.
+  unit: { ...type.numberM, color: color.ink },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3.5 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.signal },
+  owed: { backgroundColor: color.signal, borderRadius: 24, borderCurve: 'continuous', padding: 20 },
 });

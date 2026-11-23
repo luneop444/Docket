@@ -1,8 +1,12 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { tick } from '../logic/haptics';
 import { dur, money } from '../logic/format';
 import { useStore } from '../state/AppStore';
 import { color, protoColor, radius, type } from '../theme/tokens';
 import { MinusIcon, PlusIcon } from './Icons';
+import { useReduceMotion } from './stepMotion';
+import { useRepeat } from './useRepeat';
 import { Row, Seg, T } from './ui';
 
 /** − value + control (rules rate, Fix a time). */
@@ -18,29 +22,53 @@ export function Stepper({
   /** What the number is ("pay rate"), so the buttons say "Lower pay rate", not just "Less". */
   label?: string;
 }) {
+  const minus = useRepeat(() => {
+    tick();
+    onMinus();
+  });
+  const plus = useRepeat(() => {
+    tick();
+    onPlus();
+  });
   return (
     <View style={styles.stepper}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Lower ${label}`} accessibilityHint={value} onPress={onMinus} style={styles.stepBtn}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Lower ${label}`} accessibilityHint={value} {...minus} style={({ pressed }) => [styles.stepBtn, pressed && styles.stepPressed]}>
         <MinusIcon />
       </Pressable>
       <Text style={[type.numberS, styles.stepValue]} accessibilityLiveRegion="polite">{value}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Raise ${label}`} accessibilityHint={value} onPress={onPlus} style={styles.stepBtn}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Raise ${label}`} accessibilityHint={value} {...plus} style={({ pressed }) => [styles.stepBtn, pressed && styles.stepPressed]}>
         <PlusIcon />
       </Pressable>
     </View>
   );
 }
 
+/** Slides like an iOS switch (knob and track together, 200 ms); Reduce Motion just switches. */
 export function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
+  const reduce = useReduceMotion();
+  const [x] = useState(() => new Animated.Value(on ? 1 : 0));
+  useEffect(() => {
+    if (reduce) {
+      x.setValue(on ? 1 : 0);
+      return;
+    }
+    Animated.timing(x, { toValue: on ? 1 : 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+  }, [on, reduce, x]);
+  const bg = x.interpolate({ inputRange: [0, 1], outputRange: [color.track, color.ink] });
+  const left = x.interpolate({ inputRange: [0, 1], outputRange: [3, 23] });
   return (
     <Pressable
       accessibilityRole="switch"
       accessibilityLabel={label}
       accessibilityState={{ checked: on }}
-      onPress={() => onChange(!on)}
-      style={[styles.switch, on && styles.switchOn]}
+      onPress={() => {
+        tick();
+        onChange(!on);
+      }}
     >
-      <View style={[styles.knob, on && styles.knobOn]} />
+      <Animated.View style={[styles.switch, { backgroundColor: bg }]}>
+        <Animated.View style={[styles.knob, { left }]} />
+      </Animated.View>
     </Pressable>
   );
 }
@@ -124,10 +152,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  stepPressed: { backgroundColor: color.line },
   stepValue: { flex: 1, textAlign: 'center', color: color.ink, fontVariant: ['tabular-nums'] },
   // Off track uses `track` (3.06:1 on white) so the off switch is visible (WCAG 1.4.11); raise2 was 1.2:1.
   switch: { width: 52, height: 32, borderRadius: 16, borderCurve: 'continuous', backgroundColor: color.track },
-  switchOn: { backgroundColor: color.ink },
   knob: {
     position: 'absolute',
     top: 3,
@@ -138,5 +166,4 @@ const styles = StyleSheet.create({
     backgroundColor: color.bg,
     boxShadow: `0 1px 3px ${protoColor.knobShadow}`,
   },
-  knobOn: { left: 23 },
 });
