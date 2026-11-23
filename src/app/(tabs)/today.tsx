@@ -188,8 +188,9 @@ function AtTheDock() {
           <Gap h={16} />
         </>
       ) : null}
-      {/* The times can be fixed (arrival, leaving, break): the way in sits with them. */}
-      <Timeline events={events} footer={<Link label="Fix a time" onPress={a.openFix} />} />
+      {/* The times can be fixed (arrival, leaving, break), or a wrong stop cancelled from the same
+          sheet: the way in sits with them, worded as the way out when Docket got it wrong. */}
+      <Timeline events={events} footer={<Link label={FIX_LABEL} onPress={a.openFix} />} />
       <Gap h={16} />
       {st.live ? (
         <>
@@ -303,12 +304,19 @@ function AtStop() {
         </>
       ) : null}
       <View style={styles.links}>
-        <Link label="Fix a time" onPress={a.openFix} />
+        <Link label={FIX_LABEL} onPress={a.openFix} />
         {checkIn ? <Link label="I checked in" onPress={a.checkIn} /> : null}
       </View>
     </View>
   );
 }
+
+/**
+ * The way out if Docket gets a stop wrong (testing feedback: "give users a way out"). It opens
+ * Fix a time, which also cancels a stop that isn't real. No pause: the clock records the real
+ * wait, which is what a claim is checked against, and an off-duty break is already a time to fix.
+ */
+const FIX_LABEL = 'Something wrong? Fix it';
 
 function Link({ label, onPress }: { label: string; onPress: () => void }) {
   return (

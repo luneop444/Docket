@@ -189,7 +189,10 @@ function FixRow({ label, value, last, onStep }: { label: string; value: string; 
 
 /** Figma C6 Fix a time: reachable from every auto-logged time and every Undo toast. */
 function FixSheet({ draft }: { draft: FixDraft }) {
-  const { a } = useStore();
+  const { s, a } = useStore();
+  // The way out when Docket started a stop it shouldn't have (testing: "give users a way out").
+  // Only while a stop runs; two taps, like "Remove it" in Your stops, so it's never by accident.
+  const [sure, setSure] = useState(false);
   const rows: { k: 'arrive' | 'leave' | 'brk'; label: string; value: string }[] = [
     { k: 'arrive', label: 'Arrived', value: clock(draft.arrive) },
     ...(draft.leave != null ? [{ k: 'leave' as const, label: 'Left', value: clock(draft.leave) }] : []),
@@ -208,6 +211,17 @@ function FixSheet({ draft }: { draft: FixDraft }) {
       </View>
       <Gap h={20} />
       <Button label="Done" onPress={() => a.saveFix(draft)} />
+      {s.stop.phase === 'arriving' || s.stop.phase === 'dock' ? (
+        <Button
+          label={sure ? 'Tap again to cancel this stop' : 'Not a real stop? Cancel it'}
+          variant="text"
+          onPress={() => {
+            if (!sure) return setSure(true);
+            a.closeSheet();
+            a.cancelArrival();
+          }}
+        />
+      ) : null}
     </SheetShell>
   );
 }
