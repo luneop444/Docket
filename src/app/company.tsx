@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     borderRadius: 20, borderCurve: 'continuous',
     ...glass,
   },
-  tilePressed: { backgroundColor: color.line },
+  tilePressed: { backgroundColor: color.signal },
   // The tallest logo is 34; every logo sits in the same 36 band so the names line up.
   logoBox: { height: 36, justifyContent: 'center', alignItems: 'center' },
   tileName: { textAlign: 'center' },
@@ -230,6 +230,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: color.line,
   },
-  rowPressed: { backgroundColor: color.raise },
+  rowPressed: { backgroundColor: color.signal },
   input: { ...type.body, fontSize: 17, flex: 1, minWidth: 0, color: color.ink, ...noFocusRing },
 });

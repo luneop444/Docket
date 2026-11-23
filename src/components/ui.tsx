@@ -92,7 +92,7 @@ export function Card({
   const s = [styles.card, tone === 'signal' && styles.cardSignal, flagged && styles.cardFlagged, style];
   if (onPress) {
     return (
-      <Tappable accessibilityRole="button" onPress={onPress} give={0.985} style={s}>
+      <Tappable accessibilityRole="button" onPress={onPress} give={0.985} style={s} highlight={tone === 'signal' ? 'dim' : 'wash'}>
         {children}
       </Tappable>
     );
@@ -101,8 +101,8 @@ export function Card({
 }
 
 /**
- * Press feedback everywhere: cards, tiles and buttons give a little (0.98); text links
- * dim, as an iOS text button does.
+ * Press feedback everywhere: cards, tiles and buttons give a little (0.98) and light up
+ * lime (Tappable); text links get a lime marker behind the words.
  */
 export const press = {
   get give() {
@@ -149,6 +149,9 @@ export function Button({
       onPress={onPress}
       // A text button dims like an iOS text button; filled buttons give under the finger.
       give={variant === 'text' ? 1 : 0.97}
+      // Lime press highlight: a lime ring on ink, a veil on lime, a lime wash on light buttons;
+      // text buttons get the lime marker instead (linkPressed).
+      highlight={variant === 'primary' ? 'ring' : variant === 'signal' ? 'dim' : variant === 'text' ? 'none' : 'wash'}
       style={({ pressed }) => [
         styles.btn,
         { backgroundColor: bg[variant] },
@@ -322,6 +325,7 @@ export function Seg<K extends string>({
             }}
             // Until the row has been measured there's no pill, so the picked button fills itself.
             style={[styles.segBtn, on && (segW ? styles.segBtnOn : { backgroundColor: thumb, boxShadow: 'none' })]}
+            highlight={on ? 'ring' : 'wash'}
           >
             <Text style={[type.labelSmall, { color: on ? color.bg : color.ink }]}>{o.label}</Text>
           </Tappable>
@@ -439,6 +443,7 @@ export function ChoiceTile({
         onPress();
       }}
       style={[styles.choice, selected && styles.choiceOn]}
+      highlight={selected ? 'dim' : 'wash'}
     >
       {icon ? <IconTile icon={icon} tone={selected ? 'ink' : 'white'} size={48} /> : null}
       <View style={styles.flexGap2}>
@@ -503,6 +508,7 @@ export function ActionCard({
       accessibilityLabel={sub ? `${label}. ${sub}` : label}
       onPress={onPress}
       style={[styles.action, primary ? styles.actionPrimary : styles.actionSecondary]}
+      highlight={primary ? 'ring' : 'wash'}
     >
       <IconTile icon={icon} tone={primary ? 'signal' : 'raise'} size={44} />
       <View style={styles.flexGap2}>
@@ -581,7 +587,8 @@ const styles = StyleSheet.create({
   btnText: { height: 44 },
   disabled: { opacity: 0.35 },
   pressed: { transform: [{ scale: 0.98 }] },
-  linkPressed: { opacity: 0.3 },
+  /** Text links and text buttons: a lime marker behind the words while pressed. */
+  linkPressed: { backgroundColor: color.signal, borderRadius: 6, borderCurve: 'continuous' },
   pill: { height: 26, paddingHorizontal: 10, borderRadius: 13, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
   fake: {
     fontFamily: fontFamily.semibold,

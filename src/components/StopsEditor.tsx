@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   inputFocus: { boxShadow: `inset 0 0 0 2px ${color.ink}` },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   time: { width: 104, textAlign: 'center', paddingHorizontal: 6, fontVariant: ['tabular-nums'] },
-  stepPressed: { backgroundColor: color.line },
+  stepPressed: { backgroundColor: color.signal },
   step: {
     width: 44,
     height: 44,

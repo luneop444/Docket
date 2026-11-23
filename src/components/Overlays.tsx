@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
   timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, paddingVertical: 6 },
   timeRowLine: { borderBottomWidth: 1, borderBottomColor: color.line },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  stepPressed: { backgroundColor: color.line },
+  stepPressed: { backgroundColor: color.signal },
   step: {
     width: 44,
     height: 44,

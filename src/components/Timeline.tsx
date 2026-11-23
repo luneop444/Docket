@@ -52,7 +52,7 @@ export function TimelineEventRow({ title, detail, time, state, segment, icon, ac
         <Text style={[type.bodyStrong, upcoming ? styles.upcoming_ : styles.ink]}>{title}</Text>
         {detail ? <Text style={[type.bodySmall, styles.sub]}>{detail}</Text> : null}
         {action ? (
-          <Tappable accessibilityRole="button" onPress={action.onPress} style={[styles.action]}>
+          <Tappable accessibilityRole="button" onPress={action.onPress} style={[styles.action]} highlight="ring">
             <Text style={[type.labelSmall, { color: color.bg }]}>{action.label}</Text>
           </Tappable>
         ) : null}

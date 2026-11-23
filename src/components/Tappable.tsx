@@ -1,6 +1,16 @@
 import { useState, type ReactNode } from 'react';
-import { Animated, Easing, Platform, Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, Easing, Platform, Pressable, StyleSheet, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { color } from '../theme/tokens';
 import { useReduceMotion } from './stepMotion';
+
+/**
+ * How the surface shows it was pressed, in the design system's lime (`signal`):
+ * - wash: the surface turns lime under the finger (light surfaces: glass, white, raise);
+ * - ring: a lime ring inside the edge (dark surfaces, where a lime fill would muddy the text);
+ * - dim: a light ink veil (surfaces that are already lime);
+ * - none: no highlight, only the give.
+ */
+export type PressHighlight = 'wash' | 'ring' | 'dim' | 'none';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const native = Platform.OS !== 'web';
@@ -11,12 +21,15 @@ const native = Platform.OS !== 'web';
  * - it springs back on lift with a small settle, like iOS controls;
  * - a 50ms press delay, so starting to scroll a list doesn't make every card flinch
  *   (a real tap is longer than that; a scroll cancels first);
- * - Reduce Motion: no scaling, the surface dims a little instead.
+ * - the lime highlight (see PressHighlight) shows at once, so even a quick tap is seen,
+ *   then fades out after the finger lifts;
+ * - Reduce Motion: no scaling; the highlight still shows.
  * There is no hover state: on a phone there's nothing to hover with.
  */
 export function Tappable({
   style,
   give = 0.97,
+  highlight = 'wash',
   children,
   onPressIn,
   onPressOut,
@@ -25,12 +38,22 @@ export function Tappable({
   style?: StyleProp<ViewStyle> | ((s: { pressed: boolean }) => StyleProp<ViewStyle>);
   /** How far it gives: 0.97 for buttons and rows, closer to 1 for big cards. */
   give?: number;
+  /** Lime press highlight: wash (default), ring, dim or none. */
+  highlight?: PressHighlight;
   children?: ReactNode;
 }) {
   const reduce = useReduceMotion();
   const [v] = useState(() => new Animated.Value(1));
   const [pressed, setPressed] = useState(false);
+  const [lit] = useState(() => new Animated.Value(0));
 
+  const light = () => {
+    lit.stopAnimation();
+    lit.setValue(1);
+  };
+  const unlight = () => {
+    Animated.timing(lit, { toValue: 0, duration: 260, delay: 60, easing: Easing.out(Easing.quad), useNativeDriver: native }).start();
+  };
   const down = () => {
     if (reduce) return;
     v.stopAnimation();
@@ -42,23 +65,47 @@ export function Tappable({
   };
 
   const base = typeof style === 'function' ? style({ pressed }) : style;
+  // The highlight follows the surface's own corner, so it never pokes past the squircle.
+  const flat = StyleSheet.flatten(base) ?? {};
+  const corner = {
+    borderRadius: flat.borderRadius,
+    borderTopLeftRadius: flat.borderTopLeftRadius,
+    borderTopRightRadius: flat.borderTopRightRadius,
+    borderBottomLeftRadius: flat.borderBottomLeftRadius,
+    borderBottomRightRadius: flat.borderBottomRightRadius,
+    borderCurve: 'continuous' as const,
+  };
   return (
     <AnimatedPressable
       unstable_pressDelay={50}
       {...rest}
       onPressIn={(e) => {
         setPressed(true);
+        light();
         down();
         onPressIn?.(e);
       }}
       onPressOut={(e) => {
         setPressed(false);
+        unlight();
         up();
         onPressOut?.(e);
       }}
-      style={[base, reduce ? pressed && { opacity: 0.7 } : { transform: [{ scale: v }] }]}
+      // Always a transform (scale 1 under Reduce Motion): it makes the surface its own stacking
+      // context, so the highlight at zIndex -1 sits above the surface's fill but under every child
+      // (on the web an absolute layer would otherwise paint over unpositioned children like icons).
+      style={[base, { transform: [{ scale: v }] }]}
     >
+      {highlight !== 'none' && (
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, corner, hl[highlight], { zIndex: -1, opacity: lit }]} />
+      )}
       {children}
     </AnimatedPressable>
   );
 }
+
+const hl = StyleSheet.create({
+  wash: { backgroundColor: color.signal },
+  ring: { borderWidth: 3, borderColor: color.signal },
+  dim: { backgroundColor: 'rgba(28,28,28,0.12)' },
+});

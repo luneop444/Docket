@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepPressed: { backgroundColor: color.line },
+  stepPressed: { backgroundColor: color.signal },
   stepValue: { flex: 1, textAlign: 'center', color: color.ink, fontVariant: ['tabular-nums'] },
   // Off track uses `track` (3.06:1 on white) so the off switch is visible (WCAG 1.4.11); raise2 was 1.2:1.
   switch: { width: 52, height: 32, borderRadius: 16, borderCurve: 'continuous', backgroundColor: color.track },
