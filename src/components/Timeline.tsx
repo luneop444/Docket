@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from 'react-native';
-import type { ReactElement, ReactNode } from 'react';
+import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { useReduceMotion } from './stepMotion';
 import { CheckIcon, ClockIcon, DollarIcon, HourglassIcon, PinIcon } from './Icons';
 import { color, fontFamily, glass, type } from '../theme/tokens';
 import { Tappable } from './Tappable';
@@ -35,17 +36,38 @@ const GLYPH: Record<EventIcon, (p: { c: string; size: number }) => ReactElement 
   dollar: DollarIcon,
 };
 
+/**
+ * A step that has just happened (checked in, free time ended, left) settles into its new state:
+ * the node dips to 0.8 and springs back with a little overshoot, the way an iOS control confirms
+ * a change. Only on a change of state while the screen is open, never on first show, and not
+ * under Reduce Motion.
+ */
+function usePop(state: EventState) {
+  const reduce = useReduceMotion();
+  const [s] = useState(() => new Animated.Value(1));
+  const was = useRef(state);
+  useEffect(() => {
+    if (was.current === state) return;
+    was.current = state;
+    if (reduce) return;
+    s.setValue(0.8);
+    Animated.spring(s, { toValue: 1, speed: 16, bounciness: 12, useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [state, reduce, s]);
+  return s;
+}
+
 /** Figma "Timeline / Event" (State × Segment): a 30 node with its icon, title, detail, time. */
 export function TimelineEventRow({ title, detail, time, state, segment, icon, action }: TimelineEvent) {
   const upcoming = state === 'upcoming';
   const Glyph = GLYPH[icon];
   const glyph = state === 'done' ? color.bg : state === 'current' ? color.ink : color.faint;
+  const pop = usePop(state);
   return (
     <View style={styles.ev}>
       <View style={styles.rail}>
-        <View style={[styles.node, styles[state]]}>
+        <Animated.View style={[styles.node, styles[state], { transform: [{ scale: pop }] }]}>
           <Glyph c={glyph} size={15} />
-        </View>
+        </Animated.View>
         {segment === 'none' ? null : <View style={[styles.segment, { backgroundColor: SEGMENT_COLOR[segment] }]} />}
       </View>
       <View style={styles.text}>

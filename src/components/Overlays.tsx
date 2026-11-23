@@ -29,6 +29,8 @@ import { islandCopy } from '../logic/island';
 import { apptOf, stopCalc, type FixDraft } from '../logic/stop';
 import { useStore, type MessageStep } from '../state/AppStore';
 import { color, fontFamily, glass, glassEdge, protoColor, radius, type } from '../theme/tokens';
+import { RollText } from './RollText';
+import { Tappable } from './Tappable';
 import { BandScrollView } from './BandScrollView';
 import { useFramed, useInsets, useIslandStage } from './Chrome';
 import { MinusIcon, PlusIcon, TruckIcon } from './Icons';
@@ -171,13 +173,15 @@ function FixRow({ label, value, last, onStep }: { label: string; value: string; 
     <View style={[styles.timeRow, !last && styles.timeRowLine]}>
       <T v="body" c={color.sub}>{label}</T>
       <View style={styles.stepper}>
-        <Pressable accessibilityRole="button" accessibilityLabel={`${label} earlier`} {...earlier} style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}>
+        <Tappable accessibilityRole="button" accessibilityLabel={`${label} earlier`} {...earlier} style={styles.step}>
           <MinusIcon size={24} />
-        </Pressable>
-        <T v="bodyStrong" style={styles.stepValue}>{value}</T>
-        <Pressable accessibilityRole="button" accessibilityLabel={`${label} later`} {...later} style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}>
+        </Tappable>
+        <View style={styles.stepValue} accessibilityLiveRegion="polite">
+          <RollText text={value} style={[type.bodyStrong, styles.tabular, { color: color.ink }]} />
+        </View>
+        <Tappable accessibilityRole="button" accessibilityLabel={`${label} later`} {...later} style={styles.step}>
           <PlusIcon size={24} />
-        </Pressable>
+        </Tappable>
       </View>
     </View>
   );
@@ -643,7 +647,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepValue: { minWidth: 80, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  stepValue: { minWidth: 80, alignItems: 'center' },
+  tabular: { fontVariant: ['tabular-nums'] },
   details: { ...glass, borderRadius: 14, borderCurve: 'continuous', padding: 14 },
   undo: {
     position: 'absolute',

@@ -4,6 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
 import { DemoDrawer } from '../../components/DemoDrawer';
 import { FreeBar } from '../../components/FreeBar';
+import { Appear } from '../../components/Appear';
+import { RollText } from '../../components/RollText';
 import { Timeline } from '../../components/Timeline';
 import { Button, Gap, press, T } from '../../components/ui';
 import { isDemoState } from '../../logic/demo';
@@ -175,15 +177,13 @@ function AtTheDock() {
       <Gap h={24} />
       {inDetention ? (
         <>
-          <View style={styles.owed}>
+          <Appear style={styles.owed}>
             <T v="bodyTiny" c={color.ink}>
               Detention so far
             </T>
             <Gap h={4} />
-            <T v="numberL" style={styles.tabular}>
-              {money(c.owed)}
-            </T>
-          </View>
+            <RollText text={money(c.owed)} style={[type.numberL, styles.tabular, { color: color.ink }]} />
+          </Appear>
           <Gap h={16} />
         </>
       ) : null}
@@ -208,17 +208,19 @@ function WaitFigure({ min }: { min: number }) {
   const m = Math.max(0, Math.floor(min));
   const h = Math.floor(m / 60);
   const mm = h ? String(m % 60).padStart(2, '0') : String(m);
+  const digits = [type.displayTimer, styles.tabular, { color: color.ink }];
+  // A row of rolling digits and their units, sat on one baseline: the clock rolls as it counts.
   return (
-    <T v="displayTimer" numberOfLines={1} style={[styles.tabular, styles.optical]}>
+    <View style={[styles.figureRow, styles.optical]} accessible accessibilityLabel={dur(m)}>
       {h ? (
         <>
-          {h}
-          <Text style={styles.unit}>h</Text>{' '}
+          <RollText text={String(h)} style={digits} />
+          <Text style={styles.unit}>h </Text>
         </>
       ) : null}
-      {mm}
+      <RollText text={mm} style={digits} />
       <Text style={styles.unit}>m</Text>
-    </T>
+    </View>
   );
 }
 
@@ -258,9 +260,9 @@ function AtStop() {
           {label}
         </T>
         <Gap h={8} />
-        <T v="displayTimer" style={[styles.tabular, styles.optical]}>
-          {figure}
-        </T>
+        <View style={styles.optical}>
+          <RollText text={figure} style={[type.displayTimer, styles.tabular, { color: color.ink }]} />
+        </View>
         <Gap h={8} />
         <T v="bodySmall" c={color.sub} style={styles.tabular}>
           {line}
@@ -385,6 +387,7 @@ function Stops() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   tabular: { fontVariant: ['tabular-nums'] },
+  figureRow: { flexDirection: 'row', alignItems: 'baseline' },
   // At 84px the first glyph's built-in left space shows: pull it back to the text edge.
   optical: { marginLeft: -5 },
   head: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
