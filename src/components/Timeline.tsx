@@ -6,8 +6,8 @@ import { color, fontFamily, glass, type } from '../theme/tokens';
 import { Tappable } from './Tappable';
 
 export type EventState = 'done' | 'current' | 'upcoming';
-/** The rail below the event: free time, paid detention, not reached yet, or nothing (last event). */
-export type EventSegment = 'free' | 'paid' | 'upcoming' | 'none';
+/** The rail below the event: behind you, still ahead, or nothing (last event). */
+export type EventSegment = 'past' | 'upcoming' | 'none';
 export type EventIcon = 'pin' | 'clock' | 'check' | 'hourglass' | 'dollar';
 
 export interface TimelineEvent {
@@ -16,52 +16,19 @@ export interface TimelineEvent {
   time?: string;
   state: EventState;
   segment: EventSegment;
-  /** Share of a free rail already behind you; the rest is drawn as still ahead. */
-  fill?: number;
   icon: EventIcon;
   action?: { label: string; onPress: () => void };
 }
 
 /**
- * Rails, 3 wide. Behind you they're solid, in the time bar's colours (TimeBar): free time grey
- * (color.free), detention black. Ahead they're dotted, so "been here" never depends on telling
- * two greys apart: the Figma's #B9C2C8 free rail sat next to the light upcoming one and the path
- * to the lit step vanished in free time while it showed in detention (23 Nov).
+ * Rails, 3 wide, one signal: behind you or ahead, in the points' own colours (done black,
+ * upcoming the light line). The Figma's free grey (#B9C2C8) sat so close to the upcoming line
+ * that the path to the lit step vanished in free time while detention's black showed it (23 Nov).
  */
-const SEGMENT_COLOR: Record<'free' | 'paid', string> = {
-  free: color.free,
-  paid: color.ink,
+const RAIL: Record<'past' | 'upcoming', string> = {
+  past: color.ink,
+  upcoming: color.line,
 };
-const DOT = 'rgba(28,28,28,0.3)';
-
-/** Still ahead: a column of dots, clipped to the rail's height. */
-function Ahead() {
-  return (
-    <View style={styles.ahead}>
-      {/* Held out of the layout, so the dots never set the row's height. */}
-      <View style={styles.dots}>
-        {Array.from({ length: 40 }, (_, i) => (
-          <View key={i} style={styles.dot} />
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function Rail({ segment, fill }: { segment: EventSegment; fill?: number }) {
-  if (segment === 'none') return null;
-  if (segment === 'upcoming') return <Ahead />;
-  const solid = <View style={[styles.segment, { backgroundColor: SEGMENT_COLOR[segment] }]} />;
-  if (fill == null || fill >= 1) return solid;
-  return (
-    <View style={styles.split}>
-      <View style={{ flex: fill, width: 3, backgroundColor: SEGMENT_COLOR[segment] }} />
-      <View style={{ flex: 1 - fill, width: 3 }}>
-        <Ahead />
-      </View>
-    </View>
-  );
-}
 
 /** The node icons, as SF Symbols (mappin, clock, checkmark, hourglass, dollarsign). */
 const GLYPH: Record<EventIcon, (p: { c: string; size: number }) => ReactElement | null> = {
@@ -93,7 +60,7 @@ function usePop(state: EventState) {
 }
 
 /** Figma "Timeline / Event" (State × Segment): a 30 node with its icon, title, detail, time. */
-export function TimelineEventRow({ title, detail, time, state, segment, fill, icon, action }: TimelineEvent) {
+export function TimelineEventRow({ title, detail, time, state, segment, icon, action }: TimelineEvent) {
   const upcoming = state === 'upcoming';
   const Glyph = GLYPH[icon];
   const glyph = state === 'done' ? color.bg : state === 'current' ? color.ink : color.faint;
@@ -104,7 +71,7 @@ export function TimelineEventRow({ title, detail, time, state, segment, fill, ic
         <Animated.View style={[styles.node, styles[state], { transform: [{ scale: pop }] }]}>
           <Glyph c={glyph} size={15} />
         </Animated.View>
-        <Rail segment={segment} fill={fill} />
+        {segment === 'none' ? null : <View style={[styles.segment, { backgroundColor: RAIL[segment] }]} />}
       </View>
       <View style={styles.text}>
         <Text style={[type.bodyStrong, upcoming ? styles.upcoming_ : styles.ink]}>{title}</Text>
@@ -160,11 +127,6 @@ const styles = StyleSheet.create({
   // Figma: white, 1 line border, a soft shadow (the ink at 8%, blur 6).
   upcoming: { backgroundColor: color.bg, borderWidth: 1, borderColor: color.line, boxShadow: '0 0 6px rgba(28,28,28,0.08)' },
   segment: { flex: 1, width: 3 },
-  split: { flex: 1, alignItems: 'center' },
-  // Dots 3 across, 4 apart, starting 4 below whatever is above them.
-  ahead: { flex: 1, width: 3, overflow: 'hidden' },
-  dots: { position: 'absolute', top: 4, left: 0, gap: 4 },
-  dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: DOT },
   // 4 above the title, 20 below the last line, 2 between.
   text: { flex: 1, minWidth: 0, gap: 2, paddingTop: 4, paddingBottom: 20 },
   // Times are data, not titles: Body/Regular, lined up with the title (09 · clarity pass).

@@ -22,23 +22,15 @@ describe('dockTimeline (Figma C3 Timeline / Event states)', () => {
     expect(ev.map((e) => e.state)).toEqual(['done', 'done', 'done', 'current', 'upcoming']);
   });
 
-  it('rails: solid behind you, dotted ahead, free time running is solid as far as now', () => {
+  it('rails: behind the lit point is past, from it on is ahead, in every stage', () => {
     const ev = dockTimeline(atDock(), t(14, 30), defaultRules);
-    // Arrived and appointment behind you, the check-in step reached; free time runs from 2:00 to 4:00.
-    expect(ev.map((e) => e.segment)).toEqual(['free', 'free', 'free', 'upcoming', 'none']);
-    expect(ev[2].fill).toBeCloseTo(0.25);
-    expect(ev[0].fill).toBeUndefined();
-    const checked = dockTimeline(atDock({ checkin: t(13, 49) }), t(15, 0), defaultRules);
-    expect(checked.map((e) => e.segment)).toEqual(['free', 'free', 'free', 'upcoming', 'none']);
-    expect(checked[2].fill).toBeCloseTo(0.5);
-  });
-
-  it('the path to the lit point is never dotted once the clock runs', () => {
-    for (let now = t(14, 0); now <= t(17, 0); now += 7) {
+    expect(ev.map((e) => e.segment)).toEqual(['past', 'past', 'upcoming', 'upcoming', 'none']);
+    for (let now = t(13, 48); now <= t(17, 0); now += 7) {
       for (const checkin of [null, t(13, 49)]) {
-        const ev = dockTimeline(atDock({ checkin }), now, defaultRules);
-        const lit = ev.findIndex((e) => e.state === 'current');
-        expect(ev.slice(0, lit).map((e) => e.segment)).not.toContain('upcoming');
+        const e2 = dockTimeline(atDock({ checkin }), now, defaultRules);
+        const lit = e2.findIndex((e) => e.state === 'current');
+        expect(e2.slice(0, lit).every((e) => e.segment === 'past')).toBe(true);
+        expect(e2.slice(lit, -1).every((e) => e.segment === 'upcoming')).toBe(true);
       }
     }
   });
@@ -63,7 +55,7 @@ describe('dockTimeline (Figma C3 Timeline / Event states)', () => {
     expect(ev.map((e) => e.title)).toEqual(['Arrived at gate', 'Checked in', 'Appointment time', 'Free time ends', 'Detention']);
     expect(ev.map((e) => e.state)).toEqual(['done', 'done', 'done', 'done', 'current']);
     expect(ev[1].time).toBe('1:49 PM');
-    expect(ev[3].segment).toBe('paid');
+    expect(ev[3].segment).toBe('past');
     expect(ev[4].time).toBe('Now');
     expect(ev[4].detail).toBe('21m so far');
   });
@@ -75,7 +67,7 @@ describe('dockTimeline (Figma C3 Timeline / Event states)', () => {
     const ev = dockTimeline(st, 24 * 60 + t(6, 6), rules);
     expect(ev.map((e) => e.title)).toEqual(['Arrived at gate', 'Free time ends', 'Checked in', 'Detention']);
     expect(ev.map((e) => e.time)).toEqual(['Mon 1:12 PM', 'Mon 2:12 PM', 'Tue 5:56 AM', 'Now']);
-    expect(ev.map((e) => e.segment)).toEqual(['free', 'paid', 'paid', 'none']);
+    expect(ev.map((e) => e.segment)).toEqual(['past', 'past', 'past', 'none']);
     expect(ev[1].detail).toBe('1 hour free after arrival');
   });
 

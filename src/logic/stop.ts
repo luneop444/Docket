@@ -157,12 +157,7 @@ export interface DockEvent {
   detail: string;
   time?: string;
   state: 'done' | 'current' | 'upcoming';
-  segment: 'free' | 'paid' | 'upcoming' | 'none';
-  /**
-   * How much of a free rail is behind you, 0 to 1, when the present sits on it (free time
-   * running toward the next timed step); the rest is still ahead. Absent means all of it.
-   */
-  fill?: number;
+  segment: 'past' | 'upcoming' | 'none';
   /** Figma "Icon/Timeline/…" for the node. */
   icon: 'pin' | 'clock' | 'check' | 'hourglass' | 'dollar';
   /** The "I checked in" button. */
@@ -199,7 +194,7 @@ export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[]
   const fromAppt = rules.start === 'appt';
   const at = stopTime(stop, now);
   // `when` is the minute it happened; only done events have one, and they're listed in that order.
-  const events: (Omit<DockEvent, 'segment'> & { when?: number; due?: number })[] = [
+  const events: (Omit<DockEvent, 'segment'> & { when?: number })[] = [
     { title: 'Arrived at gate', detail: 'From your location', time: at(arrive), state: 'done', icon: 'pin', when: arrive },
   ];
   if (fromAppt) {
@@ -211,7 +206,6 @@ export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[]
       state: reached ? 'done' : 'upcoming',
       icon: 'clock',
       when: reached ? apptOf(stop) : undefined,
-      due: apptOf(stop),
     });
   }
   const checked = stop.checkin != null;
@@ -231,10 +225,9 @@ export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[]
     state: inDetention ? 'done' : 'upcoming',
     icon: 'hourglass',
     when: inDetention ? c.freeEnd : undefined,
-    due: c.freeEnd,
   });
   // The rate is on the status line above; this row says how long, and that it's now.
-  const detention: Omit<DockEvent, 'segment'> & { when?: number; due?: number } = {
+  const detention: Omit<DockEvent, 'segment'> & { when?: number } = {
     title: 'Detention',
     detail: inDetention ? `${dur(c.paidMin)} so far` : 'Starts after free time',
     time: inDetention ? 'Now' : undefined,
@@ -252,27 +245,14 @@ export function dockTimeline(stop: Stop, now: number, rules: Rules): DockEvent[]
     : !checked
       ? list.findIndex((e) => e.canCheckIn)
       : list.findIndex((e) => e.state !== 'done');
-  // The rail under each point says two things. Solid is time behind you, dotted is still ahead,
-  // so the path up to the lit point reads the same in every stage. A solid rail's colour is the
-  // time bar's: grey for free time, black once detention runs (Figma 08 and 09). Where free time
-  // is running toward the next timed step, that rail is solid as far as now and dotted after.
-  const since = Math.max(...done.map((e) => e.when as number));
-  const behind = (when: number | undefined, title: string): DockEvent['segment'] =>
-    (when as number) >= c.freeEnd ? 'paid' : now >= c.start || title !== 'Arrived at gate' ? 'free' : 'upcoming';
-  let running = false;
-  return list.map(({ when, due, ...e }, i): DockEvent => {
+  // The rail says one thing, as the points do: black up to the lit point (behind you), the
+  // light line after it (ahead). Free or paid is already said by the "Free time ends" and
+  // "Detention" points, the figure and the status line; a fill would claim a scale the rows
+  // don't have (23 Nov: grey/black, dots and a running fill were too many small signals).
+  return list.map(({ when: _when, ...e }, i): DockEvent => {
     const state: EventState = e.state === 'done' ? 'done' : i === lit ? 'current' : 'upcoming';
-    const next = list[i + 1];
-    if (!next) return { ...e, state, segment: 'none' };
-    // The present is on this rail: free time counting toward the next timed step.
-    if (!running && i <= lit && next.due != null && now < next.due && now >= c.start && now >= since) {
-      running = true;
-      const fill = Math.min(1, Math.max(0, (now - since) / (next.due - since)));
-      return { ...e, state, segment: 'free', fill };
-    }
-    // Everything above the lit point is behind you, a step you never tapped included.
-    if (i < lit) return { ...e, state, segment: behind(when ?? (inDetention ? c.freeEnd : now), e.title) };
-    return { ...e, state, segment: 'upcoming' };
+    const segment: DockEvent['segment'] = i === list.length - 1 ? 'none' : i < lit ? 'past' : 'upcoming';
+    return { ...e, state, segment };
   });
 }
 
