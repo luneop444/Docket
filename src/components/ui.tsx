@@ -3,10 +3,10 @@
  * v1 prototype's shared pieces (cards, options, segmented buttons, bars,
  * "Faked" tags, prototype controls).
  */
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  Animated,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -19,6 +19,11 @@ import { color, fontFamily, glass, glassRing, protoColor, radius, type, type Typ
 import { noWidow } from '../logic/text';
 import { CheckIcon, ChevronRight } from './Icons';
 import { tick } from '../logic/haptics';
+import { useReduceMotion } from './stepMotion';
+import { Tappable } from './Tappable';
+
+const SEG_GAP = 6;
+const NATIVE_ANIM = Platform.OS !== 'web';
 
 /* ---------- text ---------- */
 
@@ -87,9 +92,9 @@ export function Card({
   const s = [styles.card, tone === 'signal' && styles.cardSignal, flagged && styles.cardFlagged, style];
   if (onPress) {
     return (
-      <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [s, pressed && styles.pressed]}>
+      <Tappable accessibilityRole="button" onPress={onPress} give={0.985} style={s}>
         {children}
-      </Pressable>
+      </Tappable>
     );
   }
   return <View style={s}>{children}</View>;
@@ -138,10 +143,12 @@ export function Button({
   };
   const fg = variant === 'primary' ? color.bg : variant === 'text' ? color.sub : color.ink;
   return (
-    <Pressable
+    <Tappable
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
+      // A text button dims like an iOS text button; filled buttons give under the finger.
+      give={variant === 'text' ? 1 : 0.97}
       style={({ pressed }) => [
         styles.btn,
         { backgroundColor: bg[variant] },
@@ -149,7 +156,7 @@ export function Button({
         small && styles.btnSmall,
         variant === 'text' && styles.btnText,
         disabled && styles.disabled,
-        pressed && styles.pressed,
+        pressed && variant === 'text' && styles.linkPressed,
         style,
       ]}
     >
@@ -157,7 +164,7 @@ export function Button({
       <Text style={[small ? type.labelSmall : type.labelButton, { color: fg }]}>
         {label}
       </Text>
-    </Pressable>
+    </Tappable>
   );
 }
 
@@ -212,31 +219,31 @@ export function Option({
     // Radio on the left. Selected gets the same white row and ink ring as every
     // other selected option, so the choice reads from across the row, not just the dot.
     return (
-      <Pressable
+      <Tappable
         accessibilityRole="radio"
         accessibilityState={{ checked: !!selected }}
         onPress={() => {
           if (!selected) tick();
           onPress();
         }}
-        style={({ pressed }) => [styles.option, styles.optionRadio, selected && styles.optionOn, pressed && styles.pressed]}
+        style={[styles.option, styles.optionRadio, selected && styles.optionOn]}
       >
         <View style={[styles.radio, selected && styles.radioOn]} />
         {text}
-      </Pressable>
+      </Tappable>
     );
   }
   return (
-    <Pressable
+    <Tappable
       accessibilityRole="button"
       accessibilityLabel={sub ? `${label}. ${sub}` : label}
       onPress={onPress}
-      style={({ pressed }) => [styles.option, icon && styles.optionIcon, selected && styles.optionOn, pressed && styles.pressed]}
+      style={[styles.option, icon && styles.optionIcon, selected && styles.optionOn]}
     >
       {icon ? <IconTile icon={icon} tone="white" size={40} /> : null}
       {text}
       <ChevronRight c={icon ? color.faint : undefined} />
-    </Pressable>
+    </Tappable>
   );
 }
 
@@ -258,12 +265,54 @@ export function Seg<K extends string>({
   style?: StyleProp<ViewStyle>;
   label?: string;
 }) {
+  const reduce = useReduceMotion();
+  const [width, setWidth] = useState(0);
+  const i = options.findIndex((o) => o.key === value);
+  const n = options.length;
+  const segW = width ? (width - SEG_GAP * (n - 1)) / n : 0;
+  const at = (k: number) => Math.max(0, k) * (segW + SEG_GAP);
+  // The picked pill is one shape that slides to the option you tap, instead of the colour
+  // jumping between buttons; with nothing picked yet it fades in where you tapped.
+  const [x] = useState(() => new Animated.Value(0));
+  const [shown] = useState(() => new Animated.Value(i >= 0 ? 1 : 0));
+  const last = useRef<number | null>(null);
+  useEffect(() => {
+    if (!segW) return;
+    const prev = last.current;
+    last.current = i;
+    const fade = (to: number) => Animated.timing(shown, { toValue: to, duration: 140, useNativeDriver: NATIVE_ANIM }).start();
+    if (prev === null || reduce) {
+      if (i >= 0) x.setValue(at(i));
+      shown.setValue(i >= 0 ? 1 : 0);
+      return;
+    }
+    if (i < 0) return fade(0);
+    if (prev < 0) {
+      x.setValue(at(i));
+      return fade(1);
+    }
+    Animated.spring(x, { toValue: at(i), speed: 20, bounciness: 4, useNativeDriver: NATIVE_ANIM }).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i, segW, reduce]);
+  const thumb = i >= 0 && options[i].flag ? color.flag : color.ink;
+
   return (
-    <View style={[styles.seg, style]} accessibilityRole="radiogroup" accessibilityLabel={label}>
+    <View
+      style={[styles.seg, style]}
+      accessibilityRole="radiogroup"
+      accessibilityLabel={label}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+    >
+      {segW ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.segThumb, { width: segW, backgroundColor: thumb, opacity: shown, transform: [{ translateX: x }] }]}
+        />
+      ) : null}
       {options.map((o) => {
         const on = o.key === value;
         return (
-          <Pressable
+          <Tappable
             key={o.key}
             accessibilityRole="radio"
             accessibilityState={{ checked: on }}
@@ -271,14 +320,11 @@ export function Seg<K extends string>({
               if (!on) tick();
               onChange(o.key);
             }}
-            style={({ pressed }) => [
-              styles.segBtn,
-              on && { backgroundColor: o.flag ? color.flag : color.ink, boxShadow: 'none' },
-              pressed && styles.pressed,
-            ]}
+            // Until the row has been measured there's no pill, so the picked button fills itself.
+            style={[styles.segBtn, on && (segW ? styles.segBtnOn : { backgroundColor: thumb, boxShadow: 'none' })]}
           >
             <Text style={[type.labelSmall, { color: on ? color.bg : color.ink }]}>{o.label}</Text>
-          </Pressable>
+          </Tappable>
         );
       })}
     </View>
@@ -384,7 +430,7 @@ export function ChoiceTile({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <Tappable
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
       accessibilityLabel={sub ? `${label}. ${sub}` : label}
@@ -392,7 +438,7 @@ export function ChoiceTile({
         if (!selected) tick();
         onPress();
       }}
-      style={({ pressed }) => [styles.choice, selected && styles.choiceOn, pressed && styles.pressed]}
+      style={[styles.choice, selected && styles.choiceOn]}
     >
       {icon ? <IconTile icon={icon} tone={selected ? 'ink' : 'white'} size={48} /> : null}
       <View style={styles.flexGap2}>
@@ -415,7 +461,7 @@ export function ChoiceTile({
           <View style={styles.choiceRing} />
         </View>
       )}
-    </Pressable>
+    </Tappable>
   );
 }
 
@@ -452,11 +498,11 @@ export function ActionCard({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <Tappable
       accessibilityRole="button"
       accessibilityLabel={sub ? `${label}. ${sub}` : label}
       onPress={onPress}
-      style={({ pressed }) => [styles.action, primary ? styles.actionPrimary : styles.actionSecondary, pressed && styles.pressed]}
+      style={[styles.action, primary ? styles.actionPrimary : styles.actionSecondary]}
     >
       <IconTile icon={icon} tone={primary ? 'signal' : 'raise'} size={44} />
       <View style={styles.flexGap2}>
@@ -470,7 +516,7 @@ export function ActionCard({
         ) : null}
       </View>
       <ChevronRight c={primary ? color.bg : color.sub} />
-    </Pressable>
+    </Tappable>
   );
 }
 
@@ -561,7 +607,10 @@ const styles = StyleSheet.create({
   optionRadio: { justifyContent: 'flex-start', gap: 14 },
   radio: { width: 22, height: 22, borderRadius: 11, borderCurve: 'continuous', borderWidth: 2, borderColor: color.track },
   radioOn: { borderWidth: 7, borderColor: color.ink },
-  seg: { flexDirection: 'row', gap: 6 },
+  seg: { flexDirection: 'row', gap: SEG_GAP },
+  segThumb: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: radius.chip, borderCurve: 'continuous' },
+  // The picked button lets the sliding pill under it show through.
+  segBtnOn: { backgroundColor: 'transparent', boxShadow: 'none' },
   // Unpicked options are glass buttons, like the app's other white buttons, so they lift off
   // the page as something to tap; the grey fill they had matched the canvas and vanished.
   segBtn: {

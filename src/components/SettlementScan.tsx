@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
-import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { gotFromSettlement, sampleScan, type Claim } from '../logic/claims';
 import { sameLoad, type SettlementReading } from '../logic/documents';
 import { money } from '../logic/format';
@@ -15,7 +15,8 @@ import { Chip } from './Chip';
 import { DocIcon } from './Icons';
 import { SampleSettlementPage } from './SampleSettlementPage';
 import { Scanner } from './Scanner';
-import { Button, Card, Gap, noFocusRing, press, Row, T } from './ui';
+import { Button, Card, Gap, noFocusRing, Row, T } from './ui';
+import { Tappable } from './Tappable';
 
 /** One page to read: the file sent, and what to show of it (a PDF has no picture here). */
 interface Page {
@@ -276,12 +277,12 @@ function Review({
           return (
             <View key={c.id}>
               {i ? <View style={styles.rule} /> : null}
-              <Pressable
+              <Tappable
                 accessibilityRole="button"
                 accessibilityLabel={`Fix ${c.load.name}`}
                 disabled={miss}
                 onPress={() => (editing === c.id ? setEditing(null) : open(c))}
-                style={({ pressed }) => [styles.loadRow, pressed && press.give]}
+                style={[styles.loadRow]}
               >
                 <Row base>
                   <View style={styles.flex}>
@@ -297,7 +298,7 @@ function Review({
                     <Chip text="Not on it" tone="flag" />
                   )}
                 </Row>
-              </Pressable>
+              </Tappable>
               {editing === c.id ? (
                 <View style={styles.edit}>
                   <T v="bodyTiny">What the settlement shows for this load</T>

@@ -1,16 +1,18 @@
 import { router } from 'expo-router';
 import { Fragment, type ReactNode } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { LOGOS } from '../../components/carrierLogos';
 import { PageHead, Screen } from '../../components/Chrome';
 import { ChevronRight } from '../../components/Icons';
-import { Card, Fake, Gap, Hr, Pill, press, Seg, T } from '../../components/ui';
+import { glideNext, useReduceMotion } from '../../components/stepMotion';
+import { Card, Fake, Gap, Hr, Pill, Seg, T } from '../../components/ui';
 import { headline, noStatsNote, otherStats, payLine, REAL_CARRIERS, showsStats, sortBoard } from '../../logic/companyInfo';
 import { durShort, rateShort } from '../../logic/format';
 import { MIN_REPORTS, SAMPLE_BOARD } from '../../logic/sampleData';
 import type { CompanySort } from '../../logic/state';
 import { useStore } from '../../state/AppStore';
 import { color } from '../../theme/tokens';
+import { Tappable } from '../../components/Tappable';
 
 const open = (name: string) => router.push({ pathname: '/company-info', params: { name } });
 
@@ -21,6 +23,7 @@ const open = (name: string) => router.push({ pathname: '/company-info', params: 
  */
 export default function Companies() {
   const { s, a } = useStore();
+  const reduce = useReduceMotion();
   const board = sortBoard(SAMPLE_BOARD, s.sort);
   return (
     <Screen tabs header={<PageHead title="Companies" />}>
@@ -66,7 +69,11 @@ export default function Companies() {
           { key: 'paid', label: 'Most often paid' },
         ]}
         value={s.sort}
-        onChange={a.setSort}
+        onChange={(k) => {
+          // The rows glide to their new order, so you can follow a company as the list re-sorts.
+          glideNext(reduce);
+          a.setSort(k);
+        }}
       />
       <Gap h={12} />
       <Card style={styles.list}>
@@ -123,11 +130,11 @@ function Row({
   muted?: boolean;
 }) {
   return (
-    <Pressable
+    <Tappable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed && press.give]}
+      style={[styles.row]}
     >
       {lead}
       <View style={styles.body}>{body}</View>
@@ -136,7 +143,7 @@ function Row({
         <T v="bodyTiny" style={styles.right}>{caption}</T>
       </View>
       <ChevronRight size={16} c={color.faint} />
-    </Pressable>
+    </Tappable>
   );
 }
 

@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { ReactElement, ReactNode } from 'react';
 import { CheckIcon, ClockIcon, DollarIcon, HourglassIcon, PinIcon } from './Icons';
 import { color, fontFamily, glass, type } from '../theme/tokens';
+import { Tappable } from './Tappable';
 
 export type EventState = 'done' | 'current' | 'upcoming';
 /** The rail below the event: free time, paid detention, not reached yet, or nothing (last event). */
@@ -51,9 +52,9 @@ export function TimelineEventRow({ title, detail, time, state, segment, icon, ac
         <Text style={[type.bodyStrong, upcoming ? styles.upcoming_ : styles.ink]}>{title}</Text>
         {detail ? <Text style={[type.bodySmall, styles.sub]}>{detail}</Text> : null}
         {action ? (
-          <Pressable accessibilityRole="button" onPress={action.onPress} style={({ pressed }) => [styles.action, pressed && styles.pressed]}>
+          <Tappable accessibilityRole="button" onPress={action.onPress} style={[styles.action]}>
             <Text style={[type.labelSmall, { color: color.bg }]}>{action.label}</Text>
-          </Pressable>
+          </Tappable>
         ) : null}
       </View>
       {time ? (

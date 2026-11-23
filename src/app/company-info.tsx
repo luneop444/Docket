@@ -1,11 +1,12 @@
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Fragment } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { LOGOS } from '../components/carrierLogos';
 import { BackBar, Screen } from '../components/Chrome';
 import { Button, Card, Fake, Gap, Hr, Pill, Row, T } from '../components/ui';
 import { findCompany, noStatsNote, recruiterQuestions, recruiterText, rulesRows, showsStats } from '../logic/companyInfo';
+import { done } from '../logic/haptics';
 import { useStore } from '../state/AppStore';
 import { color, radius } from '../theme/tokens';
 
@@ -16,6 +17,13 @@ export default function CompanyInfo() {
   const { s, a } = useStore();
   const { name } = useLocalSearchParams<{ name: string }>();
   const c = findCompany(name);
+  // "Copied" stays on the button long enough to read, then it's a copy button again.
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1800);
+    return () => clearTimeout(t);
+  }, [copied]);
 
   if (!c) {
     return (
@@ -32,6 +40,7 @@ export default function CompanyInfo() {
   const logo = LOGOS[c.name];
 
   function driveHere() {
+    done();
     a.switchCompany(c!.name, c!.rules);
     a.toast(`You drive for ${c!.name} now. Check these rules against your paperwork.`);
     router.push('/rules');
@@ -39,6 +48,8 @@ export default function CompanyInfo() {
 
   async function copyQuestions() {
     await Clipboard.setStringAsync(recruiterText(c!));
+    done();
+    setCopied(true);
     a.toast('Questions copied. Paste them in a text to the recruiter.');
   }
 
@@ -121,7 +132,7 @@ export default function CompanyInfo() {
               ))}
             </View>
             <Gap h={14} />
-            <Button label="Copy questions" variant="white" small onPress={copyQuestions} />
+            <Button label={copied ? 'Copied' : 'Copy questions'} variant="white" small onPress={copyQuestions} />
           </Card>
         </>
       )}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, LayoutAnimation, Platform } from 'react-native';
 
 /**
  * Onboarding step motion, measured from the reference video (Pinterest pin
@@ -75,4 +75,14 @@ export function useReduceMotion() {
     };
   }, []);
   return reduce;
+}
+
+/**
+ * Let the next layout change glide (rows re-sorting, a field opening) instead of jumping.
+ * Phone builds only: the web has no LayoutAnimation, so it changes in place there.
+ * Skipped with Reduce Motion.
+ */
+export function glideNext(reduce: boolean) {
+  if (reduce || Platform.OS === 'web') return;
+  LayoutAnimation.configureNext(LayoutAnimation.create(220, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
 }
