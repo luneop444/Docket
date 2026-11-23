@@ -273,7 +273,7 @@ export function Seg<K extends string>({
             }}
             style={({ pressed }) => [
               styles.segBtn,
-              on && { backgroundColor: o.flag ? color.flag : color.ink, borderColor: o.flag ? color.flag : color.ink },
+              on && { backgroundColor: o.flag ? color.flag : color.ink, boxShadow: 'none' },
               pressed && styles.pressed,
             ]}
           >
@@ -562,15 +562,13 @@ const styles = StyleSheet.create({
   radio: { width: 22, height: 22, borderRadius: 11, borderCurve: 'continuous', borderWidth: 2, borderColor: color.track },
   radioOn: { borderWidth: 7, borderColor: color.ink },
   seg: { flexDirection: 'row', gap: 6 },
-  // Unpicked options are white with the choice-ring outline (3:1 on every surface), so they
-  // read as buttons; the grey fill they had matched the canvas and vanished.
+  // Unpicked options are glass buttons, like the app's other white buttons, so they lift off
+  // the page as something to tap; the grey fill they had matched the canvas and vanished.
   segBtn: {
     flex: 1,
     height: 44,
     borderRadius: radius.chip, borderCurve: 'continuous',
-    backgroundColor: color.bg,
-    borderWidth: 1,
-    borderColor: color.track,
+    ...glass,
     alignItems: 'center',
     justifyContent: 'center',
   },
