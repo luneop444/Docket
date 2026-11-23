@@ -22,9 +22,11 @@ export const FROST = 1;
 export const REFRACT = 1.5;
 /**
  * Splay, the colour split at the rim: red and green read this many times Aave's 0.88 and 0.43
- * further than blue (1 before 19 Nov). The fringe also grows with REFRACT.
+ * further than blue (1 before 19 Nov). The fringe also grows with REFRACT. 0.6 since 23 Nov:
+ * Edward asked for less dispersion on the nav bar; on the white bar the red and blue fringe at
+ * the rim read as a colour edge rather than glass.
  */
-export const SPLAY = 1;
+export const SPLAY = 0.6;
 export const GLASS_CHROMA: [number, number, number] = [1 + (0.88 * SPLAY) / BEND, 1 + (0.43 * SPLAY) / BEND, 1];
 /** Room above and below the glass that the picture must also cover, for the bend to read. */
 export const M = 28;
@@ -59,8 +61,8 @@ function tryNum(key: string, def: number, min: number, max: number) {
  * glass bends a wide rim that magnifies what's under its edges. Try ?bezel=0.3 … 0.5.
  */
 export const BEZEL = tryNum('bezel', 0.42, 0.05, 0.5);
-/** How far the very edge reads in from the page, as a share of the glass's height, at REFRACT 1. 0.26 since 21 Nov (0.32 was a bit much). Try ?lens=. */
-export const LENS = tryNum('lens', 0.26, 0.05, 2);
+/** How far the very edge reads in from the page, as a share of the glass's height, at REFRACT 1: the splay. 0.26 since 21 Nov (0.32 was a bit much), 0.2 since 23 Nov (asked for less splay on the nav bar, on all glass). Try ?lens=. */
+export const LENS = tryNum('lens', 0.2, 0.05, 2);
 /** Bend for glass of this height: the map's strongest value (0.45 off neutral) reads LENS × height in. */
 export const glassK = (h: number): [number, number] => {
   const k = (REFRACT * LENS * h) / 0.45;
