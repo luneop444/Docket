@@ -64,7 +64,10 @@ export function TabBar() {
   const index = tapped ?? routeIndex;
   // The glass is live for the screen its picture was taken of.
   const [liveFor, setLiveFor] = useState<string | null>(null);
-  const live = liveFor === path;
+  // Right after a switch the glass keeps its last frame for a moment rather than blinking to the
+  // stand-in, since the new screen's picture is usually ready within a few frames.
+  const [grace, setGrace] = useState(false);
+  const live = liveFor === path || (grace && liveFor !== null);
   // Prototype diagnosis: open any page with ?glass=debug to see what the glass did last.
   const [debug] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -155,6 +158,7 @@ export function TabBar() {
       if (at !== path) return;
       pic.current = { path: at, p, slice: null };
       setLiveFor(at);
+      warmSoon.current();
       setNote(`live · ${scroller ? 'scrolling list' : 'whole screen'} · ${p.slices.length} slice(s) at ${p.scale.toFixed(2)}x`);
       requestAnimationFrame(frame);
     });
@@ -162,6 +166,41 @@ export function TabBar() {
   useEffect(() => {
     takePicture.current = () => void picture();
   }, [picture]);
+
+  // The other tabs, pictured ahead of time while nothing's happening, so switching to one finds
+  // its picture ready and the glass is live at once instead of after a fresh picture (about a
+  // second). The tabs are all mounted from the start (lazy off) and stay laid out when hidden.
+  // One at a time, spaced out, since each picture holds the main thread for a moment.
+  const warmSoon = useRef<() => void>(() => {});
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    let busy = false;
+    const warm = async () => {
+      const bar = barRef.current;
+      if (!bar || busy) return;
+      busy = true;
+      const here = scrollerUnder(bar);
+      const all = Array.from(document.querySelectorAll<HTMLElement>('div')).filter((e) => {
+        if (e === here || !e.firstElementChild || e.clientWidth < 200) return false;
+        const oy = getComputedStyle(e).overflowY;
+        return oy === 'auto' || oy === 'scroll';
+      });
+      for (const e of all) {
+        const content = e.firstElementChild as HTMLElement;
+        if (!isStale(content)) continue;
+        const p = await pictureOf(content, bar.parentElement);
+        // Its frosted copy too: making that on the switch was most of what was left of the wait.
+        for (const sl of p?.slices ?? []) frostSlice(sl, p!.scale);
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      busy = false;
+    };
+    warmSoon.current = () => {
+      clearTimeout(t);
+      t = setTimeout(() => void warm(), 1500);
+    };
+    return () => clearTimeout(t);
+  }, []);
 
   // Set up the glass once the canvases and sizes are known; maps are built once per size.
   useEffect(() => {
@@ -196,16 +235,22 @@ export function TabBar() {
     };
   }, [width, tabW, scale, frame]);
 
-  // A new screen needs a new picture; until it's in, the plain tints stand in.
+  // A new screen needs its picture: as soon as it's laid out (two frames), which is at once if
+  // it was pictured ahead of time. Until then the plain tints stand in. A second look follows,
+  // for a screen still settling (a short one like Paycheck never scrolls to prompt another);
+  // it costs nothing when the picture is unchanged.
   useEffect(() => {
     pic.current = null;
     retries.current = 0;
-    // The new screen fades in, so a picture taken mid-fade comes out washed white, and a
-    // short screen like Paycheck never scrolls far enough to take another. So a second
-    // picture follows once the fade is done.
-    // The new screen fades in; a picture taken mid-fade comes out washed white, so wait it out.
-    const t = setTimeout(() => picture(), 700);
-    return () => clearTimeout(t);
+    setGrace(true);
+    const g = setTimeout(() => setGrace(false), 400);
+    let raf = requestAnimationFrame(() => (raf = requestAnimationFrame(() => picture())));
+    const t = setTimeout(() => picture(), 900);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+      clearTimeout(g);
+    };
   }, [path, picture]);
 
   // Every frame something moves: scrolling, and the pill's slide.
