@@ -133,7 +133,7 @@ function StopCard({ r, onRemove }: { r: StopRow; onRemove: () => void }) {
         accessibilityRole="button"
         onPress={() => (sure ? onRemove() : setSure(true))}
         hitSlop={8}
-        style={({ pressed }) => [{ marginTop: 10, alignSelf: 'flex-start' }, pressed && press.link]}
+        style={({ pressed }) => [press.hit, { marginTop: 4 }, pressed && press.link]}
       >
         <T v="bodyTiny" c={sure ? color.flag : undefined}>
           {sure ? 'Tap again to remove this stop for good' : 'Not a real stop? Remove it'}

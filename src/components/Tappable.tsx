@@ -5,8 +5,9 @@ import { useReduceMotion } from './stepMotion';
 
 /**
  * How the surface shows it was pressed, in the design system's lime (`signal`):
- * - wash: the surface turns lime under the finger (light surfaces: glass, white, raise);
- * - ring: a lime ring inside the edge (dark surfaces, where a lime fill would muddy the text);
+ * - wash: the whole surface turns lime under the finger, corners and all. On a dark surface
+ *   pass children as a function and flip the content to ink while `lit` (see Button);
+ * - ring: a lime ring inside the edge (only where content can't flip, e.g. the picked segment);
  * - dim: a light ink veil (surfaces that are already lime);
  * - none: no highlight, only the give.
  */
@@ -40,19 +41,26 @@ export function Tappable({
   give?: number;
   /** Lime press highlight: wash (default), ring, dim or none. */
   highlight?: PressHighlight;
-  children?: ReactNode;
+  /** Content, or a function of `lit` (true while the highlight shows) to recolor it on lime. */
+  children?: ReactNode | ((s: { lit: boolean }) => ReactNode);
 }) {
   const reduce = useReduceMotion();
   const [v] = useState(() => new Animated.Value(1));
   const [pressed, setPressed] = useState(false);
   const [lit] = useState(() => new Animated.Value(0));
+  // True from press until the fade finishes, so content recolored for lime never sits on the
+  // dark surface (or white on lime) mid-fade.
+  const [isLit, setIsLit] = useState(false);
 
   const light = () => {
     lit.stopAnimation();
     lit.setValue(1);
+    setIsLit(true);
   };
   const unlight = () => {
-    Animated.timing(lit, { toValue: 0, duration: 260, delay: 60, easing: Easing.out(Easing.quad), useNativeDriver: native }).start();
+    Animated.timing(lit, { toValue: 0, duration: 260, delay: 60, easing: Easing.out(Easing.quad), useNativeDriver: native }).start(
+      ({ finished }) => finished && setIsLit(false),
+    );
   };
   const down = () => {
     if (reduce) return;
@@ -94,12 +102,14 @@ export function Tappable({
       // Always a transform (scale 1 under Reduce Motion): it makes the surface its own stacking
       // context, so the highlight at zIndex -1 sits above the surface's fill but under every child
       // (on the web an absolute layer would otherwise paint over unpositioned children like icons).
-      style={[base, { transform: [{ scale: v }] }]}
+      // While the finger is down the surface itself is lime too, so no dark hairline of an ink
+      // fill shows round the highlight's anti-aliased edge.
+      style={[base, pressed && highlight === 'wash' && hl.wash, { transform: [{ scale: v }] }]}
     >
       {highlight !== 'none' && (
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, corner, hl[highlight], { zIndex: -1, opacity: lit }]} />
       )}
-      {children}
+      {typeof children === 'function' ? children({ lit: isLit }) : children}
     </AnimatedPressable>
   );
 }

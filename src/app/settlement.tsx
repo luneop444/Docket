@@ -124,7 +124,7 @@ export default function Settlement() {
         ))}
       </Card>
       <Gap h={24} />
-      <Button label="Scan the settlement" icon={<DocIcon c={color.bg} />} onPress={scan} />
+      <Button label="Scan the settlement" icon={(c) => <DocIcon c={c} />} onPress={scan} />
       <Gap h={8} />
       <T v="bodyTiny" style={styles.center}>Claude finds each load on it by its number.</T>
       <Gap h={16} />

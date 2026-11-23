@@ -284,11 +284,12 @@ function UndoToast({ text }: { text: string }) {
       ]}
     >
       <Text style={[type.bodyStrong, styles.undoText]}>{text}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Fix the arrival time" onPress={a.openFix} hitSlop={10} style={({ pressed }) => pressed && press.link}>
-        <Text style={[type.labelSmall, { color: protoColor.toastAction }]}>Fix</Text>
+      {/* On the dark toast the action's own chip turns lime and its word ink while pressed. */}
+      <Pressable accessibilityRole="button" accessibilityLabel="Fix the arrival time" onPress={a.openFix} hitSlop={10} style={({ pressed }) => [press.hit, pressed && press.link]}>
+        {({ pressed }) => <Text style={[type.labelSmall, { color: pressed ? color.ink : protoColor.toastAction }]}>Fix</Text>}
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="Undo, this isn't a stop" onPress={a.cancelArrival} hitSlop={10} style={({ pressed }) => pressed && press.link}>
-        <Text style={[type.labelSmall, { color: color.signal }]}>Undo</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel="Undo, this isn't a stop" onPress={a.cancelArrival} hitSlop={10} style={({ pressed }) => [press.hit, pressed && press.link]}>
+        {({ pressed }) => <Text style={[type.labelSmall, { color: pressed ? color.ink : color.signal }]}>Undo</Text>}
       </Pressable>
     </Animated.View>
   );

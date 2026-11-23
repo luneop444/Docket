@@ -102,7 +102,10 @@ export function Card({
 
 /**
  * Press feedback everywhere: cards, tiles and buttons give a little (0.98) and light up
- * lime (Tappable); text links get a lime marker behind the words.
+ * lime (Tappable). A text link or a tappable part of a card gets its own shape to light up,
+ * without moving anything: `hit` pads a link into a small squircle (negative margin keeps
+ * the words where they were), `section` pads a block out to the card's inset with the
+ * option radius. Pair either with `link` for the lime while pressed.
  */
 export const press = {
   get give() {
@@ -110,6 +113,12 @@ export const press = {
   },
   get link() {
     return styles.linkPressed;
+  },
+  get hit() {
+    return styles.linkHit;
+  },
+  get section() {
+    return styles.sectionHit;
   },
 };
 
@@ -131,7 +140,8 @@ export function Button({
   variant?: ButtonVariant;
   small?: boolean;
   disabled?: boolean;
-  icon?: ReactNode;
+  /** An icon, or a function of the label color so it can turn ink with the label on press. */
+  icon?: ReactNode | ((c: string) => ReactNode);
   style?: StyleProp<ViewStyle>;
 }) {
   const bg: Record<ButtonVariant, string | undefined> = {
@@ -149,9 +159,9 @@ export function Button({
       onPress={onPress}
       // A text button dims like an iOS text button; filled buttons give under the finger.
       give={variant === 'text' ? 1 : 0.97}
-      // Lime press highlight: a lime ring on ink, a veil on lime, a lime wash on light buttons;
-      // text buttons get the lime marker instead (linkPressed).
-      highlight={variant === 'primary' ? 'ring' : variant === 'signal' ? 'dim' : variant === 'text' ? 'none' : 'wash'}
+      // Lime press highlight: the whole button turns lime (an ink button's label and icon turn
+      // ink with it); a lime button takes a light veil; text buttons fill their own shape lime.
+      highlight={variant === 'signal' ? 'dim' : variant === 'text' ? 'none' : 'wash'}
       style={({ pressed }) => [
         styles.btn,
         { backgroundColor: bg[variant] },
@@ -163,10 +173,15 @@ export function Button({
         style,
       ]}
     >
-      {icon}
-      <Text style={[small ? type.labelSmall : type.labelButton, { color: fg }]}>
-        {label}
-      </Text>
+      {({ lit }) => {
+        const c = lit && variant === 'primary' ? color.ink : fg;
+        return (
+          <>
+            {typeof icon === 'function' ? icon(c) : icon}
+            <Text style={[small ? type.labelSmall : type.labelButton, { color: c }]}>{label}</Text>
+          </>
+        );
+      }}
     </Tappable>
   );
 }
@@ -508,20 +523,27 @@ export function ActionCard({
       accessibilityLabel={sub ? `${label}. ${sub}` : label}
       onPress={onPress}
       style={[styles.action, primary ? styles.actionPrimary : styles.actionSecondary]}
-      highlight={primary ? 'ring' : 'wash'}
     >
-      <IconTile icon={icon} tone={primary ? 'signal' : 'raise'} size={44} />
-      <View style={styles.flexGap2}>
-        <T v="labelButton" c={primary ? color.bg : color.ink}>
-          {label}
-        </T>
-        {sub ? (
-          <T v="bodySmall" c={primary ? color.bg : color.sub}>
-            {sub}
-          </T>
-        ) : null}
-      </View>
-      <ChevronRight c={primary ? color.bg : color.sub} />
+      {({ lit }) => {
+        // Pressed, the ink card turns lime like every other card, so its content turns ink.
+        const dark = primary && !lit;
+        return (
+          <>
+            <IconTile icon={icon} tone={primary ? (lit ? 'ink' : 'signal') : 'raise'} size={44} />
+            <View style={styles.flexGap2}>
+              <T v="labelButton" c={dark ? color.bg : color.ink}>
+                {label}
+              </T>
+              {sub ? (
+                <T v="bodySmall" c={dark ? color.bg : color.sub}>
+                  {sub}
+                </T>
+              ) : null}
+            </View>
+            <ChevronRight c={dark ? color.bg : primary ? color.ink : color.sub} />
+          </>
+        );
+      }}
     </Tappable>
   );
 }
@@ -587,8 +609,18 @@ const styles = StyleSheet.create({
   btnText: { height: 44 },
   disabled: { opacity: 0.35 },
   pressed: { transform: [{ scale: 0.98 }] },
-  /** Text links and text buttons: a lime marker behind the words while pressed. */
-  linkPressed: { backgroundColor: color.signal, borderRadius: 6, borderCurve: 'continuous' },
+  /** Pressed text links, text buttons and card sections: their whole shape turns lime. */
+  linkPressed: { backgroundColor: color.signal },
+  linkHit: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginHorizontal: -10,
+    marginVertical: -6,
+    borderRadius: radius.chip,
+    borderCurve: 'continuous',
+  },
+  sectionHit: { padding: 16, margin: -16, borderRadius: radius.option, borderCurve: 'continuous' },
   pill: { height: 26, paddingHorizontal: 10, borderRadius: 13, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
   fake: {
     fontFamily: fontFamily.semibold,

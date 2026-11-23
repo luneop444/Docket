@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Image, Pressable, StyleSheet, TextInput, View, type HostInstance, type ScrollViewInstance } from 'react-native';
+import { Image, Pressable, StyleSheet, TextInput, View, type HostInstance, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { LOGOS } from '../components/carrierLogos';
 import { OnboardingBar, Screen } from '../components/Chrome';
 import { EyeSlashIcon, SearchIcon, TruckOutlineIcon } from '../components/Icons';
@@ -15,6 +15,10 @@ export default function PickCompany() {
   const { a } = useStore();
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
+  const field = useRef<TextInputInstance>(null);
+  // Tapping Back blurs the field before the press lands, so remember the blur for a moment:
+  // a Back right after typing still means "stop searching", not "leave this screen".
+  const blurredAt = useRef(0);
   const q = query.trim();
   const hits = q ? COMPANIES.filter((c) => c.name.toLowerCase().includes(q.toLowerCase())).slice(0, 6) : [];
   const exact = COMPANIES.some((c) => c.name.toLowerCase() === q.toLowerCase());
@@ -57,6 +61,19 @@ export default function PickCompany() {
     );
   }
 
+  /** Back while searching returns to the list as it was before the field was tapped. */
+  function back() {
+    const searching = q || focused || Date.now() - blurredAt.current < 400;
+    if (searching) {
+      setQuery('');
+      setFocused(false);
+      blurredAt.current = 0;
+      field.current?.blur();
+      return;
+    }
+    router.navigate('/welcome');
+  }
+
   function pick(name: string, custom: boolean) {
     a.pickCompany(name, custom);
     router.push(custom ? '/edit-rules' : '/company-rules');
@@ -65,7 +82,7 @@ export default function PickCompany() {
   return (
     <Screen
       step={1}
-      header={<OnboardingBar step={1} onBack={() => router.navigate('/welcome')} />}
+      header={<OnboardingBar step={1} onBack={back} />}
       scrollRef={scroll}
       onScrollY={onScrollY}
       overlay={<LetterIndex onLetter={jump} visible={showIndex && !q} />}
@@ -77,10 +94,14 @@ export default function PickCompany() {
       <View style={[styles.field, focused && styles.fieldFocus]}>
         <SearchIcon c={color.faint} />
         <TextInput
+          ref={field}
           value={query}
           onChangeText={setQuery}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onBlur={() => {
+            blurredAt.current = Date.now();
+            setFocused(false);
+          }}
           placeholder="Search or add your company"
           placeholderTextColor={color.faint}
           autoCorrect={false}

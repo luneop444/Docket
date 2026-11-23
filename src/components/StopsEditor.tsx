@@ -54,7 +54,7 @@ export function StopsEditor({
           <View style={styles.stopHead}>
             <T v="bodyStrong">Stop {i + 1}</T>
             {stops.length > 1 ? (
-              <Pressable accessibilityRole="button" onPress={() => onStops(stops.filter((_, j) => j !== i))} hitSlop={8} style={({ pressed }) => pressed && press.link}>
+              <Pressable accessibilityRole="button" onPress={() => onStops(stops.filter((_, j) => j !== i))} hitSlop={8} style={({ pressed }) => [press.hit, pressed && press.link]}>
                 <T v="bodySmall">Remove</T>
               </Pressable>
             ) : null}
