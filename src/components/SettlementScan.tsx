@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Image, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { gotFromSettlement, sampleScan, type Claim } from '../logic/claims';
 import { sameLoad, type SettlementReading } from '../logic/documents';
@@ -8,8 +8,8 @@ import { loadNo } from '../logic/sampleData';
 import { cleanAmount } from '../logic/settlement';
 import { useStore } from '../state/AppStore';
 import { DocReadError, DocReadingOff, pickFile, postDoc, shrinkPhoto, type DocFile } from '../state/readDoc';
-import { color, fontFamily, glass } from '../theme/tokens';
-import { LiquidSheet } from './LiquidSheet';
+import { color, fontFamily, glass, glassLift, radius } from '../theme/tokens';
+import { RiseCtx } from './backdrop';
 import { BackBar, Screen } from './Chrome';
 import { Chip } from './Chip';
 import { DocIcon } from './Icons';
@@ -332,15 +332,6 @@ function Review({
   );
 }
 
-/**
- * The sheet's glass tint: the nav bar's exact 62%. Red sits only in solid chips, which carry
- * their own contrast, so the glass doesn't have to. Try others with ?sheettint=0.82.
- */
-const SHEET_TINT = (() => {
-  if (typeof window === 'undefined') return 0.62;
-  const v = parseFloat(new URLSearchParams(window.location.search).get('sheettint') ?? '');
-  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.62;
-})();
 
 const READING = ['Reading the page', 'Finding your loads', 'Matching detention', 'Matching detention'];
 
@@ -383,8 +374,13 @@ function Found({
   const short = Math.round(found.reduce((t, c) => t + Math.max(0, c.left - (got[c.id] ?? 0)), 0) * 100) / 100;
   const shortOn = found.filter((c) => (got[c.id] ?? 0) < c.left - 0.005);
   const which = shortOn.length === 1 ? (loadNo(shortOn[0].load) ? `load ${loadNo(shortOn[0].load)}` : shortOn[0].load.name) : `${shortOn.length} loads`;
+  // Nothing to wait for (no glass to draw): it rises as soon as it's laid out.
+  const ready = useContext(RiseCtx) ?? undefined;
   return (
-    <LiquidSheet tint={SHEET_TINT}>
+    // Solid white, like the app's other sheets, not glass: this is the read's result, numbers
+    // to check, so it's content (Apple HIG, Materials: no Liquid Glass in the content layer).
+    // As glass, the statement's own lines showed through behind the rows being read.
+    <View style={styles.sheet} onLayout={() => ready?.()}>
       <T v="bodyStrong">{label} settlement</T>
       <T v="bodyTiny">Detention read from the page</T>
       <Gap h={16} />
@@ -402,7 +398,7 @@ function Found({
         )}
       </View>
       <Gap h={16} />
-      <ScrollView style={styles.sheetRows} bounces={false}>
+      <ScrollView style={styles.sheetRows} bounces={false} showsVerticalScrollIndicator={false}>
         {claims.map((c, i) => {
           const miss = unmatched.includes(c.id);
           const v = got[c.id] ?? 0;
@@ -432,10 +428,10 @@ function Found({
       </ScrollView>
       <Gap h={16} />
       <Row style={styles.pair}>
-        <Button label="Fix a row" variant="white" style={styles.flex} onPress={onFix} />
+        <Button label="Fix a row" variant="quiet" style={styles.flex} onPress={onFix} />
         <Button label="Looks right" style={styles.flex} onPress={onConfirm} />
       </Row>
-    </LiquidSheet>
+    </View>
   );
 }
 
@@ -467,6 +463,7 @@ const styles = StyleSheet.create({
   missNote: { paddingBottom: 12 },
   hero: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
   sheetRows: { maxHeight: 210, flexGrow: 0 },
+  sheet: { backgroundColor: color.bg, borderRadius: radius.sheet, borderCurve: 'continuous', padding: 20, boxShadow: glassLift },
   foundRow: { paddingVertical: 12 },
   amount: {
     flexDirection: 'row',

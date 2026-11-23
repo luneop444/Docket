@@ -126,12 +126,10 @@ export function Scanner({
     Animated.timing(hand, { toValue: 1, duration: HAND_MS, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }).start();
   }, [sample, reduce, hand, paperReady]);
 
-  // How far the scene drops for the result card: just enough that about 150 points of the
-  // page run under the card's top edge, so its glass has the page's lines to bend there. None
-  // when the card already covers that much (a tall card), and never past the read lines' room.
-  const [cardH, setCardH] = useState(0);
-  const { pillBottom } = useTabSpace();
-  const dropBy = cardH ? Math.max(0, Math.min(DROP_MAX, height - pillBottom - cardH + 150 - (gy + gh))) : 0;
+  const [, setCardH] = useState(0);
+  // The result card is solid now, so the scene no longer drops for its rim to have something
+  // to bend; the statement stays where it was, its read rows visible above the card.
+  const dropBy = 0;
   const [drop] = useState(() => new Animated.Value(0));
   const dropping = stage === 'found';
   useEffect(() => {
