@@ -42,17 +42,15 @@ export interface GlassLook {
 }
 export const NO_TUNE: GlassTune = { bend: 1, bezel: null, split: 1, tint: null, lift: null, rimShade: null, adapt: null, frost: null };
 /**
- * Refraction on the scan pages, times the system's: a little less, since the glass there bends
- * a photo of a printed page and the bent text competes with the pills' and card's own text.
- * Shared by the pills and the result card so they stay one material.
+ * The scan pages' glass, against the system's: all the same. They were turned down (bend 0.85,
+ * splay 0.6, frost 0.5pt, depth 0.8) while the scanner's glass was bending a wrong picture of
+ * the scene; with that fixed, the cuts only made this glass look unlike the rest of the app.
+ * Kept as dials, shared by the pills and the result card so they stay one material.
  */
-export const SCAN_BEND = 0.85;
-/** Colour split (splay) on the scan pages, times the system's. Shared the same way. */
-export const SCAN_SPLIT = 0.6;
-/** Frost on the scan pages, in points (the system's is 1): clearer, so the bend reads. */
-export const SCAN_FROST = 0.5;
-/** Depth (the bending rim's width) on the scan pages, times the system's. */
-export const SCAN_DEPTH = 0.8;
+export const SCAN_BEND = 1;
+export const SCAN_SPLIT = 1;
+export const SCAN_FROST = 1;
+export const SCAN_DEPTH = 1;
 /**
  * Sent on document when what's behind the glass has moved and come to rest (the scanner's hand
  * settling, the scene dropping for the card): glass over a backdrop takes a new picture of it,

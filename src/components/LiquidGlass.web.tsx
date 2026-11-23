@@ -221,12 +221,20 @@ export function LiquidPill({ w, h, on = true, children }: { w: number; h: number
       <div style={{ ...S.glass, ...tuned, borderRadius: r, opacity: on ? 1 : 0 }}>
         {/* A new size gets a new canvas: the old one's WebGL context was let go with its glass. */}
         <canvas key={`${w}x${h}`} ref={cv} aria-hidden style={{ ...S.cv, opacity: group?.live ? 1 : 0 }} />
-        <div style={{ ...S.rim, ...(tune.rimShade == null ? null : { boxShadow: rimWith(tune.rimShade) }), borderRadius: r }} />
+        <div style={{ ...S.rim, ...(tune.rimShade == null ? null : { boxShadow: rimWith(tune.rimShade) }), ...(dark ? { boxShadow: RIM_DARK } : null), borderRadius: r }} />
       </div>
       <div style={S.content}>{look ? <GlassInkCtx.Provider value={{ look: dark ? 'dark' : 'light', ink: look.ink }}>{children}</GlassInkCtx.Provider> : children}</div>
     </div>
   );
 }
+
+/**
+ * The rim in the dark appearance. The system's rim (a 45% white line round the edge, a 95% one
+ * along the top) is a few shades over white glass, almost nothing; drawn over dark glass the
+ * same white is a bright outline. So dark glass gets the same small step in light, not the
+ * same white: about 10% round the edge, 25% along the top.
+ */
+const RIM_DARK = 'inset 0 1px 0 rgba(255,255,255,0.25), inset 0 0 0 1px rgba(255,255,255,0.10)';
 
 const S: Record<string, CSSProperties> = {
   group: { position: 'relative', display: 'flex', flexDirection: 'row', alignItems: 'center', pointerEvents: 'none' },

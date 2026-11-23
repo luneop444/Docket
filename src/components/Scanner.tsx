@@ -3,7 +3,7 @@ import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View, u
 import Svg, { Circle, ClipPath, Defs, G, Path } from 'react-native-svg';
 import { squircleExtent, squirclePath } from '../logic/squircle';
 import { color, colorDark, protoColor, radius, type as typo } from '../theme/tokens';
-import { useInsets, useTabSpace } from './Chrome';
+import { useInsets } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
 import { BackdropCtx, GlassInkCtx, GlassTuneCtx, NO_TUNE, repicture, RiseCtx, SCAN_BEND, SCAN_DEPTH, SCAN_FROST, SCAN_SPLIT, sceneShift } from './backdrop';
@@ -126,12 +126,10 @@ export function Scanner({
     Animated.timing(hand, { toValue: 1, duration: HAND_MS, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }).start();
   }, [sample, reduce, hand, paperReady]);
 
-  // How far the scene drops for the result card: just enough that about 150 points of the
-  // page run under the card's top edge, so its glass has the page's lines to bend there. None
-  // when the card already covers that much (a tall card), and never past the read lines' room.
-  const [cardH, setCardH] = useState(0);
-  const { pillBottom } = useTabSpace();
-  const dropBy = cardH ? Math.max(0, Math.min(DROP_MAX, height - pillBottom - cardH + 150 - (gy + gh))) : 0;
+  const [, setCardH] = useState(0);
+  // The result card is solid now, so the scene no longer drops for its rim to have something
+  // to bend; the statement stays where it was, its read rows visible above the card.
+  const dropBy = 0;
   const [drop] = useState(() => new Animated.Value(0));
   const dropping = stage === 'found';
   useEffect(() => {
@@ -526,8 +524,6 @@ function Dots() {
 function Rise({ children, onHeight }: { children: ReactNode; onHeight: (h: number) => void }) {
   const reduce = useReduceMotion();
   const { height } = useWindowDimensions();
-  // Floats where the tab bar floats: 20 in from the sides, at its distance from the bottom.
-  const { pillBottom } = useTabSpace();
   const [t] = useState(() => new Animated.Value(reduce ? 1 : 0));
   const [go, setGo] = useState(false);
   const [ready] = useState(() => () => setGo(true));
@@ -541,7 +537,7 @@ function Rise({ children, onHeight }: { children: ReactNode; onHeight: (h: numbe
   }, [reduce, go, t]);
   return (
     <RiseCtx.Provider value={ready}>
-      <Animated.View onLayout={(e) => onHeight(e.nativeEvent.layout.height)} style={[styles.sheetWrap, { right: L.edge, bottom: pillBottom }, { transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [height, 0] }) }] }]}>
+      <Animated.View onLayout={(e) => onHeight(e.nativeEvent.layout.height)} style={[styles.sheetWrap, { transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [height, 0] }) }] }]}>
         {children}
       </Animated.View>
     </RiseCtx.Provider>
@@ -728,5 +724,6 @@ const styles = StyleSheet.create({
   progressText: { ...typo.labelButton, flex: 1, color: WHITE },
   dots: { flexDirection: 'row', gap: 5 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: WHITE },
-  sheetWrap: { position: 'absolute', left: L.edge },
+  // On the bottom edge, full width: a solid sheet, finished by the phone's own corners.
+  sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
 });

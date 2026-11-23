@@ -660,9 +660,11 @@ const styles = StyleSheet.create({
     gap: 8,
     width: '100%',
     height: 56,
-    borderRadius: radius.control, borderCurve: 'continuous',
+    // Buttons are capsules (iOS 26's control shape): anything you tap is a pill, anything that
+    // holds content (cards, sheets, fields, options) keeps its squircle.
+    borderRadius: 28,
   },
-  btnSmall: { height: 46, borderRadius: radius.chip, borderCurve: 'continuous' },
+  btnSmall: { height: 46, borderRadius: 23 },
   btnText: { height: 44 },
   disabled: { opacity: 0.35 },
   pressed: { transform: [{ scale: 0.98 }] },
@@ -674,8 +676,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     marginHorizontal: -10,
     marginVertical: -6,
-    borderRadius: radius.chip,
-    borderCurve: 'continuous',
+    // A link is tappable, so its lime press shows as a pill like every other control.
+    borderRadius: 999,
   },
   sectionHit: { padding: 16, margin: -16, borderRadius: radius.option, borderCurve: 'continuous' },
   pill: { height: 26, paddingHorizontal: 10, borderRadius: 13, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
@@ -704,7 +706,7 @@ const styles = StyleSheet.create({
   radio: { width: 22, height: 22, borderRadius: 11, borderCurve: 'continuous', borderWidth: 2, borderColor: color.track },
   radioOn: { borderWidth: 7, borderColor: color.ink },
   seg: { flexDirection: 'row', gap: SEG_GAP },
-  segThumb: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: radius.chip, borderCurve: 'continuous' },
+  segThumb: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 22 },
   // The picked button lets the sliding pill under it show through.
   segBtnOn: { backgroundColor: 'transparent', boxShadow: 'none' },
   // Unpicked options are glass buttons, like the app's other white buttons, so they lift off
@@ -712,7 +714,7 @@ const styles = StyleSheet.create({
   segBtn: {
     flex: 1,
     height: 44,
-    borderRadius: radius.chip, borderCurve: 'continuous',
+    borderRadius: 22,
     ...glass,
     alignItems: 'center',
     justifyContent: 'center',
