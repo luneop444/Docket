@@ -28,7 +28,7 @@ import { placeOf } from '../logic/state';
 import { islandCopy } from '../logic/island';
 import { apptOf, stopCalc, type FixDraft } from '../logic/stop';
 import { useStore, type MessageStep } from '../state/AppStore';
-import { color, fontFamily, glass, protoColor, radius, type } from '../theme/tokens';
+import { color, fontFamily, glass, glassEdge, protoColor, radius, type } from '../theme/tokens';
 import { BandScrollView } from './BandScrollView';
 import { useFramed, useInsets, useIslandStage } from './Chrome';
 import { MinusIcon, PlusIcon, TruckIcon } from './Icons';
@@ -295,7 +295,11 @@ function UndoToast({ text }: { text: string }) {
   );
 }
 
-/** Bottom of the screen, or the top while a sheet is open so it never covers the sheet's buttons. */
+/**
+ * Bottom of the screen, or the top while a sheet is open so it never covers the sheet's buttons.
+ * A white card with the glass edge and lift, ink text and the wordmark's lime bar: black on
+ * white reads at 16:1, and it never merges with the ink buttons it floats over.
+ */
 function Toast({ text, atTop }: { text: string; atTop?: boolean }) {
   const up = useEnter(200);
   useAnnounce(text);
@@ -312,7 +316,8 @@ function Toast({ text, atTop }: { text: string; atTop?: boolean }) {
         },
       ]}
     >
-      <Text style={[type.bodySmall, { fontSize: 15, color: color.bg }]}>{text}</Text>
+      <View style={styles.toastBar} />
+      <Text style={[type.bodySmall, styles.toastText]}>{text}</Text>
     </Animated.View>
   );
 }
@@ -669,12 +674,21 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     bottom: 96,
-    backgroundColor: protoColor.toast,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: color.bg,
+    // The glass card's hairline edge plus a deeper lift, so it floats clear of whatever is under it.
+    boxShadow: `${glassEdge}, 0 12px 32px rgba(0,0,0,0.18)`,
     borderRadius: 16, borderCurve: 'continuous',
     paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingLeft: 14,
+    paddingRight: 16,
     zIndex: 60,
   },
+  // The wordmark's lime bar (10 × 22 there), slimmer here: marks it as Docket speaking.
+  toastBar: { alignSelf: 'stretch', width: 4, minHeight: 20, borderRadius: 2, backgroundColor: color.signal },
+  toastText: { flex: 1, minWidth: 0, fontSize: 15, color: color.ink },
   island: {
     position: 'absolute',
     alignSelf: 'center',

@@ -3,7 +3,7 @@
  * v1 prototype's shared pieces (cards, options, segmented buttons, bars,
  * "Faked" tags, prototype controls).
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Animated,
   Platform,
@@ -98,6 +98,56 @@ export function Card({
     );
   }
   return <View style={s}>{children}</View>;
+}
+
+/* ---------- ListCard + ListRow (Figma: List card / List row) ---------- */
+
+const ListPos = createContext<{ first: boolean; last: boolean }>({ first: true, last: true });
+
+/**
+ * A card holding a list of tappable rows, like an iOS inset grouped list. The card has no
+ * padding of its own: each ListRow spans it edge to edge, so a pressed row lights up out to
+ * the card's sides and to the dividers above and below it. The first row takes the card's top
+ * corners and the last row its bottom ones, so the lime meets the card's own squircle.
+ */
+export function ListCard({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const items = Children.toArray(children).filter(isValidElement);
+  return (
+    <View style={[styles.card, styles.listCard, style]}>
+      {items.map((child, i) => (
+        <Fragment key={child.key ?? i}>
+          {i > 0 ? <View style={styles.listDivider} /> : null}
+          <ListPos.Provider value={{ first: i === 0, last: i === items.length - 1 }}>{child}</ListPos.Provider>
+        </Fragment>
+      ))}
+    </View>
+  );
+}
+
+/** One tappable row of a ListCard. No give: a list row lights up in place, as on iOS. */
+export function ListRow({
+  accessibilityLabel,
+  onPress,
+  style,
+  children,
+}: {
+  accessibilityLabel?: string;
+  onPress: () => void;
+  style?: StyleProp<ViewStyle>;
+  children: ReactNode;
+}) {
+  const { first, last } = useContext(ListPos);
+  return (
+    <Tappable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      give={1}
+      style={[styles.listRow, first && styles.listRowFirst, last && styles.listRowLast, style]}
+    >
+      {children}
+    </Tappable>
+  );
 }
 
 /**
@@ -594,6 +644,13 @@ const styles = StyleSheet.create({
   rowBase: { alignItems: 'baseline' },
   hr: { height: 1, backgroundColor: color.line, marginVertical: 14 },
   card: { ...glass, borderRadius: radius.card, borderCurve: 'continuous', padding: 20 },
+  listCard: { padding: 0 },
+  // Rows carry the card's 20 inset themselves; 16 top and bottom keeps the old 12 + the card's 4.
+  listRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 16, paddingHorizontal: 20 },
+  listRowFirst: { borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card, borderCurve: 'continuous' },
+  listRowLast: { borderBottomLeftRadius: radius.card, borderBottomRightRadius: radius.card, borderCurve: 'continuous' },
+  // Inset to the text like the old Hr, so the lime of a pressed row stops at the line.
+  listDivider: { height: 1, backgroundColor: color.line, marginHorizontal: 20 },
   cardSignal: { backgroundColor: color.signal, boxShadow: 'none' },
   cardFlagged: glassRing(color.flag),
   btn: {

@@ -69,10 +69,18 @@ function px(v: string) {
 }
 
 function ringOf(boxShadow: string) {
-  // e.g. "rgb(0, 0, 0) 0px 0px 0px 2px inset"
+  // e.g. "rgb(0, 0, 0) 0px 0px 0px 2px inset", alone or in a list with a lift shadow
+  // ("rgba(0, 0, 0, 0.095) 0px 8px 24px 0px, rgb(201, 49, 31) 0px 0px 0px 1.5px inset", a
+  // flagged card). The widest solid inset ring wins; the glass rims are 1px white hairlines.
   if (!boxShadow.includes('inset')) return null;
-  const m = boxShadow.match(/^(rgba?\([^)]*\)|#[0-9a-f]+)\s+0px\s+0px\s+0px\s+([\d.]+)px\s+inset$/i);
-  return m ? { color: m[1], width: parseFloat(m[2]) } : null;
+  let best: { color: string; width: number } | null = null;
+  for (const part of boxShadow.split(/,(?![^(]*\))/)) {
+    const m = part.trim().match(/^(rgba?\([^)]*\)|#[0-9a-f]+)\s+0px\s+0px\s+0px\s+([\d.]+)px\s+inset$/i);
+    if (!m || /rgba\(255,\s*255,\s*255/.test(m[1])) continue;
+    const width = parseFloat(m[2]);
+    if (!best || width > best.width) best = { color: m[1], width };
+  }
+  return best;
 }
 
 function release(el: HTMLElement) {
