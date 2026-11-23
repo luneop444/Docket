@@ -22,7 +22,8 @@ import { tick } from '../logic/haptics';
 import { useReduceMotion } from './stepMotion';
 import { Tappable } from './Tappable';
 
-const SEG_GAP = 6;
+// The segmented control's track inset: the picked pill sits this far inside the track.
+const SEG_PAD = 4;
 const NATIVE_ANIM = Platform.OS !== 'web';
 
 /* ---------- text ---------- */
@@ -337,8 +338,8 @@ export function Seg<K extends string>({
   const [width, setWidth] = useState(0);
   const i = options.findIndex((o) => o.key === value);
   const n = options.length;
-  const segW = width ? (width - SEG_GAP * (n - 1)) / n : 0;
-  const at = (k: number) => Math.max(0, k) * (segW + SEG_GAP);
+  const segW = width ? (width - SEG_PAD * 2) / n : 0;
+  const at = (k: number) => SEG_PAD + Math.max(0, k) * segW;
   // The picked pill is one shape that slides to the option you tap, instead of the colour
   // jumping between buttons; with nothing picked yet it fades in where you tapped.
   const [x] = useState(() => new Animated.Value(0));
@@ -371,12 +372,6 @@ export function Seg<K extends string>({
       accessibilityLabel={label}
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
-      {segW ? (
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.segThumb, { width: segW, backgroundColor: thumb, opacity: shown, transform: [{ translateX: x }] }]}
-        />
-      ) : null}
       {options.map((o) => {
         const on = o.key === value;
         return (
@@ -390,13 +385,31 @@ export function Seg<K extends string>({
             }}
             // Until the row has been measured there's no pill, so the picked button fills itself.
             style={[styles.segBtn, on && (segW ? styles.segBtnOn : { backgroundColor: thumb, boxShadow: 'none' })]}
-            highlight={on ? 'ring' : 'wash'}
+            // The sliding pill is the answer to the tap; a lime ring or wash on top read as a second one.
+            highlight="none"
             instant
           >
-            <Text style={[type.labelSmall, { color: on ? color.bg : color.ink }]}>{o.label}</Text>
+            <Text style={[type.labelSmall, { color: on && !segW ? color.bg : color.ink }]}>{o.label}</Text>
           </Tappable>
         );
       })}
+      {segW ? (
+        <Animated.View
+          pointerEvents="none"
+          importantForAccessibility="no-hide-descendants"
+          style={[styles.segThumb, { width: segW, backgroundColor: thumb, opacity: shown, transform: [{ translateX: x }] }]}
+        >
+          {/* Above the options (it lets taps through), with its own white labels, held still against the track while the pill slides, so
+              a label turns white exactly where the pill covers it, not all at once on the tap. */}
+          <Animated.View style={[styles.segInk, { width, transform: [{ translateX: Animated.multiply(x, -1) }] }]}>
+            {options.map((o) => (
+              <View key={o.key} style={styles.segLabel}>
+                <Text style={[type.labelSmall, { color: color.bg }]}>{o.label}</Text>
+              </View>
+            ))}
+          </Animated.View>
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
@@ -707,17 +720,20 @@ const styles = StyleSheet.create({
   optionRadio: { justifyContent: 'flex-start', gap: 14 },
   radio: { width: 22, height: 22, borderRadius: 11, borderCurve: 'continuous', borderWidth: 2, borderColor: color.track },
   radioOn: { borderWidth: 7, borderColor: color.ink },
-  seg: { flexDirection: 'row', gap: SEG_GAP },
-  segThumb: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 22 },
-  // The picked button lets the sliding pill under it show through.
+  // One choice between options, so one surface (iOS's segmented control): a white glass track
+  // that lifts off the page, and the picked pill slides inside it. As separate raised buttons
+  // (23 Nov) the pill slid across the gap between them, a motion no surface explained. The
+  // grey track the v1 had matched the canvas and vanished, hence glass.
+  seg: { flexDirection: 'row', padding: SEG_PAD, borderRadius: 22 + SEG_PAD, ...glass },
+  segThumb: { position: 'absolute', left: 0, top: SEG_PAD, bottom: SEG_PAD, borderRadius: 22, overflow: 'hidden' },
+  segInk: { position: 'absolute', left: 0, top: 0, bottom: 0, flexDirection: 'row', paddingHorizontal: SEG_PAD },
+  segLabel: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  // The picked option lets the sliding pill under it show through.
   segBtnOn: { backgroundColor: 'transparent', boxShadow: 'none' },
-  // Unpicked options are glass buttons, like the app's other white buttons, so they lift off
-  // the page as something to tap; the grey fill they had matched the canvas and vanished.
   segBtn: {
     flex: 1,
     height: 44,
     borderRadius: 22,
-    ...glass,
     alignItems: 'center',
     justifyContent: 'center',
   },
