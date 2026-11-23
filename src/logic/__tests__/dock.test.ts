@@ -22,6 +22,27 @@ describe('dockTimeline (Figma C3 Timeline / Event states)', () => {
     expect(ev.map((e) => e.state)).toEqual(['done', 'done', 'done', 'current', 'upcoming']);
   });
 
+  it('rails: solid behind you, dotted ahead, free time running is solid as far as now', () => {
+    const ev = dockTimeline(atDock(), t(14, 30), defaultRules);
+    // Arrived and appointment behind you, the check-in step reached; free time runs from 2:00 to 4:00.
+    expect(ev.map((e) => e.segment)).toEqual(['free', 'free', 'free', 'upcoming', 'none']);
+    expect(ev[2].fill).toBeCloseTo(0.25);
+    expect(ev[0].fill).toBeUndefined();
+    const checked = dockTimeline(atDock({ checkin: t(13, 49) }), t(15, 0), defaultRules);
+    expect(checked.map((e) => e.segment)).toEqual(['free', 'free', 'free', 'upcoming', 'none']);
+    expect(checked[2].fill).toBeCloseTo(0.5);
+  });
+
+  it('the path to the lit point is never dotted once the clock runs', () => {
+    for (let now = t(14, 0); now <= t(17, 0); now += 7) {
+      for (const checkin of [null, t(13, 49)]) {
+        const ev = dockTimeline(atDock({ checkin }), now, defaultRules);
+        const lit = ev.findIndex((e) => e.state === 'current');
+        expect(ev.slice(0, lit).map((e) => e.segment)).not.toContain('upcoming');
+      }
+    }
+  });
+
   it('never lights more than one point', () => {
     for (let now = t(13, 48); now <= t(17, 0); now += 7) {
       for (const checkin of [null, t(13, 49)]) {
