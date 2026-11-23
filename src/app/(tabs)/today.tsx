@@ -5,6 +5,7 @@ import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
 import { DemoDrawer } from '../../components/DemoDrawer';
 import { FreeBar } from '../../components/FreeBar';
 import { RollText } from '../../components/RollText';
+import { Swap } from '../../components/Swap';
 import { Timeline } from '../../components/Timeline';
 import { Button, Gap, press, T } from '../../components/ui';
 import { isDemoState } from '../../logic/demo';
@@ -113,7 +114,7 @@ function Head({ name, since }: { name: string; since: number }) {
 
 /**
  * Figma 08 "At the dock, free time" and 09 "At the dock, detention running": the place and
- * load, the time waited, one status line, "Detention so far" under it once it runs, then
+ * load, the big figure (the wait in free time, the money owed in detention), one status line, then
  * the timeline of the stop.
  */
 function AtTheDock() {
@@ -133,11 +134,12 @@ function AtTheDock() {
   const waited = s.now - (st.arrive ?? s.now);
   // Times carry the day once a stop runs past midnight.
   const at = stopTime(st, s.now);
-  const status = inDetention
-    ? `Waited ${dur(waited)} · ${rateShort(s.rules.rate)} since ${at(c.freeEnd)}`
-    : beforeClock
-      ? `Clock starts at your ${at(c.start)} ${fromAppt ? 'appointment' : 'arrival'}`
-      : `Detention starts at ${at(c.freeEnd)}`;
+  const statusFor = (paid: boolean) =>
+    paid
+      ? `Waited ${dur(waited)} · ${rateShort(s.rules.rate)} since ${at(c.freeEnd)}`
+      : beforeClock
+        ? `Clock starts at your ${at(c.start)} ${fromAppt ? 'appointment' : 'arrival'}`
+        : `Detention starts at ${at(c.freeEnd)}`;
   const events = dockTimeline(st, s.now, s.rules).map(({ canCheckIn, ...e }) =>
     canCheckIn ? { ...e, action: { label: 'I checked in', onPress: a.checkIn } } : e,
   );
@@ -161,24 +163,32 @@ function AtTheDock() {
       <View
         accessible
         accessibilityRole="timer"
-        accessibilityLabel={`Waited ${dur(waited)}. ${status}${inDetention ? `. Detention so far ${money(c.owed)}` : ''}`}
+        accessibilityLabel={`${inDetention ? `Detention so far ${money(c.owed)}. ` : ''}Waited ${dur(waited)}. ${statusFor(inDetention)}`}
       >
         {/* The figure answers the question of the moment: in free time how long you've waited
-            toward detention, in detention what you're owed. The wait moves to the line under it. */}
-        <T v="bodyTiny" c={color.sub}>
-          {inDetention ? 'Detention so far' : 'Waited'}
-        </T>
-        <Gap h={4} />
-        {inDetention ? (
-          <RollText text={money(c.owed)} style={[type.displayTimer, styles.tabular, styles.optical, { color: color.ink }]} />
-        ) : (
-          <WaitFigure min={waited} />
-        )}
-      </View>
-      <Gap h={8} />
-      <View style={styles.status}>
-        <View style={styles.dot} />
-        <T v="labelSmall">{status}</T>
+            toward detention, in detention what you're owed, with the wait in the line under it.
+            The switch moves (Swap), so it's seen, not just swapped in a frame. */}
+        <Swap
+          k={inDetention ? 'paid' : 'free'}
+          render={(ph) => (
+            <View>
+              <T v="bodyTiny" c={color.sub}>
+                {ph === 'paid' ? 'Detention so far' : 'Waited'}
+              </T>
+              <Gap h={4} />
+              {ph === 'paid' ? (
+                <RollText text={money(c.owed)} style={[type.displayTimer, styles.tabular, styles.optical, { color: color.ink }]} />
+              ) : (
+                <WaitFigure min={waited} />
+              )}
+              <Gap h={8} />
+              <View style={styles.status}>
+                <View style={styles.dot} />
+                <T v="labelSmall">{statusFor(ph === 'paid')}</T>
+              </View>
+            </View>
+          )}
+        />
       </View>
       <Gap h={24} />
       {/* The times can be fixed (arrival, leaving, break), or a wrong stop cancelled from the same
