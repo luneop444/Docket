@@ -3,7 +3,7 @@ import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View, u
 import Svg, { Circle, ClipPath, Defs, G, Path } from 'react-native-svg';
 import { squircleExtent, squirclePath } from '../logic/squircle';
 import { color, colorDark, protoColor, radius, type as typo } from '../theme/tokens';
-import { useInsets, useTabSpace } from './Chrome';
+import { useInsets } from './Chrome';
 import { CameraIcon, CheckIcon, CloseIcon, DocIcon } from './Icons';
 import { ScanViewfinder, type CamState, type Shot, type Viewfinder } from './ScanViewfinder';
 import { BackdropCtx, GlassInkCtx, GlassTuneCtx, NO_TUNE, repicture, RiseCtx, SCAN_BEND, SCAN_DEPTH, SCAN_FROST, SCAN_SPLIT, sceneShift } from './backdrop';
@@ -524,8 +524,6 @@ function Dots() {
 function Rise({ children, onHeight }: { children: ReactNode; onHeight: (h: number) => void }) {
   const reduce = useReduceMotion();
   const { height } = useWindowDimensions();
-  // Floats where the tab bar floats: 20 in from the sides, at its distance from the bottom.
-  const { pillBottom } = useTabSpace();
   const [t] = useState(() => new Animated.Value(reduce ? 1 : 0));
   const [go, setGo] = useState(false);
   const [ready] = useState(() => () => setGo(true));
@@ -539,7 +537,7 @@ function Rise({ children, onHeight }: { children: ReactNode; onHeight: (h: numbe
   }, [reduce, go, t]);
   return (
     <RiseCtx.Provider value={ready}>
-      <Animated.View onLayout={(e) => onHeight(e.nativeEvent.layout.height)} style={[styles.sheetWrap, { right: L.edge, bottom: pillBottom }, { transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [height, 0] }) }] }]}>
+      <Animated.View onLayout={(e) => onHeight(e.nativeEvent.layout.height)} style={[styles.sheetWrap, { transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [height, 0] }) }] }]}>
         {children}
       </Animated.View>
     </RiseCtx.Provider>
@@ -726,5 +724,6 @@ const styles = StyleSheet.create({
   progressText: { ...typo.labelButton, flex: 1, color: WHITE },
   dots: { flexDirection: 'row', gap: 5 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: WHITE },
-  sheetWrap: { position: 'absolute', left: L.edge },
+  // On the bottom edge, full width: a solid sheet, finished by the phone's own corners.
+  sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
 });

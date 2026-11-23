@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useContext, useEffect, useState } from 'react';
-import { Image, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Platform, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { gotFromSettlement, sampleScan, type Claim } from '../logic/claims';
 import { sameLoad, type SettlementReading } from '../logic/documents';
 import { money } from '../logic/format';
@@ -8,9 +8,9 @@ import { loadNo } from '../logic/sampleData';
 import { cleanAmount } from '../logic/settlement';
 import { useStore } from '../state/AppStore';
 import { DocReadError, DocReadingOff, pickFile, postDoc, shrinkPhoto, type DocFile } from '../state/readDoc';
-import { color, fontFamily, glass, glassLift, radius } from '../theme/tokens';
+import { color, fontFamily, glass, radius } from '../theme/tokens';
 import { RiseCtx } from './backdrop';
-import { BackBar, Screen } from './Chrome';
+import { BackBar, Screen, useInsets } from './Chrome';
 import { Chip } from './Chip';
 import { DocIcon } from './Icons';
 import { SampleSettlementPage } from './SampleSettlementPage';
@@ -376,11 +376,13 @@ function Found({
   const which = shortOn.length === 1 ? (loadNo(shortOn[0].load) ? `load ${loadNo(shortOn[0].load)}` : shortOn[0].load.name) : `${shortOn.length} loads`;
   // Nothing to wait for (no glass to draw): it rises as soon as it's laid out.
   const ready = useContext(RiseCtx) ?? undefined;
+  const { footerBottom } = useInsets();
+  const { height } = useWindowDimensions();
   return (
     // Solid white, like the app's other sheets, not glass: this is the read's result, numbers
     // to check, so it's content (Apple HIG, Materials: no Liquid Glass in the content layer).
     // As glass, the statement's own lines showed through behind the rows being read.
-    <View style={styles.sheet} onLayout={() => ready?.()}>
+    <View style={[styles.sheet, { paddingBottom: footerBottom + 8, maxHeight: height * 0.78 }]} onLayout={() => ready?.()}>
       <T v="bodyStrong">{label} settlement</T>
       <T v="bodyTiny">Detention read from the page</T>
       <Gap h={16} />
@@ -462,8 +464,19 @@ const styles = StyleSheet.create({
   pair: { gap: 8 },
   missNote: { paddingBottom: 12 },
   hero: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
-  sheetRows: { maxHeight: 210, flexGrow: 0 },
-  sheet: { backgroundColor: color.bg, borderRadius: radius.sheet, borderCurve: 'continuous', padding: 20, boxShadow: glassLift },
+  // The rows take the room they need; only a long list (past 78% of the screen) scrolls.
+  sheetRows: { flexGrow: 0, flexShrink: 1 },
+  // A bottom sheet: full width, on the bottom edge, rounded only on top (the phone's corners
+  // finish the bottom), its shadow cast upward onto the page.
+  sheet: {
+    backgroundColor: color.bg,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    borderCurve: 'continuous',
+    paddingTop: 24,
+    paddingHorizontal: 20,
+    boxShadow: '0 -8px 24px rgba(0,0,0,0.095)',
+  },
   foundRow: { paddingVertical: 12 },
   amount: {
     flexDirection: 'row',
