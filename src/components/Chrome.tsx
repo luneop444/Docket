@@ -462,13 +462,14 @@ const styles = StyleSheet.create({
     borderRadius: 22, borderCurve: 'continuous',
   },
   backText: { fontFamily: fontFamily.medium, fontSize: 17, color: color.ink },
+  // Same row as the Today top bar, so the title sits where the wordmark does on every tab.
   pagehead: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 4,
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingBottom: 6,
+    minHeight: 52,
   },
   pageTitle: { fontSize: 19 },
 });
