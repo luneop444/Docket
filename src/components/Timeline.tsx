@@ -109,13 +109,12 @@ const styles = StyleSheet.create({
   sub: { color: color.sub },
   upcoming_: { color: color.sub, fontFamily: fontFamily.regular },
   time: { fontVariant: ['tabular-nums'] },
-  // Figma "I checked in": 124 × 44, black squircle, 15 semibold white.
+  // Figma "I checked in": 124 × 44, black capsule (buttons are pills), 15 semibold white.
   action: {
     marginTop: 8,
     height: 44,
     paddingHorizontal: 18,
-    borderRadius: 14,
-    borderCurve: 'continuous',
+    borderRadius: 22,
     backgroundColor: color.ink,
     alignSelf: 'flex-start',
     justifyContent: 'center',

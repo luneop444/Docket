@@ -3,7 +3,7 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-nativ
 import { tick } from '../logic/haptics';
 import { dur, money } from '../logic/format';
 import { useStore } from '../state/AppStore';
-import { color, protoColor, radius, type } from '../theme/tokens';
+import { color, protoColor, type } from '../theme/tokens';
 import { MinusIcon, PlusIcon } from './Icons';
 import { useReduceMotion } from './stepMotion';
 import { useRepeat } from './useRepeat';
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   stepBtn: {
     width: 52,
     height: 44,
-    borderRadius: radius.chip, borderCurve: 'continuous',
+    borderRadius: 22,
     backgroundColor: color.raise2,
     alignItems: 'center',
     justifyContent: 'center',

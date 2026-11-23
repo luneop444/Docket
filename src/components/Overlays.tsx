@@ -661,7 +661,7 @@ const styles = StyleSheet.create({
   siriQuote: { color: color.bg, marginTop: 'auto', marginBottom: 'auto', textAlign: 'center' },
   lockActivityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   lockButtons: { flexDirection: 'row', gap: 8 },
-  lockButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 14, borderCurve: 'continuous' },
+  lockButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 999 },
   toastTop: { bottom: 'auto', top: 60 },
   toast: {
     position: 'absolute',

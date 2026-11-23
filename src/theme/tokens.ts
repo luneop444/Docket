@@ -107,6 +107,10 @@ export const protoColor = {
   knobShadow: 'rgba(0,0,0,0.25)',
 } as const;
 
+/**
+ * Corner radii for boxes: cards, sheets, fields, options. Buttons aren't here: every button is
+ * a capsule (radius half its height), the shape iOS 26 gives its controls.
+ */
 export const radius = {
   card: 24,
   control: 16,

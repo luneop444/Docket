@@ -525,9 +525,11 @@ const styles = StyleSheet.create({
     gap: 8,
     width: '100%',
     height: 56,
-    borderRadius: radius.control, borderCurve: 'continuous',
+    // Buttons are capsules (iOS 26's control shape): anything you tap is a pill, anything that
+    // holds content (cards, sheets, fields, options) keeps its squircle.
+    borderRadius: 28,
   },
-  btnSmall: { height: 46, borderRadius: radius.chip, borderCurve: 'continuous' },
+  btnSmall: { height: 46, borderRadius: 23 },
   btnText: { height: 44 },
   disabled: { opacity: 0.35 },
   pressed: { transform: [{ scale: 0.98 }] },
@@ -561,7 +563,7 @@ const styles = StyleSheet.create({
   segBtn: {
     flex: 1,
     height: 44,
-    borderRadius: radius.chip, borderCurve: 'continuous',
+    borderRadius: 22,
     backgroundColor: color.raise2,
     alignItems: 'center',
     justifyContent: 'center',
