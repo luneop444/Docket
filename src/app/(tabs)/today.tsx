@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Fragment, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
 import { DemoDrawer } from '../../components/DemoDrawer';
 import { FreeBar } from '../../components/FreeBar';
@@ -18,6 +18,7 @@ import { currentClaimId } from '../../state/currentClaim';
 import { useClaims } from '../../state/useClaims';
 import { PaydayCard } from '../../components/PaydayCard';
 import { color, type } from '../../theme/tokens';
+import { Tappable } from '../../components/Tappable';
 
 /** "Sunday, Nov 15": the title is the day, not the app's name. */
 const TITLE = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
@@ -288,9 +289,9 @@ function AtStop() {
           </>
         ) : (
           <>
-            <Pressable accessibilityRole="button" onPress={() => router.push(`/claim?id=${encodeURIComponent(claim.id)}`)} style={({ pressed }) => [press.hit, pressed && press.link]}>
+            <Tappable accessibilityRole="button" onPress={() => router.push(`/claim?id=${encodeURIComponent(claim.id)}`)} give={1} style={press.hit}>
               <T v="labelSmall">Claim sent · see it in Claims</T>
-            </Pressable>
+            </Tappable>
             <Gap h={16} />
           </>
         )
@@ -311,11 +312,11 @@ function AtStop() {
 
 function Link({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={12} style={({ pressed }) => [press.hit, pressed && press.link]}>
+    <Tappable accessibilityRole="button" onPress={onPress} hitSlop={12} give={1} style={press.hit}>
       <T v="bodySmall" c={color.sub} style={styles.link}>
         {label}
       </T>
-    </Pressable>
+    </Tappable>
   );
 }
 
@@ -329,13 +330,13 @@ function Stops() {
 
   if (!stops.length) {
     return (
-      <Pressable accessibilityRole="button" onPress={() => router.push('/add-load')} style={({ pressed }) => [press.section, pressed && press.link]}>
+      <Tappable accessibilityRole="button" onPress={() => router.push('/add-load')} give={1} style={press.section}>
         <T v="bodyStrong">Add today’s load</T>
         <Gap h={4} />
         <T v="bodySmall" c={color.sub}>
           Optional. With appointment times, Docket knows your stops before you arrive
         </T>
-      </Pressable>
+      </Tappable>
     );
   }
 

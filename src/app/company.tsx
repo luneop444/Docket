@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Image, Pressable, StyleSheet, TextInput, View, type HostInstance, type ScrollViewInstance, type TextInputInstance } from 'react-native';
+import { Image, StyleSheet, TextInput, View, type HostInstance, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { LOGOS } from '../components/carrierLogos';
 import { OnboardingBar, Screen } from '../components/Chrome';
+import { Tappable } from '../components/Tappable';
 import { EyeSlashIcon, SearchIcon, TruckOutlineIcon } from '../components/Icons';
 import { INDEX_LETTERS, LetterIndex } from '../components/LetterIndex';
 import { Gap, noFocusRing, Option, T } from '../components/ui';
@@ -118,12 +119,13 @@ export default function PickCompany() {
           {/* Six visible before scrolling: Plaid found more visible choices meant fewer people had to search. */}
           <View style={styles.grid}>
             {SUGGESTED.map((c) => (
-              <Pressable
+              <Tappable
                 key={c.name}
                 accessibilityRole="button"
                 accessibilityLabel={`${c.name}, ${c.drivers} drivers on Docket`}
                 onPress={() => pick(c.name, false)}
-                style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
+                give={0.97}
+                style={styles.tile}
               >
                 {/* One card: the logo straight on the tile, the name under it, both centered. */}
                 <View style={styles.logoBox}>
@@ -141,7 +143,7 @@ export default function PickCompany() {
                 <T v="bodySmall" c={color.sub} numberOfLines={1} style={styles.tileName}>
                   {LOGOS[c.name]?.short ?? c.name}
                 </T>
-              </Pressable>
+              </Tappable>
             ))}
           </View>
         </>
@@ -192,16 +194,18 @@ export default function PickCompany() {
                 </T>
                 <View style={styles.rule} />
                 {list.map((c) => (
-                  <Pressable
+                  // A list row lights up in place, edge to edge, like the Companies tab rows (no give).
+                  <Tappable
                     key={c.name}
                     accessibilityRole="button"
                     accessibilityLabel={`${c.name}, ${c.drivers} drivers on Docket`}
                     onPress={() => pick(c.name, false)}
-                    style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                    give={1}
+                    style={styles.row}
                   >
                     <T v="body">{c.name}</T>
                     <T v="bodyTiny" c={color.sub}>{c.drivers} drivers on Docket</T>
-                  </Pressable>
+                  </Tappable>
                 ))}
               </View>
             ))}
@@ -236,7 +240,6 @@ const styles = StyleSheet.create({
     borderRadius: 20, borderCurve: 'continuous',
     ...glass,
   },
-  tilePressed: { backgroundColor: color.signal },
   // The tallest logo is 34; every logo sits in the same 36 band so the names line up.
   logoBox: { height: 36, justifyContent: 'center', alignItems: 'center' },
   tileName: { textAlign: 'center' },
@@ -248,9 +251,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     // Margin, not padding, so the divider stops short of the A–Z strip like Contacts.
     marginRight: 24,
+    // 12 of lime either side of the name when pressed; the negative margin keeps the name in place.
+    paddingHorizontal: 12,
+    marginLeft: -12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: color.line,
   },
-  rowPressed: { backgroundColor: color.signal },
   input: { ...type.body, fontSize: 17, flex: 1, minWidth: 0, color: color.ink, ...noFocusRing },
 });

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Chip } from '../../components/Chip';
 import { PageHead, Screen } from '../../components/Chrome';
 import { ChevronRight } from '../../components/Icons';
@@ -12,6 +12,7 @@ import { useStore } from '../../state/AppStore';
 import { useClaims } from '../../state/useClaims';
 import { useNow } from '../../state/useNow';
 import { color } from '../../theme/tokens';
+import { Tappable } from '../../components/Tappable';
 
 /**
  * Claims: every load you're owed detention for, and where each one stands, from the claim
@@ -47,9 +48,9 @@ export default function Claims() {
         <Gap h={12} />
         <View style={styles.rules}>
           <T v="bodyTiny" style={styles.flex}>Figured with {rulesLine(s.rules)}.</T>
-          <Pressable accessibilityRole="button" accessibilityLabel="Change rules" onPress={() => router.push('/rules')} hitSlop={10} style={({ pressed }) => [press.hit, pressed && press.link]}>
+          <Tappable accessibilityRole="button" accessibilityLabel="Change rules" onPress={() => router.push('/rules')} hitSlop={10} give={1} style={press.hit}>
             <T v="bodyTiny" c={color.ink} style={styles.link}>Change</T>
-          </Pressable>
+          </Tappable>
         </View>
         {due ? (
           <>

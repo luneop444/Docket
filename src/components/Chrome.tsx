@@ -8,7 +8,6 @@ import { createContext, isValidElement, useContext, useEffect, useState, type Re
 import {
   Animated,
   Easing,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -27,6 +26,7 @@ import { BandScrollView } from './BandScrollView';
 import { LiquidGroup, LiquidPill } from './LiquidGlass';
 import { ChevronLeft, PersonIcon } from './Icons';
 import { BAR_MS, PUSH_MS, useReduceMotion, useStepMotion } from './stepMotion';
+import { Tappable } from './Tappable';
 import { T } from './ui';
 
 /** True when the app is drawn inside the desktop phone frame. */
@@ -96,14 +96,9 @@ export function ProfileTrailing({ noDate }: { noDate?: boolean } = {}) {
   return (
     <>
       {noDate ? null : <T v="bodyTiny">{headerDate(s.stop, TODAY_LABEL)}</T>}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Profile and rules"
-        onPress={() => router.push('/rules')}
-        style={({ pressed }) => [styles.iconBtn, pressed && styles.pressedBg]}
-      >
+      <Tappable accessibilityRole="button" accessibilityLabel="Profile and rules" onPress={() => router.push('/rules')} style={styles.iconBtn}>
         <PersonIcon />
-      </Pressable>
+      </Tappable>
     </>
   );
 }
@@ -133,15 +128,15 @@ export function BackBar({ onPress, label = 'Back' }: { onPress: () => void; labe
       <View style={styles.glassRow} pointerEvents="box-none">
         <LiquidGroup>
           <LiquidPill w={w} h={44} on={under}>
-            <Pressable
+            <Tappable
               accessibilityRole="button"
               onPress={onPress}
               onLayout={(e) => setW(Math.ceil(e.nativeEvent.layout.width))}
-              style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
+              style={styles.back}
             >
               <ChevronLeft />
               <Text style={styles.backText}>{label}</Text>
-            </Pressable>
+            </Tappable>
           </LiquidPill>
         </LiquidGroup>
       </View>
@@ -166,14 +161,9 @@ export function OnboardingBar({ step, onBack }: { step?: number; onBack: () => v
       <View style={styles.glassRow} pointerEvents="box-none">
         <LiquidGroup>
           <LiquidPill w={44} h={44} on={under}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              onPress={onBack}
-              style={({ pressed }) => [styles.iconBtn, pressed && styles.backPressed]}
-            >
+            <Tappable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} style={styles.iconBtn}>
               <ChevronLeft />
-            </Pressable>
+            </Tappable>
           </LiquidPill>
         </LiquidGroup>
         {step ? (
@@ -418,8 +408,6 @@ const styles = StyleSheet.create({
   topFade: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 4 },
   glassRow: { height: BAR_H, flexDirection: 'row', alignItems: 'center', paddingLeft: 14 },
   centerAbs: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
-  // Press: the glass lights up lime, like every other control (design system press highlight).
-  backPressed: { backgroundColor: color.signal },
   topbar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -451,7 +439,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pressedBg: { backgroundColor: color.signal },
   back: {
     flexDirection: 'row',
     alignItems: 'center',

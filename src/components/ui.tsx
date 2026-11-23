@@ -391,6 +391,7 @@ export function Seg<K extends string>({
             // Until the row has been measured there's no pill, so the picked button fills itself.
             style={[styles.segBtn, on && (segW ? styles.segBtnOn : { backgroundColor: thumb, boxShadow: 'none' })]}
             highlight={on ? 'ring' : 'wash'}
+            instant
           >
             <Text style={[type.labelSmall, { color: on ? color.bg : color.ink }]}>{o.label}</Text>
           </Tappable>
@@ -509,6 +510,7 @@ export function ChoiceTile({
       }}
       style={[styles.choice, selected && styles.choiceOn]}
       highlight={selected ? 'dim' : 'wash'}
+      instant
     >
       {icon ? <IconTile icon={icon} tone={selected ? 'ink' : 'white'} size={48} /> : null}
       <View style={styles.flexGap2}>

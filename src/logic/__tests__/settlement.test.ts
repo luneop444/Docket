@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { defaultRules } from '../detention';
 import { SAMPLE_SETTLEMENT, WEEK, WEEK_LABEL } from '../sampleData';
-import { claimText, cleanAmount, isFlagged, weekTotals } from '../settlement';
+import { claimText, cleanAmount, formatAmount, isFlagged, typeAmount, weekTotals } from '../settlement';
 
 describe('weekTotals (paycheck check)', () => {
   it('expects $208.50 across 3 loads for the week of Oct 26', () => {
@@ -64,5 +64,33 @@ describe('cleanAmount', () => {
   it('keeps digits and the decimal point', () => {
     expect(cleanAmount('$25.00 ')).toBe('25.00');
     expect(cleanAmount('abc')).toBe('');
+  });
+});
+
+describe('typeAmount (the detention total field)', () => {
+  it('takes digits and one decimal point without complaint', () => {
+    expect(typeAmount('22.65')).toEqual({ value: '22.65', error: null });
+    expect(typeAmount('$1,234.50')).toEqual({ value: '1234.50', error: null });
+    expect(typeAmount('.5')).toEqual({ value: '0.5', error: null });
+    expect(typeAmount('007')).toEqual({ value: '7', error: null });
+  });
+  it('refuses letters and symbols with a message, keeping the digits', () => {
+    expect(typeAmount('22a')).toEqual({ value: '22', error: 'Enter a number, like 22.65' });
+    expect(typeAmount('abc').value).toBe('');
+    expect(typeAmount('-5').error).toBe('Enter a number, like 22.65');
+  });
+  it('stops at one point, two cents places and five dollar digits', () => {
+    expect(typeAmount('22.6.5')).toEqual({ value: '22.65', error: 'Use one decimal point, like 22.65' });
+    expect(typeAmount('22.655')).toEqual({ value: '22.65', error: 'Cents only go two places, like 22.65' });
+    expect(typeAmount('123456')).toEqual({ value: '12345', error: 'That’s over $99,999. Check the number' });
+  });
+});
+
+describe('formatAmount', () => {
+  it('fills in the cents when the field is left', () => {
+    expect(formatAmount('22')).toBe('22.00');
+    expect(formatAmount('22.5')).toBe('22.50');
+    expect(formatAmount('0.')).toBe('0.00');
+    expect(formatAmount('')).toBe('');
   });
 });

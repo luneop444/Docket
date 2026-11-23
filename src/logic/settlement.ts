@@ -51,7 +51,50 @@ export function isFlagged(owed: number, mark: Marks[string] | undefined): boolea
 
 /** Keep only digits and a decimal point. */
 export function cleanAmount(v: string): string {
-  return v.replace(/[^0-9.]/g, '');
+  return typeAmount(v).value;
+}
+
+/** The most a typed detention amount can be: five dollar digits ($99,999.99). */
+const MAX_DOLLAR_DIGITS = 5;
+
+/**
+ * Checks an amount as it's typed and says what was wrong, so the field can show it in red
+ * instead of silently dropping the key. Spaces, "$" and thousands commas are fine and dropped
+ * quietly (people paste "$1,234.50"). Anything else that isn't a digit or one decimal point is
+ * refused with "Enter a number". Cents stop at two places; dollars at five digits.
+ */
+export function typeAmount(raw: string): { value: string; error: string | null } {
+  let s = raw.replace(/[\s$,]/g, '');
+  let error: string | null = null;
+  if (/[^0-9.]/.test(s)) {
+    error = 'Enter a number, like 22.65';
+    s = s.replace(/[^0-9.]/g, '');
+  }
+  const dot = s.indexOf('.');
+  let whole = dot < 0 ? s : s.slice(0, dot);
+  let cents = dot < 0 ? '' : s.slice(dot + 1);
+  if (cents.includes('.')) {
+    error ??= 'Use one decimal point, like 22.65';
+    cents = cents.replace(/\./g, '');
+  }
+  if (cents.length > 2) {
+    error ??= 'Cents only go two places, like 22.65';
+    cents = cents.slice(0, 2);
+  }
+  whole = whole.replace(/^0+(?=\d)/, '');
+  if (whole.length > MAX_DOLLAR_DIGITS) {
+    error ??= 'That’s over $99,999. Check the number';
+    whole = whole.slice(0, MAX_DOLLAR_DIGITS);
+  }
+  if (dot >= 0 && whole === '') whole = '0';
+  return { value: dot < 0 ? whole : `${whole}.${cents}`, error };
+}
+
+/** Shows a finished amount with its cents: "22" → "22.00", "22.5" → "22.50". Empty stays empty. */
+export function formatAmount(value: string): string {
+  if (value === '' || value === '.') return '';
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n.toFixed(2) : '';
 }
 
 export function claimText(totals: WeekTotals, rules: Rules, weekLabel: string): string {

@@ -173,13 +173,13 @@ function FixRow({ label, value, last, onStep }: { label: string; value: string; 
     <View style={[styles.timeRow, !last && styles.timeRowLine]}>
       <T v="body" c={color.sub}>{label}</T>
       <View style={styles.stepper}>
-        <Tappable accessibilityRole="button" accessibilityLabel={`${label} earlier`} {...earlier} style={styles.step}>
+        <Tappable accessibilityRole="button" accessibilityLabel={`${label} earlier`} {...earlier} instant style={styles.step}>
           <MinusIcon size={24} />
         </Tappable>
         <View style={styles.stepValue} accessibilityLiveRegion="polite">
           <RollText text={value} style={[type.bodyStrong, styles.tabular, { color: color.ink }]} />
         </View>
-        <Tappable accessibilityRole="button" accessibilityLabel={`${label} later`} {...later} style={styles.step}>
+        <Tappable accessibilityRole="button" accessibilityLabel={`${label} later`} {...later} instant style={styles.step}>
           <PlusIcon size={24} />
         </Tappable>
       </View>
@@ -288,13 +288,13 @@ function UndoToast({ text }: { text: string }) {
       ]}
     >
       <Text style={[type.bodyStrong, styles.undoText]}>{text}</Text>
-      {/* On the dark toast the action's own chip turns lime and its word ink while pressed. */}
-      <Pressable accessibilityRole="button" accessibilityLabel="Fix the arrival time" onPress={a.openFix} hitSlop={10} style={({ pressed }) => [press.hit, pressed && press.link]}>
-        {({ pressed }) => <Text style={[type.labelSmall, { color: pressed ? color.ink : protoColor.toastAction }]}>Fix</Text>}
-      </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="Undo, this isn't a stop" onPress={a.cancelArrival} hitSlop={10} style={({ pressed }) => [press.hit, pressed && press.link]}>
-        {({ pressed }) => <Text style={[type.labelSmall, { color: pressed ? color.ink : color.signal }]}>Undo</Text>}
-      </Pressable>
+      {/* On the dark toast the action's own chip turns lime and its word ink while lit. */}
+      <Tappable accessibilityRole="button" accessibilityLabel="Fix the arrival time" onPress={a.openFix} hitSlop={10} give={1} style={press.hit}>
+        {({ lit }) => <Text style={[type.labelSmall, { color: lit ? color.ink : protoColor.toastAction }]}>Fix</Text>}
+      </Tappable>
+      <Tappable accessibilityRole="button" accessibilityLabel="Undo, this isn't a stop" onPress={a.cancelArrival} hitSlop={10} give={1} style={press.hit}>
+        {({ lit }) => <Text style={[type.labelSmall, { color: lit ? color.ink : color.signal }]}>Undo</Text>}
+      </Tappable>
     </Animated.View>
   );
 }

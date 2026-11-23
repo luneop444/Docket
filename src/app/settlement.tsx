@@ -1,11 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
 import { Chip } from '../components/Chip';
 import { SettlementScan } from '../components/SettlementScan';
 import { DocIcon } from '../components/Icons';
-import { Button, Card, Fake, Gap, noFocusRing, Row, T } from '../components/ui';
+import { Button, Card, Fake, Gap, Row, T } from '../components/ui';
 import {
   checkEvents,
   checkTime,
@@ -17,11 +17,11 @@ import {
 } from '../logic/claims';
 import { money } from '../logic/format';
 import { loadNo } from '../logic/sampleData';
-import { cleanAmount } from '../logic/settlement';
+import { AmountField } from '../components/AmountField';
 import { useStore } from '../state/AppStore';
 import { useClaims } from '../state/useClaims';
 import { useNow } from '../state/useNow';
-import { color, fontFamily } from '../theme/tokens';
+import { color } from '../theme/tokens';
 
 /** One checked settlement: what it showed for each claim, and the claims as they were before. */
 interface Result {
@@ -134,20 +134,7 @@ export default function Settlement() {
           <Gap h={4} />
           <T v="bodySmall">If it lists detention as one line, type that line.</T>
           <Gap h={12} />
-          <View style={styles.amount}>
-            <Text style={styles.amountLabel}>$</Text>
-            <TextInput
-              value={amt}
-              onChangeText={(v) => setAmt(cleanAmount(v))}
-              placeholder="0.00"
-              placeholderTextColor={color.sub}
-              inputMode="decimal"
-              keyboardType="decimal-pad"
-              style={styles.amountInput}
-              accessibilityLabel="Detention total on the settlement"
-              onSubmitEditing={checkTotal}
-            />
-          </View>
+          <AmountField value={amt} onChange={setAmt} label="Detention total on the settlement" onSubmit={checkTotal} />
           <Gap h={12} />
           <Button label="Check it" variant="white" disabled={!Number.isFinite(parseFloat(amt))} onPress={checkTotal} />
         </Card>
@@ -271,16 +258,4 @@ const styles = StyleSheet.create({
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line },
   loadRow: { paddingVertical: 12, gap: 4 },
   note: { paddingTop: 12 },
-  amount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 48,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderCurve: 'continuous',
-    backgroundColor: color.bg,
-  },
-  amountLabel: { fontFamily: fontFamily.regular, fontSize: 17, color: color.sub },
-  amountInput: { flex: 1, minWidth: 0, fontFamily: fontFamily.regular, fontSize: 17, color: color.ink, ...noFocusRing },
 });

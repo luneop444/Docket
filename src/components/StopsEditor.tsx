@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 import { clock, parseClock } from '../logic/format';
 import { tick } from '../logic/haptics';
 import type { LoadStop } from '../logic/sampleData';
@@ -8,6 +8,7 @@ import { color, glass, radius, type } from '../theme/tokens';
 import { MinusIcon, PlusIcon } from './Icons';
 import { Button, noFocusRing, press, Seg, T } from './ui';
 import { useRepeat } from './useRepeat';
+import { Tappable } from './Tappable';
 
 /** A blank stop for the driver to fill in. */
 export const blankStop = (kind: LoadStop['kind'], at: number): LoadStop => ({ name: '', kind, at });
@@ -22,9 +23,9 @@ function Shift({ label, onStep, children }: { label: string; onStep: () => void;
     onStep();
   });
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} {...r} style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}>
+    <Tappable accessibilityRole="button" accessibilityLabel={label} {...r} instant style={styles.step}>
       {children}
-    </Pressable>
+    </Tappable>
   );
 }
 
@@ -54,9 +55,9 @@ export function StopsEditor({
           <View style={styles.stopHead}>
             <T v="bodyStrong">Stop {i + 1}</T>
             {stops.length > 1 ? (
-              <Pressable accessibilityRole="button" onPress={() => onStops(stops.filter((_, j) => j !== i))} hitSlop={8} style={({ pressed }) => [press.hit, pressed && press.link]}>
+              <Tappable accessibilityRole="button" onPress={() => onStops(stops.filter((_, j) => j !== i))} hitSlop={8} give={1} style={press.hit}>
                 <T v="bodySmall">Remove</T>
-              </Pressable>
+              </Tappable>
             ) : null}
           </View>
           <Field
@@ -175,7 +176,6 @@ const styles = StyleSheet.create({
   inputFocus: { boxShadow: `inset 0 0 0 2px ${color.ink}` },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   time: { width: 104, textAlign: 'center', paddingHorizontal: 6, fontVariant: ['tabular-nums'] },
-  stepPressed: { backgroundColor: color.signal },
   step: {
     width: 44,
     height: 44,

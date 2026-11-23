@@ -1,14 +1,14 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useContext, useEffect, useRef, useState } from 'react';
-import { Animated, type GestureResponderEvent, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Animated, type GestureResponderEvent, Image, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { gotFromSettlement, sampleScan, type Claim } from '../logic/claims';
 import { sameLoad, type SettlementReading } from '../logic/documents';
 import { money } from '../logic/format';
 import { loadNo } from '../logic/sampleData';
-import { cleanAmount } from '../logic/settlement';
+import { AmountField } from './AmountField';
 import { useStore } from '../state/AppStore';
 import { DocReadError, DocReadingOff, pickFile, postDoc, shrinkPhoto, type DocFile } from '../state/readDoc';
-import { color, fontFamily, glass, radius } from '../theme/tokens';
+import { color, glass, radius } from '../theme/tokens';
 import { RiseCtx } from './backdrop';
 import { useReduceMotion } from './stepMotion';
 import { BackBar, Screen, useInsets } from './Chrome';
@@ -16,7 +16,7 @@ import { Chip } from './Chip';
 import { DocIcon } from './Icons';
 import { SampleSettlementPage } from './SampleSettlementPage';
 import { Scanner } from './Scanner';
-import { Button, Card, Gap, noFocusRing, Row, T } from './ui';
+import { Button, Card, Gap, Row, T } from './ui';
 import { Tappable } from './Tappable';
 
 /** One page to read: the file sent, and what to show of it (a PDF has no picture here). */
@@ -303,21 +303,13 @@ function Review({
               {editing === c.id ? (
                 <View style={styles.edit}>
                   <T v="bodyTiny">What the settlement shows for this load</T>
-                  <View style={styles.amount}>
-                    <Text style={styles.amountLabel}>$</Text>
-                    <TextInput
-                      value={amt}
-                      onChangeText={(t) => setAmt(cleanAmount(t))}
-                      placeholder="0.00"
-                      placeholderTextColor={color.sub}
-                      inputMode="decimal"
-                      keyboardType="decimal-pad"
-                      autoFocus
-                      style={styles.amountInput}
-                      accessibilityLabel={`Detention for ${c.load.name}`}
-                      onSubmitEditing={() => save(c.id, parseFloat(amt) || 0)}
-                    />
-                  </View>
+                  <AmountField
+                    value={amt}
+                    onChange={setAmt}
+                    label={`Detention for ${c.load.name}`}
+                    autoFocus
+                    onSubmit={() => save(c.id, parseFloat(amt) || 0)}
+                  />
                   <Row style={styles.pair}>
                     <Button label="Not on it" variant="white" small style={styles.flex} onPress={() => save(c.id, 0)} />
                     <Button label="Save" small style={styles.flex} onPress={() => save(c.id, parseFloat(amt) || 0)} />
@@ -567,16 +559,4 @@ const styles = StyleSheet.create({
     boxShadow: '0 -8px 24px rgba(0,0,0,0.095)',
   },
   foundRow: { paddingVertical: 12 },
-  amount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 48,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderCurve: 'continuous',
-    backgroundColor: color.bg,
-  },
-  amountLabel: { fontFamily: fontFamily.regular, fontSize: 17, color: color.sub },
-  amountInput: { flex: 1, minWidth: 0, fontFamily: fontFamily.regular, fontSize: 17, color: color.ink, ...noFocusRing },
 });

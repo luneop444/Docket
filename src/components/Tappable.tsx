@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import { color } from '../theme/tokens';
 import { useReduceMotion } from './stepMotion';
@@ -14,6 +14,13 @@ import { useReduceMotion } from './stepMotion';
 export type PressHighlight = 'wash' | 'ring' | 'dim' | 'none';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+/**
+ * The lime stays up at least this long before the press acts. A quick tap is over in under
+ * 100ms and most taps open another screen, so without this the lime was gone (with the screen)
+ * before anyone saw it. 150ms reads as an instant response but is long enough to see.
+ */
+export const MIN_LIT_MS = 150;
 const native = Platform.OS !== 'web';
 
 /**
@@ -34,8 +41,12 @@ export function Tappable({
   children,
   onPressIn,
   onPressOut,
+  onPress,
+  instant = false,
   ...rest
 }: Omit<PressableProps, 'style' | 'children'> & {
+  /** Act on the press right away (steppers that repeat), not after MIN_LIT_MS. */
+  instant?: boolean;
   style?: StyleProp<ViewStyle> | ((s: { pressed: boolean }) => StyleProp<ViewStyle>);
   /** How far it gives: 0.97 for buttons and rows, closer to 1 for big cards. */
   give?: number;
@@ -51,11 +62,13 @@ export function Tappable({
   // True from press until the fade finishes, so content recolored for lime never sits on the
   // dark surface (or white on lime) mid-fade.
   const [isLit, setIsLit] = useState(false);
+  const litAt = useRef(0);
 
   const light = () => {
     lit.stopAnimation();
     lit.setValue(1);
     setIsLit(true);
+    litAt.current = Date.now();
   };
   const unlight = () => {
     Animated.timing(lit, { toValue: 0, duration: 260, delay: 60, easing: Easing.out(Easing.quad), useNativeDriver: native }).start(
@@ -99,6 +112,15 @@ export function Tappable({
         up();
         onPressOut?.(e);
       }}
+      onPress={
+        onPress &&
+        ((e) => {
+          // Let the lime be seen first (MIN_LIT_MS), then act. A long press acts at once.
+          const wait = MIN_LIT_MS - (Date.now() - litAt.current);
+          if (instant || wait <= 0 || highlight === 'none') onPress(e);
+          else setTimeout(() => onPress(e), wait);
+        })
+      }
       // Always a transform (scale 1 under Reduce Motion): it makes the surface its own stacking
       // context, so the highlight at zIndex -1 sits above the surface's fill but under every child
       // (on the web an absolute layer would otherwise paint over unpositioned children like icons).

@@ -34,13 +34,13 @@ export function Stepper({
   });
   return (
     <View style={styles.stepper}>
-      <Tappable accessibilityRole="button" accessibilityLabel={`Lower ${label}`} accessibilityHint={value} {...minus} style={styles.stepBtn}>
+      <Tappable accessibilityRole="button" accessibilityLabel={`Lower ${label}`} accessibilityHint={value} {...minus} instant style={styles.stepBtn}>
         <MinusIcon />
       </Tappable>
       <View style={styles.stepValueBox} accessibilityLiveRegion="polite">
         <RollText text={value} style={[type.numberS, styles.stepValue]} />
       </View>
-      <Tappable accessibilityRole="button" accessibilityLabel={`Raise ${label}`} accessibilityHint={value} {...plus} style={styles.stepBtn}>
+      <Tappable accessibilityRole="button" accessibilityLabel={`Raise ${label}`} accessibilityHint={value} {...plus} instant style={styles.stepBtn}>
         <PlusIcon />
       </Tappable>
     </View>

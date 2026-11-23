@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Chip } from '../components/Chip';
 import { BackBar, Screen } from '../components/Chrome';
 import { Button, Card, Fake, Gap, press, Row, T } from '../components/ui';
@@ -11,6 +11,7 @@ import { useStore } from '../state/AppStore';
 import { useClaims } from '../state/useClaims';
 import { useNow } from '../state/useNow';
 import { color } from '../theme/tokens';
+import { Tappable } from '../components/Tappable';
 
 /**
  * One claim, start to finish: every step with its date, then the next one. After a claim
@@ -107,25 +108,26 @@ export default function ClaimDetail() {
           {removing ? (
             <View style={styles.confirm}>
               <T v="bodyTiny" style={styles.flex}>Remove {c.load.name} from your stops?</T>
-              <Pressable accessibilityRole="button" onPress={() => setRemoving(false)} hitSlop={10} style={({ pressed }) => [press.hit, pressed && press.link]}>
+              <Tappable accessibilityRole="button" onPress={() => setRemoving(false)} hitSlop={10} give={1} style={press.hit}>
                 <T v="labelSmall">Keep</T>
-              </Pressable>
-              <Pressable
+              </Tappable>
+              <Tappable
                 accessibilityRole="button"
                 onPress={() => {
                   a.removeLogged(c.id);
                   back();
                 }}
                 hitSlop={10}
-                style={({ pressed }) => [press.hit, pressed && press.link]}
+                give={1}
+                style={press.hit}
               >
                 <T v="labelSmall" c={color.flag}>Remove</T>
-              </Pressable>
+              </Tappable>
             </View>
           ) : (
-            <Pressable accessibilityRole="button" onPress={() => setRemoving(true)} hitSlop={8} style={({ pressed }) => [press.hit, styles.remove, pressed && press.link]}>
+            <Tappable accessibilityRole="button" onPress={() => setRemoving(true)} hitSlop={8} give={1} style={[press.hit, styles.remove]}>
               <T v="bodyTiny">Not a real stop? Remove it</T>
-            </Pressable>
+            </Tappable>
           )}
         </>
       ) : null}

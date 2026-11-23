@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { Fragment, useState } from 'react';
-import { Platform, Pressable, Share, View } from 'react-native';
+import { Platform, Share, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
 import { Button, Card, Gap, Pill, press, Row, T, TimeBar } from '../components/ui';
 import { csvFileName, historyCsv, historyText, stopRows, type StopRow } from '../logic/export';
@@ -9,6 +9,7 @@ import { clock, dur, money } from '../logic/format';
 import { dayLabel, weekLabel, weekStart } from '../logic/history';
 import { useStore } from '../state/AppStore';
 import { color } from '../theme/tokens';
+import { Tappable } from '../components/Tappable';
 
 /** Save the CSV: a download in the browser, the share sheet on a phone. */
 async function saveCsv(csv: string, name: string): Promise<boolean> {
@@ -129,16 +130,11 @@ function StopCard({ r, onRemove }: { r: StopRow; onRemove: () => void }) {
         </T>
         {hasBol ? <Pill label="BOL" /> : null}
       </Row>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => (sure ? onRemove() : setSure(true))}
-        hitSlop={8}
-        style={({ pressed }) => [press.hit, { marginTop: 4 }, pressed && press.link]}
-      >
+      <Tappable accessibilityRole="button" onPress={() => (sure ? onRemove() : setSure(true))} hitSlop={8} give={1} style={[press.hit, { marginTop: 4 }]}>
         <T v="bodyTiny" c={sure ? color.flag : undefined}>
           {sure ? 'Tap again to remove this stop for good' : 'Not a real stop? Remove it'}
         </T>
-      </Pressable>
+      </Tappable>
     </Card>
   );
 }
