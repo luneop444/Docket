@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useContext, useEffect, useState } from 'react';
-import { Image, Platform, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { useContext, useEffect, useRef, useState } from 'react';
+import { Animated, type GestureResponderEvent, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { gotFromSettlement, sampleScan, type Claim } from '../logic/claims';
 import { sameLoad, type SettlementReading } from '../logic/documents';
 import { money } from '../logic/format';
@@ -10,6 +10,7 @@ import { useStore } from '../state/AppStore';
 import { DocReadError, DocReadingOff, pickFile, postDoc, shrinkPhoto, type DocFile } from '../state/readDoc';
 import { color, fontFamily, glass, radius } from '../theme/tokens';
 import { RiseCtx } from './backdrop';
+import { useReduceMotion } from './stepMotion';
 import { BackBar, Screen, useInsets } from './Chrome';
 import { Chip } from './Chip';
 import { DocIcon } from './Icons';
@@ -333,6 +334,70 @@ function Review({
 }
 
 
+/**
+ * Pull the result sheet down to look at the statement behind it, and back up. It settles at one
+ * of two places: open, or down to a peek of its title and amount. It follows the finger, and on
+ * release goes the way it was flicked, or to the nearer place if it wasn't. Tapping the grabber
+ * does the same. Under Reduce Motion it moves straight to the place.
+ */
+function usePullDown() {
+  const reduce = useReduceMotion();
+  const [y] = useState(() => new Animated.Value(0));
+  const [down, setDown] = useState(false);
+  // Sizes, where it sits, and the drag in progress: read and written only in handlers.
+  const room = useRef({ h: 0, peek: 0, at: 0 });
+  const drag = useRef({ y0: 0, y: 0, t: 0, v: 0 });
+  const travel = () => Math.max(0, room.current.h - room.current.peek);
+  const go = (toDown: boolean) => {
+    const to = toDown ? travel() : 0;
+    room.current.at = to;
+    setDown(toDown);
+    if (reduce) y.setValue(to);
+    else Animated.spring(y, { toValue: to, friction: 12, tension: 90, useNativeDriver: Platform.OS !== 'web' }).start();
+  };
+  const handlers = {
+    onStartShouldSetResponder: () => true,
+    onResponderGrant: (e: GestureResponderEvent) => {
+      const py = e.nativeEvent.pageY;
+      drag.current = { y0: py, y: py, t: e.nativeEvent.timestamp, v: 0 };
+    },
+    onResponderMove: (e: GestureResponderEvent) => {
+      const { pageY, timestamp } = e.nativeEvent;
+      const d = drag.current;
+      const dt = Math.max(1, timestamp - d.t);
+      d.v = (pageY - d.y) / dt;
+      d.y = pageY;
+      d.t = timestamp;
+      const t = travel();
+      let v = room.current.at + (pageY - d.y0);
+      // Past either end it gives a little, like a rubber band, instead of stopping dead.
+      if (v < 0) v = v / 4;
+      if (v > t) v = t + (v - t) / 4;
+      y.setValue(v);
+    },
+    onResponderRelease: () => {
+      const d = drag.current;
+      const moved = d.y - d.y0;
+      if (Math.abs(moved) < 4) return;
+      const v = room.current.at + moved;
+      go(Math.abs(d.v) > 0.3 ? d.v > 0 : v > travel() / 2);
+    },
+    onResponderTerminate: () => go(room.current.at > 0),
+  };
+  return {
+    y,
+    down,
+    handlers,
+    toggle: () => go(!down),
+    setHeight: (h: number) => {
+      room.current.h = h;
+    },
+    setPeek: (p: number) => {
+      room.current.peek = p;
+    },
+  };
+}
+
 const READING = ['Reading the page', 'Finding your loads', 'Matching detention', 'Matching detention'];
 
 /**
@@ -378,14 +443,32 @@ function Found({
   const ready = useContext(RiseCtx) ?? undefined;
   const { footerBottom } = useInsets();
   const { height } = useWindowDimensions();
+  const pull = usePullDown();
   return (
     // Solid white, like the app's other sheets, not glass: this is the read's result, numbers
     // to check, so it's content (Apple HIG, Materials: no Liquid Glass in the content layer).
     // As glass, the statement's own lines showed through behind the rows being read.
-    <View style={[styles.sheet, { paddingBottom: footerBottom + 8, maxHeight: height * 0.78 }]} onLayout={() => ready?.()}>
-      <T v="bodyStrong">{label} settlement</T>
-      <T v="bodyTiny">Detention read from the page</T>
-      <Gap h={16} />
+    <Animated.View
+      style={[styles.sheet, { paddingBottom: footerBottom + 8, maxHeight: height * 0.78, transform: [{ translateY: pull.y }] }]}
+      onLayout={(e) => {
+        pull.setHeight(e.nativeEvent.layout.height);
+        ready?.();
+      }}
+    >
+      {/* The top of the sheet is its handle: drag it down to see the whole statement. */}
+      <View {...pull.handlers} style={styles.handle} onLayout={(e) => pull.setPeek(e.nativeEvent.layout.y + e.nativeEvent.layout.height + footerBottom + 8)}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={pull.down ? 'Show the result' : 'Show the whole statement'}
+          onPress={pull.toggle}
+          hitSlop={12}
+          style={styles.grabberHit}
+        >
+          <View style={styles.grabber} />
+        </Pressable>
+        <T v="bodyStrong">{label} settlement</T>
+        <T v="bodyTiny">Detention read from the page</T>
+        <Gap h={16} />
       <View style={styles.hero}>
         {short > 0 ? (
           <>
@@ -398,6 +481,7 @@ function Found({
             <Chip text="All paid" tone="lime" />
           </>
         )}
+      </View>
       </View>
       <Gap h={16} />
       <ScrollView style={styles.sheetRows} bounces={false} showsVerticalScrollIndicator={false}>
@@ -433,7 +517,7 @@ function Found({
         <Button label="Fix a row" variant="quiet" style={styles.flex} onPress={onFix} />
         <Button label="Looks right" style={styles.flex} onPress={onConfirm} />
       </Row>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -464,6 +548,11 @@ const styles = StyleSheet.create({
   pair: { gap: 8 },
   missNote: { paddingBottom: 12 },
   hero: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
+  // The handle: dragging it mustn't select its text instead (a mouse on the laptop).
+  handle: { userSelect: 'none' } as object,
+  // iOS's sheet grabber: 36 × 5, centred, 8 from the top edge.
+  grabberHit: { alignSelf: 'center', paddingVertical: 8, marginTop: -16, marginBottom: 8 },
+  grabber: { width: 36, height: 5, borderRadius: 2.5, backgroundColor: 'rgba(28,28,28,0.2)' },
   // The rows take the room they need; only a long list (past 78% of the screen) scrolls.
   sheetRows: { flexGrow: 0, flexShrink: 1 },
   // A bottom sheet: full width, on the bottom edge, rounded only on top (the phone's corners
