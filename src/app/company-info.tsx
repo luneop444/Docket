@@ -1,11 +1,11 @@
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Fragment } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
+import { LOGOS } from '../components/carrierLogos';
 import { BackBar, Screen } from '../components/Chrome';
 import { Button, Card, Fake, Gap, Hr, Pill, Row, T } from '../components/ui';
-import { findCompany, hasEnoughReports, recruiterQuestions, recruiterText, rulesRows } from '../logic/companyInfo';
-import { MIN_REPORTS } from '../logic/sampleData';
+import { findCompany, noStatsNote, recruiterQuestions, recruiterText, rulesRows, showsStats } from '../logic/companyInfo';
 import { useStore } from '../state/AppStore';
 import { color, radius } from '../theme/tokens';
 
@@ -28,7 +28,8 @@ export default function CompanyInfo() {
   }
 
   const yours = c.name === s.company;
-  const enough = hasEnoughReports(c);
+  const enough = showsStats(c);
+  const logo = LOGOS[c.name];
 
   function driveHere() {
     a.switchCompany(c!.name, c!.rules);
@@ -52,13 +53,21 @@ export default function CompanyInfo() {
         )
       }
     >
+      {logo ? (
+        <>
+          <Image source={logo.src} style={{ width: logo.w, height: logo.h }} resizeMode="contain" accessibilityIgnoresInvertColors />
+          <Gap h={12} />
+        </>
+      ) : null}
       <Row base>
         <T v="h2" style={styles.title}>{c.name}</T>
         {yours ? <Pill label="Yours" tone="signal" /> : null}
       </Row>
       <Gap h={8} />
       <T v="bodySmall">
-        {c.drivers.toLocaleString()} drivers on Docket. {c.reported} reported how their stops went.
+        {logo
+          ? 'Detention rules as drivers report them. Check yours against your paperwork.'
+          : `${c.drivers.toLocaleString()} drivers on Docket. ${c.reported} reported how their stops went.`}
       </T>
 
       <Gap h={24} />
@@ -89,10 +98,7 @@ export default function CompanyInfo() {
             <Line value={`${c.paid}%`} text="of drivers say detention was paid" />
           </View>
         ) : (
-          <T v="bodySmall">
-            Not enough reports yet ({c.reported} of {MIN_REPORTS}). Stats show once {MIN_REPORTS} drivers have reported, so
-            no one can be singled out.
-          </T>
+          <T v="bodySmall">{noStatsNote(c)}</T>
         )}
       </Card>
 

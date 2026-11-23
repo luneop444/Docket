@@ -3,7 +3,7 @@
  * and questions a driver can ask a recruiter before signing on.
  */
 import { dur, money } from './format';
-import { COMPANIES, MIN_REPORTS, SAMPLE_BOARD, type Company } from './sampleData';
+import { COMPANIES, MIN_REPORTS, SAMPLE_BOARD, SUGGESTED, type Company } from './sampleData';
 
 /** A company on the board, or any carrier Docket knows. */
 export function findCompany(name: string | undefined | null): Company | null {
@@ -13,6 +13,29 @@ export function findCompany(name: string | undefined | null): Company | null {
 
 /** Stats only show once enough drivers have reported, so no one can be singled out. */
 export const hasEnoughReports = (c: Pick<Company, 'reported'>) => c.reported >= MIN_REPORTS;
+
+/** The real carriers with logos in the team's Figma. Shown first on the Companies tab. */
+export const REAL_CARRIERS: Company[] = SUGGESTED;
+export const isRealCarrier = (name: string) => REAL_CARRIERS.some((c) => c.name === name);
+
+/**
+ * Wait stats never show for a real carrier in the prototype: every number here is made up,
+ * and a made-up figure next to a real company's logo reads as fact about that company.
+ */
+export const showsStats = (c: Company) => !isRealCarrier(c.name) && hasEnoughReports(c);
+
+/** Two letters for a company without a logo: "Ridgeline Freight" → "RF", "Small Fleet Co." → "SF". */
+export function initials(name: string): string {
+  const words = name.split(/\s+/).filter((w) => /^[a-z]/i.test(w) && !/^(co|inc|llc)\.?$/i.test(w));
+  return words.slice(0, 2).map((w) => w[0].toUpperCase()).join('') || name.slice(0, 1).toUpperCase();
+}
+
+/** Why a company's card has no stats. */
+export function noStatsNote(c: Company): string {
+  return isRealCarrier(c.name)
+    ? 'Wait stats show once drivers here report through Docket.'
+    : `Not enough reports yet (${c.reported} of ${MIN_REPORTS}). Stats show once ${MIN_REPORTS} drivers have reported, so no one can be singled out.`;
+}
 
 export function rulesRows(c: Company): [string, string][] {
   return [

@@ -1,27 +1,69 @@
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Fragment } from 'react';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { LOGOS } from '../../components/carrierLogos';
 import { PageHead, Screen } from '../../components/Chrome';
 import { ChevronRight } from '../../components/Icons';
-import { Card, Fake, Gap, Pill, Row, Seg, T } from '../../components/ui';
+import { Card, Fake, Gap, Hr, Pill, press, Seg, T } from '../../components/ui';
+import { initials, noStatsNote, REAL_CARRIERS, showsStats } from '../../logic/companyInfo';
 import { dur, money } from '../../logic/format';
-import { MIN_REPORTS, SAMPLE_BOARD } from '../../logic/sampleData';
+import { SAMPLE_BOARD, type Company } from '../../logic/sampleData';
 import type { CompanySort } from '../../logic/state';
 import { useStore } from '../../state/AppStore';
-import { color } from '../../theme/tokens';
+import { color, radius } from '../../theme/tokens';
 
-/** v1 18: Companies */
+const open = (name: string) => router.push({ pathname: '/company-info', params: { name } });
+const rulesShort = (c: Company) =>
+  `${dur(c.rules.free)} free from ${c.rules.start === 'appt' ? 'appointment' : 'arrival'}, then ${money(c.rules.rate)}/hr`;
+
+/** v1 18: Companies. Real carriers (logos, no stats) on top, then what drivers report. */
 export default function Companies() {
   const { s, a } = useStore();
-  const enough = (c: { reported: number }) => c.reported >= MIN_REPORTS;
-  const list = [...SAMPLE_BOARD].sort(
+  const board = [...SAMPLE_BOARD].sort(
     (x, y) =>
-      Number(enough(y)) - Number(enough(x)) ||
+      Number(showsStats(y)) - Number(showsStats(x)) ||
       (s.sort === 'wait' ? parseFloat(x.avg) - parseFloat(y.avg) || x.past - y.past : y.paid - x.paid),
   );
   return (
     <Screen tabs header={<PageHead title="Companies" />}>
       <T v="bodySmall">What waiting looks like at each company</T>
-      <Gap h={12} />
+
+      <Gap h={24} />
+      <T v="bodyStrong">Popular carriers</T>
+      <Gap h={10} />
+      <Card style={styles.list}>
+        {REAL_CARRIERS.map((c, i) => (
+          <Fragment key={c.name}>
+            {i > 0 ? <Hr /> : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${c.name}, ${rulesShort(c)}`}
+              onPress={() => open(c.name)}
+              style={({ pressed }) => [styles.carrier, pressed && press.give]}
+            >
+              <View style={styles.logoBox}>
+                <Image
+                  source={LOGOS[c.name].src}
+                  style={{ width: LOGOS[c.name].w, height: LOGOS[c.name].h }}
+                  resizeMode="contain"
+                  accessibilityIgnoresInvertColors
+                />
+              </View>
+              <T v="bodyTiny" style={styles.flex}>
+                {dur(c.rules.free)} free, then {money(c.rules.rate)}/hr
+              </T>
+              {c.name === s.company ? <Pill label="Yours" tone="signal" /> : null}
+              <ChevronRight size={18} c={color.faint} />
+            </Pressable>
+          </Fragment>
+        ))}
+      </Card>
+      <Gap h={8} />
+      <T v="bodyTiny">{noStatsNote(REAL_CARRIERS[0])}</T>
+
+      <Gap h={32} />
+      <T v="bodyStrong">What drivers report</T>
+      <Gap h={10} />
       <Seg<CompanySort>
         label="Sort companies by"
         options={[
@@ -31,65 +73,72 @@ export default function Companies() {
         value={s.sort}
         onChange={a.setSort}
       />
-      <Gap h={16} />
+      <Gap h={12} />
       <View style={{ gap: 12 }}>
-        {list.map((c) => (
-          <Card key={c.name} onPress={() => router.push({ pathname: '/company-info', params: { name: c.name } })}>
-            <Row base>
-              <T v="bodyStrong" style={styles.name}>{c.name}</T>
-              <View style={styles.end}>
-                {c.name === s.company ? <Pill label="Yours" tone="signal" /> : null}
-                <ChevronRight size={18} c={color.sub} />
+        {board.map((c) => (
+          <Card key={c.name} onPress={() => open(c.name)}>
+            <View style={styles.head}>
+              <View style={styles.tile}>
+                <T v="labelSmall">{initials(c.name)}</T>
               </View>
-            </Row>
-            <T v="bodyTiny">
-              {dur(c.rules.free)} free from {c.rules.start === 'appt' ? 'appointment' : 'arrival'}, then{' '}
-              {money(c.rules.rate)}/hr
-            </T>
-            {enough(c) ? (
-              <View style={styles.stats}>
-                <Stat value={c.avg} label="average wait per stop" />
-                <Stat value={`${c.past}%`} label="of stops past free time" />
-                <Stat value={`${c.paid}%`} label="say detention was paid" />
+              <View style={styles.flex}>
+                <T v="bodyStrong">{c.name}</T>
+                <T v="bodyTiny">{rulesShort(c)}</T>
               </View>
+              {c.name === s.company ? <Pill label="Yours" tone="signal" /> : null}
+              <ChevronRight size={18} c={color.faint} />
+            </View>
+            <Hr style={styles.rule} />
+            {showsStats(c) ? (
+              <>
+                <View style={styles.stats}>
+                  <Stat value={c.avg} label="average wait" />
+                  <Stat value={`${c.past}%`} label="past free time" />
+                  <Stat value={`${c.paid}%`} label="say it was paid" />
+                </View>
+                <Gap h={10} />
+                <T v="bodyTiny">{c.reported} drivers reported</T>
+              </>
             ) : (
-              // Too few reports: showing numbers could point to the few drivers who reported.
-              <View style={[styles.stats, styles.hidden]}>
-                <T v="bodySmall">
-                  Not enough reports yet. Stats show once {MIN_REPORTS} drivers have reported, so no one can be singled
-                  out.
-                </T>
-              </View>
+              <T v="bodySmall">{noStatsNote(c)}</T>
             )}
-            <Gap h={8} />
-            <T v="bodyTiny">{enough(c) ? `${c.reported} drivers reported` : `${c.reported} of ${MIN_REPORTS} reports so far`}</T>
           </Card>
         ))}
       </View>
       <Gap h={16} />
       <T v="bodyTiny">
-        <Fake label="Sample data" /> Made-up companies and numbers. Real carriers only appear here once their own drivers have
-        reported. After Concept Lock this is a secondary feature, not part of the core use case.
+        <Fake label="Sample data" /> Made-up companies and numbers until drivers report for real.
       </T>
     </Screen>
   );
 }
 
+/** A figure and what it means, as plain text: these aren't buttons. */
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <View style={styles.stat}>
-      <T v="numberS" style={styles.statValue} numberOfLines={1}>{value}</T>
-      <T v="bodyTiny" style={styles.statLabel}>{label}</T>
+    <View style={styles.flex}>
+      <T v="numberS" numberOfLines={1}>{value}</T>
+      <T v="bodyTiny">{label}</T>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  name: { flexShrink: 1 },
-  end: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  stats: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  stat: { flex: 1, backgroundColor: color.bg, borderRadius: 10, borderCurve: 'continuous', padding: 10 },
-  statValue: { fontSize: 17 },
-  hidden: { backgroundColor: color.bg, borderRadius: 10, borderCurve: 'continuous', padding: 12 },
-  statLabel: { fontSize: 12, lineHeight: 15.6, marginTop: 2 },
+  flex: { flex: 1, minWidth: 0 },
+  list: { paddingVertical: 4 },
+  carrier: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingVertical: 10 },
+  // The widest Figma logo is 108; one box keeps the rules text lined up on every row.
+  logoBox: { width: 108, height: 36, justifyContent: 'center' },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  tile: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.chip,
+    borderCurve: 'continuous',
+    backgroundColor: color.raise2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rule: { marginVertical: 14 },
+  stats: { flexDirection: 'row', gap: 12 },
 });
