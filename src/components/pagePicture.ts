@@ -55,6 +55,17 @@ if (typeof window !== 'undefined') {
   document.addEventListener(MOVE_EVENT, () => (lastScroll = performance.now()));
 }
 
+/** Why the last picture failed, for the ?glass=debug readout ('' when it didn't). */
+let lastFailure = '';
+export const pictureFailure = () => lastFailure;
+/** Frees canvases now (Safari holds their memory until collected otherwise). */
+function release(cs: HTMLCanvasElement[]) {
+  for (const c of cs) {
+    c.width = 0;
+    c.height = 0;
+  }
+}
+
 const keyOf = (el: HTMLElement) => `${el.scrollHeight}x${el.clientWidth}`;
 
 /** Resolves once nothing has scrolled for a moment and the browser is idle. */
@@ -115,7 +126,10 @@ async function take(el: HTMLElement, key: string, skip: Element | null, scene: P
     // Skipped too: anything marked as not part of the scene (the camera's grain).
     ignoreElements: (e: Element) => (!!skip && skip.contains(e)) || (e as HTMLElement).dataset?.noglass === '1',
   }).catch(() => null);
-  if (!shot) return null;
+  if (!shot) {
+    lastFailure = 'the page picture came back empty (out of canvas memory?)';
+    return null;
+  }
   // Slices no taller than the graphics chip takes in one texture.
   const tall = Math.max(OVERLAP * 2, Math.floor(Math.min(maxTexture(), 8192) / scale));
   const step = tall - OVERLAP;
@@ -125,10 +139,21 @@ async function take(el: HTMLElement, key: string, skip: Element | null, scene: P
     const c = document.createElement('canvas');
     c.width = shot.width;
     c.height = Math.round(height * scale);
-    c.getContext('2d')!.drawImage(shot, 0, Math.round(top * scale), shot.width, c.height, 0, 0, c.width, c.height);
+    // Safari refuses a canvas once the page's canvases pass its memory cap: say so, don't throw.
+    const g = c.getContext('2d');
+    if (!g) {
+      lastFailure = `no canvas for a slice (${c.width}x${c.height}): out of canvas memory`;
+      release(slices.map((x) => x.canvas).concat(shot, c));
+      return null;
+    }
+    g.drawImage(shot, 0, Math.round(top * scale), shot.width, c.height, 0, 0, c.width, c.height);
     slices.push({ top, height, canvas: c });
     if (top + height >= h) break;
   }
+  // The whole-page shot is only the source of the slices. Safari keeps a canvas's memory until it's
+  // collected unless it's sized to zero, and iPhone Safari caps all of a page's canvases together.
+  release([shot]);
+  lastFailure = '';
   return { el, scale, width: w, slices };
 }
 
