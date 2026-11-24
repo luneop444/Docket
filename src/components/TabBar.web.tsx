@@ -301,7 +301,7 @@ export function TabBar() {
   return (
     <div style={{ ...S.wrap, bottom: pillBottom }}>
       {debug ? <div style={S.debug}>{`Glass: ${note} · bend ${BEND}x`}</div> : null}
-      <nav ref={barRef} style={S.bar} aria-label="Tabs">
+      <nav ref={barRef} style={S.bar} aria-label="Main">
         <canvas ref={barCv} aria-hidden style={{ ...S.cv, opacity: live ? 1 : 0 }} />
         <div
           ref={pillRef}
@@ -316,7 +316,9 @@ export function TabBar() {
           {TABS.map(({ href, label, Icon }, i) => {
             const on = i === index;
             return (
-              <button key={href} type="button" role="tab" aria-selected={on} onClick={() => go(i, href)} style={S.tab}>
+              // Screens, not panels: buttons in the nav, the current one marked as the page (WCAG
+              // 1.3.1: role="tab" outside a tablist read as a broken group).
+              <button key={href} type="button" aria-current={on ? 'page' : undefined} onClick={() => go(i, href)} style={S.tab}>
                 <Icon on={on} c={color.ink} />
                 <span style={S.label}>{label}</span>
               </button>
