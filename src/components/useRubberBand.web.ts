@@ -23,7 +23,8 @@ import { MOVE_EVENT } from './contentMove';
  * The wheel listener is passive, so it never holds up the browser's own scrolling. At an
  * edge there's nothing left to scroll, so the stretch is only drawn on top (a transform on
  * the content). Safari (macOS, iOS) bounces scroll areas natively and is left to it. Touch
- * screens are left to the platform. Areas that can't scroll don't stretch.
+ * screens are left to the platform. A screen that fits and doesn't scroll still stretches, as
+ * short screens do on iPhone (23 Nov: Today with no stop sat dead on Windows, bounced on iPhone).
  */
 const CAP = 44;
 /** Eased so 100 pt past the end stretches 9 pt, and nothing passes CAP. */
@@ -239,7 +240,6 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
         endSoon();
         return;
       }
-      if (!stretched && (max <= 0.5 || getComputedStyle(node).overflowY === 'hidden')) return;
 
       if (mouse) {
         // A click into the edge: a throw at the click's speed (a notch over ~100 ms, or faster).
