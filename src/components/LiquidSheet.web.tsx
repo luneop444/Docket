@@ -2,9 +2,9 @@ import { useContext, useEffect, useRef, useState, type CSSProperties, type React
 import { BackdropCtx, RiseCtx, SCAN_BEND, SCAN_DEPTH, SCAN_FROST, SCAN_SPLIT } from './backdrop';
 import { glassEdge, glassLift, radius } from '../theme/tokens';
 import { createGlass, type Glass } from './glassGL';
-import { BAR_TINT_GL, BEZEL, chromaTimes, GLASS_RIM, glassK, mapData } from './glassLook';
+import { BAR_TINT_GL, BEZEL, chromaTimes, frostSlice, GLASS_RIM, glassK, mapData } from './glassLook';
 import { forget, pictureOf, sliceAt } from './pagePicture';
-import { frosted, SPEC } from './glassPicture';
+import { SPEC } from './glassPicture';
 import { squircleExtent, squirclePath } from '../logic/squircle';
 
 
@@ -105,7 +105,7 @@ export function LiquidSheet({ children, tint = SHEET_TINT }: { children: ReactNo
       const sl = sliceAt(p, 0, p.slices[0]?.height ?? 0);
       top = sl.top;
       tall = sl.height;
-      g.setPage(frosted(sl.canvas, p.scale, SCAN_FROST));
+      g.setPage(frostSlice(sl, p.scale, SCAN_FROST));
       setLive(true);
       // Now the card can rise, with its glass drawn the whole way up.
       rise?.();

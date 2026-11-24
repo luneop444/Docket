@@ -96,6 +96,13 @@ export function pictureOf(el: HTMLElement, skip?: Element | null, mode: PictureM
   if (had && had.key === key) return had.job;
   const job = take(el, key, skip ?? null, scene);
   cache.set(el, { key, job });
+  // The picture this one replaces is let go once the new one is in: iPhone Safari counts a
+  // canvas against its memory cap until it's sized to zero, not when it's dropped.
+  if (had) {
+    void job.then((next) => {
+      if (next) void had.job.then((old) => old && old !== next && release(old.slices.map((x) => x.canvas)));
+    });
+  }
   return job;
 }
 

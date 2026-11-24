@@ -189,15 +189,15 @@ export const sliceMap = lensMap;
 
 
 /** A slice of the screen's picture, frosted by FROST, made once and shared by every glass. */
-const frostedOf = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
+const frostedAlready = new WeakSet<HTMLCanvasElement>();
 export function frostSlice(sl: Slice, scale: number, frost = FROST): HTMLCanvasElement {
   if (frost !== FROST) return frosted(sl.canvas, scale, frost);
-  let f = frostedOf.get(sl.canvas);
-  if (!f) {
-    f = frosted(sl.canvas, scale, FROST);
-    frostedOf.set(sl.canvas, f);
+  // Frosted where it is, once: every glass uses this same frost, so no unfrosted copy is kept.
+  if (!frostedAlready.has(sl.canvas)) {
+    frosted(sl.canvas, scale, FROST, true);
+    frostedAlready.add(sl.canvas);
   }
-  return f;
+  return sl.canvas;
 }
 
 /** The glass's rims with a given shade on the lower inner rim (the system's is 4%). */

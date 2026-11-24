@@ -36,15 +36,20 @@ export const SPEC = 2;
  * The page frosted, on pixels (a box blur run three times, close to a Gaussian), so it
  * looks the same in Safari, whose canvas has no blur filter.
  */
-export function frosted(src: HTMLCanvasElement, scale: number, frost: number): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.width = src.width;
-  c.height = src.height;
-  const ctx = c.getContext('2d')!;
-  ctx.drawImage(src, 0, 0);
+export function frosted(src: HTMLCanvasElement, scale: number, frost: number, inPlace = false): HTMLCanvasElement {
+  if (frost <= 0) return src;
+  // In place where the unfrosted picture isn't needed: a second full-size copy of every slice
+  // ran iPhone Safari out of canvas memory, and the glass then kept the last screen's picture.
+  const c = inPlace ? src : document.createElement('canvas');
+  if (!inPlace) {
+    c.width = src.width;
+    c.height = src.height;
+  }
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  if (!ctx || !c.width || !c.height) throw new Error(`no canvas to frost (${c.width}x${c.height}): out of canvas memory`);
+  if (!inPlace) ctx.drawImage(src, 0, 0);
   const img = ctx.getImageData(0, 0, c.width, c.height);
   const r = Math.max(1, Math.round(frost * scale * 0.8));
-  if (frost <= 0) return src;
   for (let k = 0; k < 3; k++) {
     boxBlur(img.data, c.width, c.height, r, true);
     boxBlur(img.data, c.width, c.height, r, false);

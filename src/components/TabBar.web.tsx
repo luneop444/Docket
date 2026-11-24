@@ -115,7 +115,16 @@ export function TabBar() {
     const reach = glassReach(TAB_PILL);
     const sl = sliceAt(p.p, br.top - cr.top - reach, TAB_PILL + reach * 2);
     if (sl !== p.slice) {
-      const f = frostSlice(sl, p.p.scale);
+      let f: HTMLCanvasElement;
+      try {
+        f = frostSlice(sl, p.p.scale);
+      } catch (e) {
+        // Never leave the last screen's picture up: the stand-in shows instead.
+        pic.current = null;
+        setLiveFor(null);
+        setNote(`frost failed: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      }
       const err = g.bar.setPage(f) | g.pill.setPage(f);
       p.slice = sl;
       if (debug) {
