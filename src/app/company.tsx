@@ -104,7 +104,7 @@ export default function PickCompany() {
             setFocused(false);
           }}
           placeholder="Search or add your company"
-          placeholderTextColor={color.faint}
+          placeholderTextColor={color.sub}
           autoCorrect={false}
           autoComplete="off"
           style={styles.input}
