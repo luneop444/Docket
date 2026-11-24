@@ -93,16 +93,17 @@ export function scrollerUnder(bar: HTMLElement, own: HTMLElement | null = bar.pa
       const oy = getComputedStyle(e).overflowY;
       if (oy === 'auto' || oy === 'scroll') {
         if (e.scrollHeight > e.clientHeight + 1) return e;
+        // A screen-sized scroll view is the screen on top: everything hit below it is covered
+        // by it (the other tabs), so it's the page under the bar even when it doesn't scroll.
+        if (e.clientHeight > window.innerHeight * 0.5) return e;
         fallback = fallback ?? e;
         break;
       }
       // A screen whose content fits has its scroll view switched off (overflow hidden). It's
-      // still the screen under the bar: picture it, not the whole app, whose picture (every
-      // mounted tab at once) failed on iPhone and left the bar on its stand-in (24 Nov).
-      if (oy === 'hidden' && e.firstElementChild && e.clientHeight > window.innerHeight * 0.5) {
-        fallback = fallback ?? e;
-        break;
-      }
+      // still the screen under the bar: picture it, not the whole app (every mounted tab at
+      // once), and stop here, since the hidden tabs below it were being picked on iPhone even
+      // past the inert check (24 Nov).
+      if (oy === 'hidden' && e.firstElementChild && e.clientHeight > window.innerHeight * 0.5) return e;
       e = e.parentElement;
     }
   }
