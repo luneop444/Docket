@@ -1,10 +1,11 @@
 // Registers the background location task before anything else runs (Expo Router note in the TaskManager docs).
 import '../state/background';
 import { useFonts } from 'expo-font';
-import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
+import { router, useGlobalSearchParams, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AppStack } from '../components/AppStack';
 import { Squircles } from '../components/Squircles';
 import { TextWrap } from '../components/TextWrap';
 import { Overlays } from '../components/Overlays';
@@ -13,7 +14,7 @@ import { isDemoState } from '../logic/demo';
 import { AppStoreProvider, useStore } from '../state/AppStore';
 import { BackgroundSync } from '../state/BackgroundSync';
 import { LocationWatcher } from '../state/location';
-import { color, fontAssets } from '../theme/tokens';
+import { fontAssets } from '../theme/tokens';
 
 const ONBOARDING = ['/welcome', '/company', '/company-rules', '/edit-rules', '/loads', '/location'];
 
@@ -77,13 +78,7 @@ export default function RootLayout() {
       <AppStoreProvider>
         <PhoneFrame>
           <StatusBar style="dark" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              animation: 'none',
-              contentStyle: { backgroundColor: color.canvas },
-            }}
-          />
+          <AppStack />
           <Overlays />
           <OnboardingGuard />
           <PageTitle />
