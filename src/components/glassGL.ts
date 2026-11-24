@@ -110,7 +110,8 @@ export interface Frame {
 }
 
 export interface Glass {
-  setPage(src: TexImageSource): void;
+  /** Uploads the page; returns the WebGL error code (0 when it went in). */
+  setPage(src: TexImageSource): number;
   setMaps(bar: ImageData, lens: ImageData): void;
   draw(f: Frame): void;
   ready(): boolean;
@@ -175,7 +176,11 @@ function makeGlass(canvas: HTMLCanvasElement): Glass | null {
   return {
     setPage(src) {
       upload(0, pageT, src);
-      hasPage = true;
+      const err = gl.getError();
+      // A page that didn't go in (out of memory on iPhone) must not leave the previous screen's
+      // picture showing: the stand-in shows until the next one does.
+      hasPage = err === gl.NO_ERROR;
+      return err;
     },
     setMaps(bar, lens) {
       upload(1, barT, bar);

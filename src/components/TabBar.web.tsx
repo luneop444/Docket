@@ -11,6 +11,18 @@ import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
 
 export { mapData, scrollerUnder };
 
+/** Debug only: draws the exact part of the picture the glass just took in, so a screenshot shows what it holds. */
+function showTexture(f: HTMLCanvasElement, sl: { top: number }, cr: DOMRect, br: DOMRect, scale: number) {
+  const out = document.getElementById('glass-debug-texture') as HTMLCanvasElement | null;
+  if (!out) return;
+  out.width = Math.round(br.width * 2);
+  out.height = 96;
+  const g = out.getContext('2d');
+  if (!g) return;
+  const y = (br.top - cr.top - sl.top) * scale, x = (br.left - cr.left) * scale;
+  g.drawImage(f, x, y, br.width * scale, br.height * scale, 0, 0, out.width, out.height);
+}
+
 const TABS = [
   { href: '/today', label: 'Today', Icon: TabTodayIcon },
   { href: '/paycheck', label: 'Claims', Icon: TabPaycheckIcon },
@@ -104,9 +116,13 @@ export function TabBar() {
     const sl = sliceAt(p.p, br.top - cr.top - reach, TAB_PILL + reach * 2);
     if (sl !== p.slice) {
       const f = frostSlice(sl, p.p.scale);
-      g.bar.setPage(f);
-      g.pill.setPage(f);
+      const err = g.bar.setPage(f) | g.pill.setPage(f);
       p.slice = sl;
+      if (debug) {
+        showTexture(f, sl, cr, br, p.p.scale);
+        setNote((n) => `${n.split(' · upload')[0]} · upload ${err ? `failed (${err})` : 'ok'} ${f.width}x${f.height}`);
+      }
+      if (err) setLiveFor(null);
     }
     // Ready once both the page (just above) and the lens maps are in. Checking before handing
     // the page over (19 Nov) meant it never drew, and the bar showed its plain stand-in.
@@ -133,7 +149,7 @@ export function TabBar() {
     g.pill.draw({ ...base, outOrigin: [pr.left, pr.top], outSize: [pr.width, pr.height], isPill: true });
     // The content changed size (a section opened): its new picture comes once nothing scrolls.
     if (isStale(p.p.el)) takePicture.current();
-  }, [scale]);
+  }, [scale, debug]);
 
   // The screen's picture, shared and taken once it settles.
   const retries = useRef(0);
@@ -300,7 +316,12 @@ export function TabBar() {
   const x = PAD + index * tabW;
   return (
     <div style={{ ...S.wrap, bottom: pillBottom }}>
-      {debug ? <div style={S.debug}>{`Glass: ${note} · bend ${BEND}x`}</div> : null}
+      {debug ? (
+        <div style={S.debug}>
+          {`Glass: ${note} · bend ${BEND}x`}
+          <canvas id="glass-debug-texture" style={{ display: 'block', width: '100%', height: 48, marginTop: 4, background: '#f0f' }} />
+        </div>
+      ) : null}
       <nav ref={barRef} style={S.bar} aria-label="Main">
         <canvas ref={barCv} aria-hidden style={{ ...S.cv, opacity: live ? 1 : 0 }} />
         <div
