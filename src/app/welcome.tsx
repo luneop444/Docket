@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { Screen, TopBar } from '../components/Chrome';
 import { ChecklistIcon, DocIcon, LocationIcon } from '../components/Icons';
-import { Button, Card, Gap, IconTile, T, type IconFn } from '../components/ui';
+import { Button, Card, Gap, T, type IconFn } from '../components/ui';
 import { color } from '../theme/tokens';
 
 /**
@@ -37,7 +37,9 @@ export default function Welcome() {
       <View style={styles.steps}>
         {STEPS.map((s) => (
           <Card key={s.label} style={styles.step}>
-            <IconTile icon={s.icon} tone="white" size={48} />
+            {/* No tile: the card already holds the row, and a white tile in it was a second box
+                around the icon at 1.1:1 (24 Nov). The 48 column keeps the labels lined up. */}
+            <View style={styles.iconCol}>{s.icon(color.ink)}</View>
             <T v="bodyStrong" style={styles.label}>
               {s.label}
             </T>
@@ -49,6 +51,7 @@ export default function Welcome() {
 }
 
 const styles = StyleSheet.create({
+  iconCol: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   steps: { gap: 10 },
   step: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 16 },
   label: { flex: 1 },
