@@ -3,7 +3,6 @@ import { Fragment, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
 import { DemoDrawer, DemoTab } from '../../components/DemoDrawer';
-import { PlusIcon } from '../../components/Icons';
 import { FreeBar } from '../../components/FreeBar';
 import { RollText } from '../../components/RollText';
 import { Swap } from '../../components/Swap';
@@ -343,9 +342,10 @@ function Stops() {
   if (!stops.length) {
     return (
       // An action, so it looks like one: the secondary action card (icon, title, why, chevron), not a
-      // heading and a paragraph that happened to be tappable (24 Nov). Secondary, since it's optional.
+      // heading and a paragraph that happened to be tappable (24 Nov). Secondary, since it's optional;
+      // a create action, so a "+" and no chevron.
       <ActionCard
-        icon={(c) => <PlusIcon c={c} />}
+        create
         label="Add today’s load"
         sub="Optional. With appointment times, Docket knows your stops before you arrive"
         onPress={() => router.push('/add-load')}

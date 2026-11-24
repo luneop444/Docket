@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { color, fontFamily, glass, glassRing, protoColor, radius, type, type TypeToken } from '../theme/tokens';
 import { noWidow } from '../logic/text';
-import { CheckIcon, ChevronRight } from './Icons';
+import { CheckIcon, ChevronRight, PlusIcon } from './Icons';
 import { tick } from '../logic/haptics';
 import { useReduceMotion } from './stepMotion';
 import { Tappable } from './Tappable';
@@ -572,20 +572,27 @@ export function IconRow({ icon, label, sub }: { icon: IconFn; label: string; sub
  * full-width card that does something when tapped. Primary is ink with a lime
  * tile; secondary is white with a line. Both carry a title, a line saying what
  * it means, and a chevron, so the lighter one is still a whole choice.
+ *
+ * `create`: an add action (Add today's load) rather than a choice. Its tile is a "+" and it has no
+ * chevron: the card says it's tappable and the "+" says what it does, so a chevron was a third cue
+ * for the same thing (24 Nov). Choices keep the chevron: there it means pick this and go on.
  */
 export function ActionCard({
   icon,
   label,
   sub,
   primary,
+  create,
   onPress,
 }: {
-  icon: IconFn;
+  icon?: IconFn;
   label: string;
   sub?: string;
   primary?: boolean;
+  create?: boolean;
   onPress: () => void;
 }) {
+  const tile: IconFn = create ? (c) => <PlusIcon c={c} /> : (icon as IconFn);
   return (
     <Tappable
       accessibilityRole="button"
@@ -598,7 +605,7 @@ export function ActionCard({
         const dark = primary && !lit;
         return (
           <>
-            <IconTile icon={icon} tone={primary ? (lit ? 'ink' : 'signal') : 'raise'} size={44} />
+            <IconTile icon={tile} tone={primary ? (lit ? 'ink' : 'signal') : 'raise'} size={44} />
             <View style={styles.flexGap2}>
               <T v="labelButton" c={dark ? color.bg : color.ink}>
                 {label}
@@ -609,7 +616,7 @@ export function ActionCard({
                 </T>
               ) : null}
             </View>
-            <ChevronRight c={dark ? color.bg : primary ? color.ink : color.sub} />
+            {create ? null : <ChevronRight c={dark ? color.bg : primary ? color.ink : color.sub} />}
           </>
         );
       }}
