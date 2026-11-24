@@ -256,7 +256,10 @@ export function PageHead({ title, right }: { title: string; right?: string }) {
     <>
       <TopSafe />
       <View style={styles.pagehead}>
-        <Text style={[type.bodyStrong, styles.pageTitle]}>{title}</Text>
+        {/* The screen's name is its heading, so a screen reader can find it (WCAG 2.4.6, 1.3.1). */}
+        <Text accessibilityRole="header" style={[type.bodyStrong, styles.pageTitle]}>
+          {title}
+        </Text>
         {right ? <T v="bodyTiny">{right}</T> : null}
       </View>
     </>
