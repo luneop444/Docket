@@ -78,6 +78,15 @@ export const glassReach = (h: number) => Math.ceil(((243 - 128) / 255) * glassK(
  */
 export function scrollerUnder(bar: HTMLElement, own: HTMLElement | null = bar.parentElement): HTMLElement | null {
   const r = bar.getBoundingClientRect();
+  // The screen showing marks its own scroll view (Screen, from navigation focus), so the glass
+  // knows the page without guessing from what's stacked under it: the other tabs stay mounted
+  // underneath, and guessing picked them on iPhone (24 Nov). Hit testing below is the fallback.
+  const shown = document.querySelector<HTMLElement>('[data-glass-screen="on"]');
+  if (shown) {
+    const b = shown.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    if (x >= b.left && x <= b.right && y >= b.top && y <= b.bottom) return shown;
+  }
   const hits = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2);
   let fallback: HTMLElement | null = null;
   // From the top layer down: transparent layers over the list (a drawer's hit area) have no

@@ -3,7 +3,7 @@
  * scroll + footer scaffold every screen uses.
  */
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, usePathname } from 'expo-router';
+import { router, useIsFocused, usePathname } from 'expo-router';
 import { createContext, isValidElement, useContext, useEffect, useState, type ReactNode, type RefObject } from 'react';
 import {
   Animated,
@@ -327,6 +327,7 @@ export function Screen({
 }) {
   const { footerBottom } = useInsets();
   const { space } = useTabSpace();
+  const focused = useIsFocused();
   const { top } = useInsets();
   // Headers with a control (back) float over the content, which scrolls under their glass.
   // Title headers (a tab's title and date) are labels the tab bar already says: they scroll
@@ -352,6 +353,8 @@ export function Screen({
       <Push step={step}>
         <BandScrollView
           scrollRef={scrollRef}
+          // Marks the screen that's showing, so glass over it pictures this page (glassLook.ts).
+          {...({ dataSet: { glassScreen: focused ? 'on' : 'off' } } as object)}
           style={styles.flex}
           contentContainerStyle={[styles.scroll, step ? styles.stepTop : null, over ? { paddingTop: top + (step ? BAR_H + 10 : BAR_H) } : null, tabs ? { paddingBottom: space } : null, contentStyle]}
           showsVerticalScrollIndicator={false}
