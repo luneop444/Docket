@@ -253,7 +253,7 @@ export function Pill({ label, tone = 'quiet' }: { label: string; tone?: 'quiet' 
 export function Fake({ label = 'Faked' }: { label?: string }) {
   return (
     <Text style={styles.fake}>
-      {` ${label.toUpperCase()} `}
+      {` ${label.toUpperCase()}`}
     </Text>
   );
 }
@@ -707,14 +707,13 @@ const styles = StyleSheet.create({
   },
   sectionHit: { padding: 16, margin: -16, borderRadius: radius.option, borderCurve: 'continuous' },
   pill: { height: 26, paddingHorizontal: 10, borderRadius: 13, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
+  // A plain small-caps label, no fill: it still says the numbers aren't real, without a
+  // highlight competing with the figures it sits next to.
   fake: {
     fontFamily: fontFamily.semibold,
     fontSize: 11,
     letterSpacing: 0.33,
-    color: protoColor.fakeInk,
-    backgroundColor: protoColor.fakeBg,
-    borderRadius: 6, borderCurve: 'continuous',
-    overflow: 'hidden',
+    color: color.sub,
   },
   option: {
     flexDirection: 'row',

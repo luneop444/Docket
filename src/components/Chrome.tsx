@@ -99,7 +99,7 @@ export function ProfileTrailing({ noDate }: { noDate?: boolean } = {}) {
   return (
     <>
       {noDate ? null : <T v="bodyTiny">{headerDate(s.stop, TODAY_LABEL)}</T>}
-      <Tappable accessibilityRole="button" accessibilityLabel="Profile and rules" onPress={() => router.push('/rules')} style={styles.iconBtn}>
+      <Tappable accessibilityRole="button" accessibilityLabel="Profile and rules" highlight="none" onPress={() => router.push('/rules')} style={styles.iconBtn}>
         <PersonIcon />
       </Tappable>
     </>
@@ -133,6 +133,9 @@ export function BackBar({ onPress, label = 'Back' }: { onPress: () => void; labe
           <LiquidPill w={w} h={44} on={under}>
             <Tappable
               accessibilityRole="button"
+              // Glass buttons in the nav layer give (scale) on press but don't turn lime: lime
+              // marks content you act on, and on a glass pill it read as a stuck highlight.
+              highlight="none"
               onPress={onPress}
               onLayout={(e) => setW(Math.ceil(e.nativeEvent.layout.width))}
               style={styles.back}
@@ -164,7 +167,7 @@ export function OnboardingBar({ step, onBack }: { step?: number; onBack: () => v
       <View style={styles.glassRow} pointerEvents="box-none">
         <LiquidGroup>
           <LiquidPill w={44} h={44} on={under}>
-            <Tappable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} style={styles.iconBtn}>
+            <Tappable accessibilityRole="button" accessibilityLabel="Back" highlight="none" onPress={onBack} style={styles.iconBtn}>
               <ChevronLeft />
             </Tappable>
           </LiquidPill>
