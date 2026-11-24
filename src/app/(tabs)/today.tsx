@@ -2,12 +2,13 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Fragment, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
-import { DemoDrawer } from '../../components/DemoDrawer';
+import { DemoDrawer, DemoTab } from '../../components/DemoDrawer';
+import { PlusIcon } from '../../components/Icons';
 import { FreeBar } from '../../components/FreeBar';
 import { RollText } from '../../components/RollText';
 import { Swap } from '../../components/Swap';
 import { Timeline } from '../../components/Timeline';
-import { Button, Gap, press, T } from '../../components/ui';
+import { ActionCard, Button, Gap, press, T } from '../../components/ui';
 import { isDemoState } from '../../logic/demo';
 import { heads } from '../../logic/haptics';
 import { clock, dur, money, rateShort } from '../../logic/format';
@@ -46,9 +47,9 @@ export default function Today() {
       header={
         // At the dock the place leads, so the header is Figma 09's: the wordmark and a small date.
         s.stop.phase === 'dock' ? (
-          <TopBar trailing={<ProfileTrailing />} />
+          <TopBar trailing={<>{linked ? null : <DemoTab />}<ProfileTrailing /></>} />
         ) : (
-          <TopBar title={TITLE} trailing={<ProfileTrailing noDate />} />
+          <TopBar title={TITLE} trailing={<>{linked ? null : <DemoTab />}<ProfileTrailing noDate /></>} />
         )
       }
       overlay={linked ? null : <DemoDrawer />}
@@ -341,13 +342,14 @@ function Stops() {
 
   if (!stops.length) {
     return (
-      <Tappable accessibilityRole="button" onPress={() => router.push('/add-load')} give={1} style={press.section}>
-        <T v="bodyStrong">Add today’s load</T>
-        <Gap h={4} />
-        <T v="bodySmall" c={color.sub}>
-          Optional. With appointment times, Docket knows your stops before you arrive
-        </T>
-      </Tappable>
+      // An action, so it looks like one: the secondary action card (icon, title, why, chevron), not a
+      // heading and a paragraph that happened to be tappable (24 Nov). Secondary, since it's optional.
+      <ActionCard
+        icon={(c) => <PlusIcon c={c} />}
+        label="Add today’s load"
+        sub="Optional. With appointment times, Docket knows your stops before you arrive"
+        onPress={() => router.push('/add-load')}
+      />
     );
   }
 

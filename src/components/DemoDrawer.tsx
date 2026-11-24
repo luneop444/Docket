@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { DEMO_STATES, type DemoState } from '../logic/demo';
 import { placeOf } from '../logic/state';
 import { useStore } from '../state/AppStore';
 import { color, glass, protoColor, radius } from '../theme/tokens';
+import { useTabSpace } from './Chrome';
 import { Button, Gap, T } from './ui';
 
 const STATE_LABEL: Record<DemoState, string> = {
@@ -15,14 +16,51 @@ const STATE_LABEL: Record<DemoState, string> = {
   logged: 'Logged',
 };
 
+// Open or not, shared by the tab in the header and the drawer over the screen.
+let openNow = false;
+const subs = new Set<() => void>();
+const setOpen = (v: boolean) => {
+  openNow = v;
+  subs.forEach((f) => f());
+};
+const useOpen = () =>
+  useSyncExternalStore(
+    (f) => {
+      subs.add(f);
+      return () => subs.delete(f);
+    },
+    () => openNow,
+    () => false,
+  );
+
+/**
+ * Prototype only: the small dashed "Demo" tab that opens the controls. It sits in Today's header,
+ * in the page's flow: floating over the screen it covered whatever text scrolled under it (24 Nov).
+ */
+export function DemoTab() {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Open demo controls"
+      onPress={() => setOpen(true)}
+      style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
+    >
+      <T v="labelPill" c={protoColor.fakeInk}>
+        Demo
+      </T>
+    </Pressable>
+  );
+}
+
 /**
  * Prototype only. Stands in for GPS and time passing, so a demo can show each
- * Home state happening the way the real app gets there. Folded away as a small
- * tab so it stays out of the design and out of screenshots.
+ * Home state happening the way the real app gets there. Opened from DemoTab.
  */
 export function DemoDrawer() {
   const { s, a } = useStore();
-  const [open, setOpen] = useState(false);
+  const open = useOpen();
+  // Clear of the floating tab bar, which would otherwise cover the panel's last row.
+  const { space } = useTabSpace();
   const phase = s.stop.phase;
   const place = placeOf(s.load).short;
   const run = (fn: () => void) => () => {
@@ -30,23 +68,10 @@ export function DemoDrawer() {
     setOpen(false);
   };
 
-  if (!open) {
-    return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Open demo controls"
-        onPress={() => setOpen(true)}
-        style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
-      >
-        <T v="labelPill" c={protoColor.fakeInk}>
-          Demo
-        </T>
-      </Pressable>
-    );
-  }
+  if (!open) return null;
 
   return (
-    <View style={styles.wrap} pointerEvents="box-none">
+    <View style={[styles.wrap, { paddingBottom: space - 12 }]} pointerEvents="box-none">
       <Pressable accessibilityLabel="Close demo controls" style={styles.scrim} onPress={() => setOpen(false)} />
       <View style={styles.panel}>
         <View style={styles.head}>
@@ -103,10 +128,8 @@ export function DemoDrawer() {
 
 const styles = StyleSheet.create({
   tab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 112,
-    height: 36,
+    height: 32,
+    marginRight: 6,
     paddingHorizontal: 14,
     borderRadius: 18,
     borderCurve: 'continuous',
