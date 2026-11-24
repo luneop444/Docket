@@ -222,7 +222,9 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       const max = node.scrollHeight - node.clientHeight;
       const top = node.scrollTop;
       const pastTop = dy < 0 && top <= 0;
-      const pastBottom = dy > 0 && top >= max - 0.5;
+      // A pixel of slack: under browser zoom or display scaling the scroll can stop a fraction
+      // short of the end, which read as mid-list and never stretched (top is always exactly 0).
+      const pastBottom = dy > 0 && top >= max - 1.5;
       const stretched = x !== 0 || held;
 
       // Back toward the content while stretched: the browser scrolls it, the edge lets go.
