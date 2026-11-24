@@ -205,7 +205,14 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       if (!mouse) {
         // Fingers back on the pad during momentum: the speed climbs again, or the direction turns.
         const turned = recent.length > 1 && Math.sign(recent[recent.length - 2][1]) !== Math.sign(dy);
-        if (momentum && now - liftAt > WINDOW_MS + 10) {
+        // Coasting only slows, each event the same size or smaller; fingers wobble (14, 13, 14).
+        // Chrome on Windows also sends size-0 events mid-gesture, not only at the lift, which
+        // left a steady push marked as coasting and ignored at the edge (23 Nov).
+        const grew = size > lastSize + 0.5 && lastSize > 0;
+        if (momentum && grew && size > NEW_MIN) {
+          momentum = false;
+          thrown = false;
+        } else if (momentum && now - liftAt > WINDOW_MS + 10) {
           const speed = Math.abs(speedNow(now));
           if (turned || (speed > slowest * NEW_JUMP && size > NEW_MIN)) {
             momentum = false;
