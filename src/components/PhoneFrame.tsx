@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react';
+import { useRef, type ComponentRef, type ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { clockBare } from '../logic/format';
 import { useStore } from '../state/AppStore';
 import { color, device, fontFamily, protoColor } from '../theme/tokens';
 import { FrameContext } from './Chrome';
 import { Battery, SignalBars } from './Icons';
+import { useWheelToPhone } from './wheelToPhone';
 
 /** At this window width and up we're on a computer: draw the phone frame. */
 const DESKTOP_MIN_WIDTH = 761;
@@ -18,6 +19,8 @@ const GAP = 40;
 export function PhoneFrame({ children }: { children: ReactNode }) {
   const { width, height } = useWindowDimensions();
   const framed = Platform.OS === 'web' && width >= DESKTOP_MIN_WIDTH;
+  const phone = useRef<ComponentRef<typeof View>>(null);
+  useWheelToPhone(phone, framed);
 
   if (!framed) {
     return (
@@ -36,7 +39,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
     <FrameContext.Provider value={true}>
       <View style={styles.desk}>
         <View style={[styles.stage, { transform: [{ scale }] }]}>
-          <View style={styles.phone}>
+          <View ref={phone} style={styles.phone}>
             {children}
             <StatusBarFake />
           </View>
