@@ -96,6 +96,13 @@ export function scrollerUnder(bar: HTMLElement, own: HTMLElement | null = bar.pa
         fallback = fallback ?? e;
         break;
       }
+      // A screen whose content fits has its scroll view switched off (overflow hidden). It's
+      // still the screen under the bar: picture it, not the whole app, whose picture (every
+      // mounted tab at once) failed on iPhone and left the bar on its stand-in (24 Nov).
+      if (oy === 'hidden' && e.firstElementChild && e.clientHeight > window.innerHeight * 0.5) {
+        fallback = fallback ?? e;
+        break;
+      }
       e = e.parentElement;
     }
   }
