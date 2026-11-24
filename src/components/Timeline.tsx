@@ -59,6 +59,9 @@ function usePop(state: EventState) {
   return s;
 }
 
+const web = Platform.OS === 'web';
+const STATE_WORD: Record<EventState, string> = { done: 'done', current: 'current step', upcoming: 'not yet' };
+
 /** Figma "Timeline / Event" (State × Segment): a 30 node with its icon, title, detail, time. */
 export function TimelineEventRow({ title, detail, time, state, segment, icon, action }: TimelineEvent) {
   const upcoming = state === 'upcoming';
@@ -74,7 +77,15 @@ export function TimelineEventRow({ title, detail, time, state, segment, icon, ac
         {segment === 'none' ? null : <View style={[styles.segment, { backgroundColor: RAIL[segment] }]} />}
       </View>
       <View style={styles.text}>
-        <Text style={[type.bodyStrong, upcoming ? styles.upcoming_ : styles.ink]}>{title}</Text>
+        {/* The step's state is told in words too, not only by the node's fill (WCAG 1.3.1). Web: a
+            word after the title only screen readers get; native: the title's VoiceOver label. */}
+        <Text
+          style={[type.bodyStrong, upcoming ? styles.upcoming_ : styles.ink]}
+          accessibilityLabel={web ? undefined : `${title}, ${STATE_WORD[state]}`}
+        >
+          {title}
+          {web ? <Text style={styles.srOnly}>{`, ${STATE_WORD[state]}`}</Text> : null}
+        </Text>
         {detail ? <Text style={[type.bodySmall, styles.sub]}>{detail}</Text> : null}
         {action ? (
           <Tappable accessibilityRole="button" onPress={action.onPress} style={[styles.action]}>
@@ -127,6 +138,14 @@ const styles = StyleSheet.create({
   // Figma: white, 1 line border, a soft shadow (the ink at 8%, blur 6).
   upcoming: { backgroundColor: color.bg, borderWidth: 1, borderColor: color.line, boxShadow: '0 0 6px rgba(28,28,28,0.08)' },
   segment: { flex: 1, width: 3 },
+  // Read by screen readers, not drawn (web only).
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    overflow: 'hidden',
+    ...({ clipPath: 'inset(50%)', whiteSpace: 'nowrap' } as object),
+  },
   // 4 above the title, 20 below the last line, 2 between.
   text: { flex: 1, minWidth: 0, gap: 2, paddingTop: 4, paddingBottom: 20 },
   // Times are data, not titles: Body/Regular, lined up with the title (09 · clarity pass).
