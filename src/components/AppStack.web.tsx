@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router/js-stack';
+import { View } from 'react-native';
 import { color } from '../theme/tokens';
 import { NO_PUSH } from './pushRoutes';
 import { useReduceMotion } from './stepMotion';
@@ -13,6 +14,10 @@ import { useReduceMotion } from './stepMotion';
 export function AppStack() {
   const reduce = useReduceMotion();
   return (
+    // Clipped: the stack parks the page underneath a screen's height below once it's covered,
+    // and unclipped that made the whole document two screens tall, so a scroll anywhere moved
+    // the page out from under the app (the scanned statement rode up off the top, 24 Nov).
+    <View style={{ flex: 1, overflow: 'hidden' }}>
     <Stack
       screenOptions={({ route }) => ({
         headerShown: false,
@@ -21,5 +26,6 @@ export function AppStack() {
         cardStyle: { backgroundColor: color.canvas },
       })}
     />
+    </View>
   );
 }
