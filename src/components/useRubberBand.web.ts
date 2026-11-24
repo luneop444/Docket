@@ -46,8 +46,10 @@ const soften = (v: number) => VMAX * Math.tanh((THROW * v) / VMAX);
 const WINDOW_MS = 50;
 /** The wheel stream is over once no event comes for this long. */
 const GAP_MS = 100;
-/** With lift markers, a held edge waits for the lift; if none comes in this long, it lets go. */
-const SAFETY_MS = 1500;
+/** With lift markers, a held edge waits for the lift; if none comes in this long, it lets go.
+ * Was 1.5 s: a touchpad whose lift the edge missed left it stretched that long after every pull,
+ * which read as the bounce not working at all (Edward's Windows laptop, 24 Nov). */
+const SAFETY_MS = 300;
 /** Without lift markers: after a trackpad lifts, its drift arrives as shrinking events; this many
  * decreases is drift. Repeats (3, 3, 2, 2, 1) neither count nor reset. */
 const DRIFT_RUN = 3;
@@ -129,6 +131,8 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
     let slowest = Infinity; // momentum's lowest speed since the lift
     let shrinking = 0;
     const recent: [number, number][] = []; // [time, dy] of wheel events, for speed
+    const speeds: [number, number][] = []; // [time, |speed|] after each event, last 250 ms
+    let jumps = 0; // events in a row with the speed well above momentum's lowest
 
     const paint = () => {
       const c = content();
@@ -181,6 +185,19 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       while (recent.length && now - recent[0][0] > WINDOW_MS) recent.shift();
       return (recent.reduce((a, [, dy]) => a + dy, 0) / WINDOW_MS) * 1000; // pt/s
     };
+    /** The stream has been slowing for a while: momentum, whether or not a lift marker came
+     * (Edward's touchpad sent none that the edge saw, 24 Nov, so it stayed held through a long
+     * coast). Fingers holding a pull keep a steady speed; a coast keeps losing it. */
+    const slowingDown = (now: number, sp: number) => {
+      // Averages, not single readings: event timing jitters, and a steady pull read as
+      // slowing when one 50 ms window happened to hold fewer events than the one before.
+      const then = speeds.filter(([t]) => now - t <= 220 && now - t >= 120);
+      const lately = speeds.filter(([t]) => now - t < 60);
+      if (then.length < 3 || lately.length < 2) return false;
+      const avg = (a: [number, number][]) => a.reduce((x, [, v]) => x + v, 0) / a.length;
+      const before = avg(then);
+      return before > 60 && Math.max(sp, avg(lately)) < before * 0.6;
+    };
     const endSoon = () => {
       clearTimeout(idle);
       idle = window.setTimeout(() => {
@@ -190,6 +207,8 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
         shrinking = 0;
         lastSize = 0;
         slowest = Infinity;
+        speeds.length = 0;
+        jumps = 0;
         // Without lift markers, quiet is the only sign the fingers lifted.
         if (held && !markers) letGo();
       }, GAP_MS);
@@ -232,15 +251,16 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
         // Coasting only slows, each event the same size or smaller; fingers wobble (14, 13, 14).
         // Chrome on Windows also sends size-0 events mid-gesture, not only at the lift, which
         // left a steady push marked as coasting and ignored at the edge (23 Nov).
-        const grew = size > lastSize + 0.5 && lastSize > 0;
-        if (momentum && grew && size > NEW_MIN) {
-          momentum = false;
-          thrown = false;
-        } else if (momentum && now - liftAt > WINDOW_MS + 10) {
+        // A single bigger event isn't fingers coming back: a real touchpad's momentum is noisy
+        // (4, 4, 10, 4, 7, 3 recorded on Edward's Windows laptop, 24 Nov), and treating one spike
+        // as a new pull held the edge stretched through the whole coast. It takes two in a row.
+        if (momentum && now - liftAt > WINDOW_MS + 10) {
           const speed = Math.abs(speedNow(now));
-          if (turned || (speed > slowest * NEW_JUMP && size > NEW_MIN)) {
+          jumps = speed > slowest * NEW_JUMP && size > NEW_MIN ? jumps + 1 : 0;
+          if (turned || jumps >= 2) {
             momentum = false;
             thrown = false;
+            jumps = 0;
           } else slowest = Math.min(slowest, speed);
         } else if (momentum && turned) {
           momentum = false;
@@ -280,7 +300,10 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
         endSoon();
         return;
       }
-      const coasting = momentum || (!markers && (shrinking >= DRIFT_RUN || (!held && Math.abs(speedNow(now)) > FLING)));
+      const sp = Math.abs(speedNow(now));
+      speeds.push([now, sp]);
+      while (speeds.length && now - speeds[0][0] > 250) speeds.shift();
+      const coasting = momentum || slowingDown(now, sp) || (!markers && (shrinking >= DRIFT_RUN || (!held && Math.abs(speedNow(now)) > FLING)));
       if (coasting || thrown) {
         // Momentum reaching the edge throws it once, at its speed; the rest of it never re-stretches
         // the edge or stops the spring.
