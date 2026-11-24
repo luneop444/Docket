@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View, type GestureResponderEvent, type HostInstance } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, Text, View, type GestureResponderEvent, type HostInstance } from 'react-native';
 import { tick } from '../logic/haptics';
 import { BUBBLE, IndexBubble } from './IndexBubble';
 import { useReduceMotion } from './stepMotion';
@@ -111,12 +111,20 @@ export function LetterIndex({ onLetter, visible }: { onLetter: (letter: string) 
             setActive(null);
             showBubble(false);
           }}
-          accessible
-          accessibilityRole="adjustable"
-          accessibilityLabel="Jump to letter"
-          accessibilityValue={{ text: INDEX_LETTERS[a11y] }}
-          accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-          onAccessibilityAction={(e) => step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
+          // Native: an adjustable VoiceOver swipes up and down through. The web build has no such
+          // actions, so there it's hidden from screen readers (a slider with no value, WCAG
+          // 4.1.2); the list scrolls and search finds any company.
+          {...(Platform.OS === 'web'
+            ? { 'aria-hidden': true }
+            : {
+                accessible: true,
+                accessibilityRole: 'adjustable' as const,
+                accessibilityLabel: 'Jump to letter',
+                accessibilityValue: { text: INDEX_LETTERS[a11y] },
+                accessibilityActions: [{ name: 'increment' }, { name: 'decrement' }],
+                onAccessibilityAction: (e: { nativeEvent: { actionName: string } }) =>
+                  step(e.nativeEvent.actionName === 'increment' ? 1 : -1),
+              })}
         >
           {INDEX_LETTERS.map((l) => (
             <Text key={l} style={[styles.letter, l === active && styles.letterOn]}>
