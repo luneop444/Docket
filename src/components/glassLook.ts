@@ -24,9 +24,9 @@ export const REFRACT = 1.5;
  * Splay, the colour split at the rim: red and green read this many times Aave's 0.88 and 0.43
  * further than blue (1 before 19 Nov). The fringe also grows with REFRACT. 0.6 since 23 Nov:
  * Edward asked for less dispersion on the nav bar; on the white bar the red and blue fringe at
- * the rim read as a colour edge rather than glass.
+ * the rim read as a colour edge rather than glass. 0.45 that night (a little less again).
  */
-export const SPLAY = 0.6;
+export const SPLAY = 0.45;
 export const GLASS_CHROMA: [number, number, number] = [1 + (0.88 * SPLAY) / BEND, 1 + (0.43 * SPLAY) / BEND, 1];
 /** Room above and below the glass that the picture must also cover, for the bend to read. */
 export const M = 28;
