@@ -303,10 +303,10 @@ function UndoToast({ text }: { text: string }) {
     >
       <Text style={[type.bodyStrong, styles.undoText]}>{text}</Text>
       {/* On the dark toast the action's own chip turns lime and its word ink while lit. */}
-      <Tappable accessibilityRole="button" accessibilityLabel="Fix the arrival time" onPress={a.openFix} hitSlop={10} give={1} style={press.hit}>
+      <Tappable highlight="fade" accessibilityRole="button" accessibilityLabel="Fix the arrival time" onPress={a.openFix} hitSlop={10} give={1} style={press.hit}>
         {({ lit }) => <Text style={[type.labelSmall, { color: lit ? color.ink : protoColor.toastAction }]}>Fix</Text>}
       </Tappable>
-      <Tappable accessibilityRole="button" accessibilityLabel="Undo, this isn't a stop" onPress={a.cancelArrival} hitSlop={10} give={1} style={press.hit}>
+      <Tappable highlight="fade" accessibilityRole="button" accessibilityLabel="Undo, this isn't a stop" onPress={a.cancelArrival} hitSlop={10} give={1} style={press.hit}>
         {({ lit }) => <Text style={[type.labelSmall, { color: lit ? color.ink : color.signal }]}>Undo</Text>}
       </Tappable>
     </Animated.View>

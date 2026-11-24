@@ -130,7 +130,7 @@ function StopCard({ r, onRemove }: { r: StopRow; onRemove: () => void }) {
         </T>
         {hasBol ? <Pill label="BOL" /> : null}
       </Row>
-      <Tappable accessibilityRole="button" onPress={() => (sure ? onRemove() : setSure(true))} hitSlop={8} give={1} style={[press.hit, { marginTop: 4 }]}>
+      <Tappable highlight="fade" accessibilityRole="button" onPress={() => (sure ? onRemove() : setSure(true))} hitSlop={8} give={1} style={[press.hit, { marginTop: 4 }]}>
         <T v="bodyTiny" c={sure ? color.flag : undefined}>
           {sure ? 'Tap again to remove this stop for good' : 'Not a real stop? Remove it'}
         </T>

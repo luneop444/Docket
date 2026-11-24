@@ -108,10 +108,10 @@ export default function ClaimDetail() {
           {removing ? (
             <View style={styles.confirm}>
               <T v="bodyTiny" style={styles.flex}>Remove {c.load.name} from your stops?</T>
-              <Tappable accessibilityRole="button" onPress={() => setRemoving(false)} hitSlop={10} give={1} style={press.hit}>
+              <Tappable highlight="fade" accessibilityRole="button" onPress={() => setRemoving(false)} hitSlop={10} give={1} style={press.hit}>
                 <T v="labelSmall">Keep</T>
               </Tappable>
-              <Tappable
+              <Tappable highlight="fade"
                 accessibilityRole="button"
                 onPress={() => {
                   a.removeLogged(c.id);
@@ -125,7 +125,7 @@ export default function ClaimDetail() {
               </Tappable>
             </View>
           ) : (
-            <Tappable accessibilityRole="button" onPress={() => setRemoving(true)} hitSlop={8} give={1} style={[press.hit, styles.remove]}>
+            <Tappable highlight="fade" accessibilityRole="button" onPress={() => setRemoving(true)} hitSlop={8} give={1} style={[press.hit, styles.remove]}>
               <T v="bodyTiny">Not a real stop? Remove it</T>
             </Tappable>
           )}

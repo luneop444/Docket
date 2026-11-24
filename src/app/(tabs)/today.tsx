@@ -293,7 +293,7 @@ function AtStop() {
           </>
         ) : (
           <>
-            <Tappable accessibilityRole="button" onPress={() => router.push(`/claim?id=${encodeURIComponent(claim.id)}`)} give={1} style={press.hit}>
+            <Tappable highlight="fade" accessibilityRole="button" onPress={() => router.push(`/claim?id=${encodeURIComponent(claim.id)}`)} give={1} style={press.hit}>
               <T v="labelSmall">Claim sent · see it in Claims</T>
             </Tappable>
             <Gap h={16} />
@@ -323,7 +323,7 @@ const FIX_LABEL = 'Something wrong? Fix it';
 
 function Link({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Tappable accessibilityRole="button" onPress={onPress} hitSlop={12} give={1} style={press.hit}>
+    <Tappable highlight="fade" accessibilityRole="button" onPress={onPress} hitSlop={12} give={1} style={press.hit}>
       <T v="bodySmall" c={color.sub} style={styles.link}>
         {label}
       </T>

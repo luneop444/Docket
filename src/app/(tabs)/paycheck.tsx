@@ -48,7 +48,7 @@ export default function Claims() {
         <Gap h={12} />
         <View style={styles.rules}>
           <T v="bodyTiny" style={styles.flex}>Figured with {rulesLine(s.rules)}.</T>
-          <Tappable accessibilityRole="button" accessibilityLabel="Change rules" onPress={() => router.push('/rules')} hitSlop={10} give={1} style={press.hit}>
+          <Tappable highlight="fade" accessibilityRole="button" accessibilityLabel="Change rules" onPress={() => router.push('/rules')} hitSlop={10} give={1} style={press.hit}>
             <T v="bodyTiny" c={color.ink} style={styles.link}>Change</T>
           </Tappable>
         </View>

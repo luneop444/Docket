@@ -9,9 +9,11 @@ import { useReduceMotion } from './stepMotion';
  *   pass children as a function and flip the content to ink while `lit` (see Button);
  * - ring: a lime ring inside the edge (only where content can't flip, e.g. the picked segment);
  * - dim: a light ink veil (surfaces that are already lime);
+ * - fade: the content dims, no lime, for anything without a container of its own (back
+ *   buttons, text links): a lime patch would draw a box that isn't there (iOS plain buttons);
  * - none: no highlight, only the give.
  */
-export type PressHighlight = 'wash' | 'ring' | 'dim' | 'none';
+export type PressHighlight = 'wash' | 'ring' | 'dim' | 'fade' | 'none';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -50,7 +52,7 @@ export function Tappable({
   style?: StyleProp<ViewStyle> | ((s: { pressed: boolean }) => StyleProp<ViewStyle>);
   /** How far it gives: 0.97 for buttons and rows, closer to 1 for big cards. */
   give?: number;
-  /** Lime press highlight: wash (default), ring, dim or none. */
+  /** Press highlight: wash (default), ring, dim, fade (no container) or none. */
   highlight?: PressHighlight;
   /** Content, or a function of `lit` (true while the highlight shows) to recolor it on lime. */
   children?: ReactNode | ((s: { lit: boolean }) => ReactNode);
@@ -126,9 +128,14 @@ export function Tappable({
       // (on the web an absolute layer would otherwise paint over unpositioned children like icons).
       // While the finger is down the surface itself is lime too, so no dark hairline of an ink
       // fill shows round the highlight's anti-aliased edge.
-      style={[base, pressed && highlight === 'wash' && hl.wash, { transform: [{ scale: v }] }]}
+      style={[
+        base,
+        pressed && highlight === 'wash' && hl.wash,
+        { transform: [{ scale: v }] },
+        highlight === 'fade' && { opacity: lit.interpolate({ inputRange: [0, 1], outputRange: [1, 0.35] }) },
+      ]}
     >
-      {highlight !== 'none' && (
+      {highlight !== 'none' && highlight !== 'fade' && (
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, corner, hl[highlight], { zIndex: -1, opacity: lit }]} />
       )}
       {typeof children === 'function' ? children({ lit: isLit }) : children}
