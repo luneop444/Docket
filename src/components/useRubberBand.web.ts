@@ -76,6 +76,30 @@ export function bouncesNatively(ua: string) {
   return /Safari\//.test(ua);
 }
 
+/** ?band=debug: one shared readout pinned top-left of the page, newest line first. */
+let readout: HTMLDivElement | null = null;
+const lines: string[] = [];
+let pageEvents = 0;
+const draw = () => {
+  if (readout) readout.textContent = `wheel events on the page: ${pageEvents}\n` + lines.join('\n');
+};
+function debugLog(): ((line: string) => void) | null {
+  if (!/[?&]band=debug/.test(location.search)) return null;
+  if (!readout) {
+    readout = document.createElement('div');
+    readout.style.cssText =
+      'position:fixed;left:8px;top:8px;z-index:99999;width:440px;max-height:90vh;overflow:hidden;font:11px/1.35 monospace;background:rgba(255,255,255,.92);color:#111;padding:8px;border-radius:8px;pointer-events:none;white-space:pre';
+    document.body.appendChild(readout);
+    window.addEventListener('wheel', () => ((pageEvents += 1), draw()), { capture: true, passive: true });
+    draw();
+  }
+  return (line) => {
+    lines.unshift(`${(performance.now() / 1000).toFixed(2)} ${line}`);
+    lines.length = Math.min(lines.length, 40);
+    draw();
+  };
+}
+
 type Scrollable = { getScrollableNode?: () => HTMLElement } | HTMLElement | null;
 
 export function useRubberBand(ref: RefObject<Scrollable>) {
@@ -281,10 +305,26 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
       endSoon();
     };
 
-    node.addEventListener('wheel', onWheel, { passive: true });
+    // ?band=debug: a readout of every wheel event this scroll area gets and what it did with it,
+    // for a real touchpad that can't be reproduced in a test.
+    const log = debugLog();
+    const traced = log
+      ? (e: WheelEvent) => {
+          onWheel(e);
+          if (node.dataset.glassScreen === 'off') return;
+          const w = (e as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY;
+          const max = node.scrollHeight - node.clientHeight;
+          log(
+            `dy ${e.deltaY.toFixed(1)} w ${w} m${e.deltaMode} ${isMouseWheel(e) ? 'MOUSE' : 'pad'} ` +
+              `top ${node.scrollTop.toFixed(1)}/${max.toFixed(1)} x ${x.toFixed(1)} ` +
+              `${held ? 'held ' : ''}${momentum ? 'mom ' : ''}${thrown ? 'thrown ' : ''}${markers ? '' : 'nomark'}`,
+          );
+        }
+      : onWheel;
+    node.addEventListener('wheel', traced, { passive: true });
     return () => {
       node.style.removeProperty('overscroll-behavior-y');
-      node.removeEventListener('wheel', onWheel);
+      node.removeEventListener('wheel', traced);
       cancelAnimationFrame(raf);
       cancelAnimationFrame(paintRaf);
       clearTimeout(idle);
