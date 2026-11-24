@@ -42,6 +42,8 @@ const VMAX = (CAP * R * Math.E) / A;
 /** Throws land 1.3x AppKit's size (asked for a little more bounce than the Mac default). */
 const THROW = 1.3;
 const soften = (v: number) => VMAX * Math.tanh((THROW * v) / VMAX);
+/** How closely the drawn stretch follows the computed one (time constant). */
+const FOLLOW_MS = 25;
 /** Speed is read over the last 50 ms of wheel events (as gpui-kit does). */
 const WINDOW_MS = 50;
 /** The wheel stream is over once no event comes for this long. */
@@ -134,15 +136,31 @@ export function useRubberBand(ref: RefObject<Scrollable>) {
     const speeds: [number, number][] = []; // [time, |speed|] after each event, last 250 ms
     let jumps = 0; // events in a row with the speed well above momentum's lowest
 
-    const paint = () => {
+    // What's on screen trails x slightly (a ~25 ms follow), so the stretch moves evenly: a
+    // touchpad's events land unevenly (1 to 10 pt, two in one frame and none in the next), and
+    // drawn as they came the edge stepped instead of gliding (24 Nov).
+    let shown = 0;
+    let shownAt = 0;
+    const draw = () => {
       const c = content();
-      if (c) c.style.transform = x ? `translate3d(0, ${-x}px, 0)` : '';
+      if (c) c.style.transform = Math.abs(shown) > 0.05 ? `translate3d(0, ${-shown}px, 0)` : '';
       document.dispatchEvent(new Event(MOVE_EVENT));
     };
-    // Wheel events come at up to ~165 Hz; draw once per frame.
-    const paintSoon = () => {
-      if (!paintRaf) paintRaf = requestAnimationFrame(() => ((paintRaf = 0), paint()));
+    const follow = (now: number) => {
+      paintRaf = 0;
+      const dt = shownAt ? Math.min(64, now - shownAt) : 16;
+      shownAt = now;
+      shown += (x - shown) * (1 - Math.exp(-dt / FOLLOW_MS));
+      if (Math.abs(x - shown) < 0.05) shown = x;
+      draw();
+      if (shown !== x) paintRaf = requestAnimationFrame(follow);
+      else shownAt = 0;
     };
+    const paint = () => {
+      if (!paintRaf) paintRaf = requestAnimationFrame(follow);
+    };
+    // Wheel events come at up to ~165 Hz; draw once per frame.
+    const paintSoon = paint;
     const capped = (v: number) => Math.max(-CAP, Math.min(CAP, v));
 
     // The release / throw curve, from where the edge is now.
