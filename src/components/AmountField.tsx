@@ -25,9 +25,10 @@ export function AmountField({
   autoFocus?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
   return (
     <View style={styles.wrap}>
-      <View style={[styles.field, error ? styles.fieldError : null]}>
+      <View style={[styles.field, focused ? styles.fieldFocus : null, error ? styles.fieldError : null]}>
         <Text style={styles.dollar}>$</Text>
         <TextInput
           value={value}
@@ -36,7 +37,11 @@ export function AmountField({
             onChange(r.value);
             setError(r.error);
           }}
-          onBlur={() => onChange(formatAmount(value))}
+          onFocus={() => setFocused(true)}
+          onBlur={() => {
+            setFocused(false);
+            onChange(formatAmount(value));
+          }}
           placeholder="0.00"
           placeholderTextColor={color.sub}
           inputMode="decimal"
@@ -71,7 +76,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderCurve: 'continuous',
     backgroundColor: color.bg,
+    // A field's edge at 3:1 (WCAG 1.4.11): white alone sat 1.1:1 off the glass card.
+    boxShadow: `inset 0 0 0 1px ${color.track}`,
   },
+  // The browser ring is off (noFocusRing), so focus draws its own, as the other fields do (WCAG 2.4.7).
+  fieldFocus: { boxShadow: `inset 0 0 0 2px ${color.ink}` },
   // The flag red the app uses for "paid less than owed", as a ring so the field keeps its size.
   fieldError: { boxShadow: `inset 0 0 0 1.5px ${color.flag}` },
   dollar: { fontFamily: fontFamily.regular, fontSize: 17, color: color.sub },

@@ -169,6 +169,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: radius.chip, borderCurve: 'continuous',
     ...glass,
+    // A field's edge at 3:1 (WCAG 1.4.11): glass alone sat 1.1:1 off the card.
+    boxShadow: `inset 0 0 0 1px ${color.track}`,
     color: color.ink,
     ...noFocusRing,
   },
