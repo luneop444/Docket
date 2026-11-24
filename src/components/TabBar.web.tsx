@@ -5,7 +5,7 @@ import { color, glassLift, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
 import { BAR_TINT_GL, GLASS_CHROMA, frostSlice, GLASS_RIM, GLASS_STANDIN, glassK, glassReach, lensMap, mapData, scrollerUnder } from './glassLook';
 import { MOVE_EVENT } from './contentMove';
-import { isStale, pictureFailure, pictureOf, sliceAt, type PagePicture, type Slice } from './pagePicture';
+import { isStale, pictureFailure, pictureLeftOut, pictureOf, sliceAt, type PagePicture, type Slice } from './pagePicture';
 import { BEND, SPEC } from './glassPicture';
 import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
 
@@ -184,7 +184,7 @@ export function TabBar() {
       pic.current = { path: at, p, slice: null };
       setLiveFor(at);
       warmSoon.current();
-      setNote(`live · of "${(content.textContent || '').trim().slice(0, 14)}" · ${scroller ? 'scrolling list' : 'whole screen'} · ${p.slices.length} slice(s) at ${p.scale.toFixed(2)}x`);
+      setNote(`live · of "${(content.textContent || '').trim().slice(0, 14)}" · ${scroller ? 'scrolling list' : 'whole screen'} · ${p.slices.length} slice(s) at ${p.scale.toFixed(2)}x · left out ${pictureLeftOut()}`);
       requestAnimationFrame(frame);
     });
   }, [path, frame]);

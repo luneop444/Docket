@@ -59,6 +59,20 @@ if (typeof window !== 'undefined') {
 let lastFailure = '';
 export const pictureFailure = () => lastFailure;
 /** Frees canvases now (Safari holds their memory until collected otherwise). */
+/** What the last picture had to leave out to stay readable (debug). */
+let leftOut = 'nothing';
+export const pictureLeftOut = () => leftOut;
+
+/** Whether the page can read a canvas back (it can't once it's tainted). */
+function readable(c: HTMLCanvasElement): boolean {
+  try {
+    c.getContext('2d')?.getImageData(0, 0, 1, 1);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function release(cs: HTMLCanvasElement[]) {
   for (const c of cs) {
     c.width = 0;
@@ -126,13 +140,37 @@ async function take(el: HTMLElement, key: string, skip: Element | null, scene: P
   // As sharp as the screen, but the whole content must fit in one Safari canvas.
   const scale = Math.min(2, window.devicePixelRatio || 1, Math.sqrt(MAX_AREA / (w * h)));
   const { default: html2canvas } = (await import('html2canvas')) as unknown as { default: Html2Canvas };
-  const shot = scene !== 'page' ? await paintScene(el, scale, scene === 'rest') : await html2canvas(el, {
-    scale,
-    backgroundColor: color.canvas,
-    logging: false,
-    // Skipped too: anything marked as not part of the scene (the camera's grain).
-    ignoreElements: (e: Element) => (!!skip && skip.contains(e)) || (e as HTMLElement).dataset?.noglass === '1',
-  }).catch(() => null);
+  // iPhone Safari can mark the picture "insecure" (tainted) from something drawn into it, and
+  // then the glass may not read it at all ("The operation is insecure", Claims, 24 Nov). So the
+  // picture is checked, and taken again leaving out the icons, then all images, until it's clean.
+  const skipBase = (e: Element) => (!!skip && skip.contains(e)) || (e as HTMLElement).dataset?.noglass === '1';
+  const leaveOut: ((e: Element) => boolean)[] = [
+    () => false,
+    (e) => e.tagName.toLowerCase() === 'svg',
+    (e) => ['svg', 'img', 'canvas', 'video', 'picture'].includes(e.tagName.toLowerCase()),
+  ];
+  let shot: HTMLCanvasElement | null = null;
+  if (scene !== 'page') shot = await paintScene(el, scale, scene === 'rest');
+  else {
+    for (let i = 0; i < leaveOut.length; i++) {
+      const out = leaveOut[i];
+      shot = await html2canvas(el, {
+        scale,
+        backgroundColor: color.canvas,
+        logging: false,
+        // Skipped too: anything marked as not part of the scene (the camera's grain).
+        ignoreElements: (e: Element) => skipBase(e) || out(e),
+      }).catch(() => null);
+      if (!shot || readable(shot)) {
+        leftOut = ['nothing', 'icons', 'images'][i];
+        break;
+      }
+      release([shot]);
+      shot = null;
+      lastFailure = 'every picture came back insecure';
+    }
+    if (!shot && lastFailure === 'every picture came back insecure') return null;
+  }
   if (!shot) {
     lastFailure = 'the page picture came back empty (out of canvas memory?)';
     return null;
