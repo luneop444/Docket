@@ -84,6 +84,10 @@ export function scrollerUnder(bar: HTMLElement, own: HTMLElement | null = bar.pa
   // scroll area of their own, so the first hit that sits in one that scrolls wins.
   for (const h of hits) {
     if (own?.contains(h) || h === document.documentElement || h === document.body) continue;
+    // The other tabs stay mounted underneath, marked inert. Hit testing still finds them, so when
+    // this screen doesn't scroll (Claims with one claim) the hidden Companies list was taken as
+    // the page under the bar, and the glass bent the wrong screen (24 Nov).
+    if ((h as HTMLElement).closest?.('[inert]')) continue;
     let e: HTMLElement | null = h as HTMLElement;
     while (e && e !== document.body) {
       const oy = getComputedStyle(e).overflowY;
