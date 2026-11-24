@@ -252,8 +252,11 @@ export function Pill({ label, tone = 'quiet' }: { label: string; tone?: 'quiet' 
 /** Yellow tag on anything simulated. */
 export function Fake({ label = 'Faked' }: { label?: string }) {
   return (
-    <Text style={styles.fake}>
-      {` ${label.toUpperCase()} `}
+    // The gap before it stays unfilled, and the padding is no-break spaces: a plain space with the
+    // fill was left behind at the end of the line when the tag wrapped (a lime sliver after "loads.").
+    <Text>
+      {' '}
+      <Text style={styles.fake}>{`\u00A0${label.toUpperCase()}\u00A0`}</Text>
     </Text>
   );
 }

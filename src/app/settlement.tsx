@@ -4,7 +4,6 @@ import { StyleSheet, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
 import { Chip } from '../components/Chip';
 import { SettlementScan } from '../components/SettlementScan';
-import { DocIcon } from '../components/Icons';
 import { Button, Card, Fake, Gap, Row, T } from '../components/ui';
 import {
   checkEvents,
@@ -124,7 +123,7 @@ export default function Settlement() {
         ))}
       </Card>
       <Gap h={24} />
-      <Button label="Scan the settlement" icon={(c) => <DocIcon c={c} />} onPress={scan} />
+      <Button label="Scan the settlement" onPress={scan} />
       <Gap h={8} />
       <T v="bodyTiny" style={styles.center}>Claude finds each load on it by its number.</T>
       <Gap h={16} />
