@@ -1,43 +1,56 @@
 import { router } from 'expo-router';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Screen, TopBar } from '../components/Chrome';
 import { ChecklistIcon, DocIcon, LocationIcon } from '../components/Icons';
-import { Button, Gap, IconRow, Row, T, TimeBar } from '../components/ui';
-import { fontFamily } from '../theme/tokens';
+import { Button, Card, Gap, IconTile, T, type IconFn } from '../components/ui';
+import { color } from '../theme/tokens';
 
-/** v1 01 Welcome */
+/**
+ * v1 01 Welcome. The headline, then what Docket does as three short rows, each one card (24 Nov:
+ * the time bar, icon rows with subtitles and a privacy paragraph read as a wall of text, and the
+ * paragraph ran under the button). The labels say it alone; "your company's rules", not "your
+ * rules", since a driver doesn't set them. Privacy is one line under the button.
+ */
+const STEPS: { icon: IconFn; label: string }[] = [
+  { icon: (c) => <LocationIcon c={c} size={22} />, label: 'Times your stops' },
+  { icon: (c) => <ChecklistIcon c={c} size={22} />, label: 'Uses your company’s rules' },
+  { icon: (c) => <DocIcon c={c} size={22} />, label: 'Checks your pay' },
+];
+
 export default function Welcome() {
   return (
-    <Screen header={<TopBar />} footer={<Button label="Get started" onPress={() => router.push('/company')} />}>
+    <Screen
+      header={<TopBar />}
+      footer={
+        <>
+          <Button label="Get started" onPress={() => router.push('/company')} />
+          {/* Audit #1: scans go to the AI reader, so "stays on your phone" can't cover everything. */}
+          <T v="bodyTiny" c={color.faint} style={styles.privacy}>
+            Your times and pay stay on your phone.{'\n'}Scans are read once by AI, never kept or shared.
+          </T>
+        </>
+      }
+    >
       <Gap h={24} />
       <T v="h1">Know what you’re owed for every hour at the dock.</T>
       <Gap h={32} />
-      <Row>
-        <T v="bodyTiny">Arrive 1:48 PM</T>
-        <T v="bodyTiny">Leave 6:10 PM</T>
-      </Row>
-      <Gap h={8} />
-      <TimeBar free={120} detention={142} height={8} />
-      <Gap h={8} />
-      <Row>
-        <T v="bodyTiny">2h free time</T>
-        <T v="labelSmall" style={{ fontFamily: fontFamily.semibold }}>
-          2h 22m you should be paid for
-        </T>
-      </Row>
-      <Gap h={32} />
-      {/* Onboarding v3: icon rows instead of a numbered paragraph list. */}
-      <View style={{ gap: 18 }}>
-        <IconRow icon={(c) => <LocationIcon c={c} />} label="Notices your stops" sub="When you pull in and leave. You just confirm" />
-        <IconRow icon={(c) => <ChecklistIcon c={c} />} label="Applies your company’s rules" sub="Free time, rate and breaks, on every wait" />
-        <IconRow icon={(c) => <DocIcon c={c} size={20} />} label="Follows each claim until it’s paid" sub="Checks your settlement and asks for what’s missing" />
+      <View style={styles.steps}>
+        {STEPS.map((s) => (
+          <Card key={s.label} style={styles.step}>
+            <IconTile icon={s.icon} tone="white" size={48} />
+            <T v="bodyStrong" style={styles.label}>
+              {s.label}
+            </T>
+          </Card>
+        ))}
       </View>
-      <Gap h={24} />
-      {/* Audit #1: the old line ("stays on your phone") wasn't true once BOL and settlement scans went to the AI reader. */}
-      <T v="bodyTiny">
-        The times and pay you enter stay on your phone. Photos you choose to scan are sent once to be read by AI, not
-        stored, and never shared with your company.
-      </T>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  steps: { gap: 10 },
+  step: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 16 },
+  label: { flex: 1 },
+  privacy: { textAlign: 'center' },
+});
