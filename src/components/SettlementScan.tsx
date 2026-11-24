@@ -332,6 +332,9 @@ function Review({
  * release goes the way it was flicked, or to the nearer place if it wasn't. Tapping the grabber
  * does the same. Under Reduce Motion it moves straight to the place.
  */
+/** How far the sheet is pulled before what's under its answer has faded out. */
+const PEEK_FADE = 90;
+
 function usePullDown() {
   const reduce = useReduceMotion();
   const [y] = useState(() => new Animated.Value(0));
@@ -475,6 +478,12 @@ function Found({
         )}
       </View>
       </View>
+      {/* Below the answer, everything fades as the sheet is pulled down, so the peek is just the
+          title and the amount, not a row cut off by the bottom edge (24 Nov). */}
+      <Animated.View
+        pointerEvents={pull.down ? 'none' : 'auto'}
+        style={{ opacity: pull.y.interpolate({ inputRange: [0, PEEK_FADE], outputRange: [1, 0], extrapolate: 'clamp' }) }}
+      >
       <Gap h={16} />
       <ScrollView style={styles.sheetRows} bounces={false} showsVerticalScrollIndicator={false}>
         {claims.map((c, i) => {
@@ -509,6 +518,7 @@ function Found({
         <Button label="Fix a row" variant="quiet" style={styles.flex} onPress={onFix} />
         <Button label="Looks right" style={styles.flex} onPress={onConfirm} />
       </Row>
+      </Animated.View>
     </Animated.View>
   );
 }
