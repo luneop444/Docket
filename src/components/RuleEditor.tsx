@@ -65,6 +65,8 @@ export function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boo
       accessibilityRole="switch"
       accessibilityLabel={label}
       accessibilityState={{ checked: on }}
+      // The web build drops accessibilityState: aria-checked is what a screen reader reads there.
+      aria-checked={on}
       onPress={() => {
         tick();
         onChange(!on);

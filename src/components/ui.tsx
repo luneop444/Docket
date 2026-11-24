@@ -291,6 +291,8 @@ export function Option({
       <Tappable
         accessibilityRole="radio"
         accessibilityState={{ checked: !!selected }}
+        // The web build drops accessibilityState: aria-checked is what a screen reader reads there.
+        aria-checked={!!selected}
         onPress={() => {
           if (!selected) tick();
           onPress();
@@ -379,6 +381,7 @@ export function Seg<K extends string>({
             key={o.key}
             accessibilityRole="radio"
             accessibilityState={{ checked: on }}
+            aria-checked={on}
             onPress={() => {
               if (!on) tick();
               onChange(o.key);
@@ -516,6 +519,7 @@ export function ChoiceTile({
     <Tappable
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
+      aria-checked={selected}
       accessibilityLabel={sub ? `${label}. ${sub}` : label}
       onPress={() => {
         if (!selected) tick();
