@@ -29,6 +29,42 @@ function OnboardingGuard() {
   return null;
 }
 
+/** Each screen's browser title, so a tab, a bookmark or a screen reader names it (WCAG 2.4.2). */
+const TITLES: Record<string, string> = {
+  '/welcome': 'Welcome',
+  '/company': 'Who do you drive for?',
+  '/company-rules': 'Your detention rules',
+  '/edit-rules': 'Detention rules',
+  '/rules': 'Detention rules',
+  '/loads': 'How your loads come in',
+  '/location': 'Notice your stops',
+  '/today': 'Today',
+  '/paycheck': 'Claims',
+  '/companies': 'Companies',
+  '/add-load': 'Add today’s load',
+  '/bol': 'Bill of lading',
+  '/summary': 'Stop summary',
+  '/settlement': 'Check a settlement',
+  '/claim': 'Claim',
+  '/claim-sheet': 'Claim',
+  '/company-info': 'Company',
+  '/check-stops': 'Check your stops',
+  '/history': 'Your stops',
+};
+
+function PageTitle() {
+  const path = usePathname();
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const t = TITLES[path];
+    const title = t ? `${t} · Docket` : 'Docket';
+    // After the router's own title pass, which would set the app name back.
+    const id = setTimeout(() => (document.title = title), 0);
+    return () => clearTimeout(id);
+  }, [path]);
+  return null;
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);
 
@@ -50,6 +86,7 @@ export default function RootLayout() {
           />
           <Overlays />
           <OnboardingGuard />
+          <PageTitle />
           <LocationWatcher />
           <BackgroundSync />
           <Squircles />
