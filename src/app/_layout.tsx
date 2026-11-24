@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppStack } from '../components/AppStack';
 import { Squircles } from '../components/Squircles';
 import { TextWrap } from '../components/TextWrap';
+import { LiveActivityBridge } from '../components/LiveActivityBridge';
 import { Overlays } from '../components/Overlays';
 import { PhoneFrame } from '../components/PhoneFrame';
 import { isDemoState } from '../logic/demo';
@@ -84,6 +85,7 @@ export default function RootLayout() {
           <PageTitle />
           <LocationWatcher />
           <BackgroundSync />
+          <LiveActivityBridge />
           <Squircles />
           <TextWrap />
         </PhoneFrame>

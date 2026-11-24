@@ -183,13 +183,43 @@ function style(
   };
 }
 
+/**
+ * Google Sans Flex's own line: 1932 up and 572 down of 2000 units (hhea = typo, line gap 0).
+ * Digits rise 0.74em above the baseline and "$" 0.80em.
+ */
+const FONT_ASCENT = 1932 / 2000;
+const FONT_DESCENT = 572 / 2000;
+const NATURAL_LINE = FONT_ASCENT + FONT_DESCENT;
+
+/**
+ * A one-line figure (the big wait, money, counts) set tighter than the font's own line.
+ * The web centres a short line on the glyphs and lets them spill out of it. iOS sits the
+ * baseline at the bottom of the short line and clips each text to its box, so tall glyphs lost
+ * their tops ("3h 59m" and "$29.75" on the phone). On iOS, then, use the font's own line, which
+ * never clips, and pull it in with equal negative margins: the box keeps the design's height
+ * and the baseline lands where the web puts it. Only for single-line figures: on wrapped text
+ * this would open the line spacing.
+ */
+function figure(
+  family: keyof typeof fontFamily,
+  size: number,
+  lineHeight: number,
+  letterSpacingPct: number,
+): TextStyle {
+  const base = style(family, size, lineHeight, letterSpacingPct);
+  if (Platform.OS !== 'ios' || lineHeight >= NATURAL_LINE) return base;
+  const { lineHeight: _tight, ...rest } = base;
+  const pull = Math.round(((NATURAL_LINE - lineHeight) * size * 100) / 2) / 100;
+  return { ...rest, marginTop: -pull, marginBottom: -pull };
+}
+
 export const type = {
-  displayTimer: style('medium', 84, 0.92, -4.5),
+  displayTimer: figure('medium', 84, 0.92, -4.5),
   h1: style('medium', 34, 1.05, -2.5),
   h2: style('medium', 24, 1.12, -1.8),
-  numberL: style('medium', 48, 1, -3),
-  numberM: style('medium', 32, 1, -3),
-  numberS: style('medium', 20, 1.1, -2),
+  numberL: figure('medium', 48, 1, -3),
+  numberM: figure('medium', 32, 1, -3),
+  numberS: figure('medium', 20, 1.1, -2),
   bodyStrong: style('semibold', 17, 1.3, -0.5),
   body: style('regular', 16, 1.4, 0),
   bodySmall: style('regular', 14, 1.4, 0),
