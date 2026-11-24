@@ -159,7 +159,7 @@ export function TabBar() {
       pic.current = { path: at, p, slice: null };
       setLiveFor(at);
       warmSoon.current();
-      setNote(`live · ${scroller ? 'scrolling list' : 'whole screen'} · ${p.slices.length} slice(s) at ${p.scale.toFixed(2)}x`);
+      setNote(`live · of "${(content.textContent || '').trim().slice(0, 14)}" · ${scroller ? 'scrolling list' : 'whole screen'} · ${p.slices.length} slice(s) at ${p.scale.toFixed(2)}x`);
       requestAnimationFrame(frame);
     });
   }, [path, frame]);
