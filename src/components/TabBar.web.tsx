@@ -4,8 +4,8 @@ import { createGlass, type Glass } from './glassGL';
 import { color, glassLift, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
 import { BAR_TINT_GL, GLASS_CHROMA, frostSlice, GLASS_RIM, GLASS_STANDIN, glassK, glassReach, lensMap, mapData, scrollerUnder } from './glassLook';
-import { MOVE_EVENT } from './contentMove';
-import { isStale, pictureFailure, pictureLeftOut, pictureOf, sliceAt, type PagePicture, type Slice } from './pagePicture';
+import { CHANGE_EVENT, MOVE_EVENT } from './contentMove';
+import { forget, isStale, pictureFailure, pictureLeftOut, pictureOf, sliceAt, type PagePicture, type Slice } from './pagePicture';
 import { BEND, SPEC } from './glassPicture';
 import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
 
@@ -289,6 +289,14 @@ export function TabBar() {
     };
     document.addEventListener('scroll', kick, { capture: true, passive: true });
     document.addEventListener(MOVE_EVENT, kick);
+    // Re-sorted in place (same size): picture it again, keeping the old one up until then.
+    const changed = () => {
+      const p = pic.current;
+      if (!p) return;
+      forget(p.p.el);
+      void picture();
+    };
+    document.addEventListener(CHANGE_EVENT, changed);
     const onResize = () => {
       pic.current = null;
       setLiveFor(null);
@@ -299,6 +307,7 @@ export function TabBar() {
       cancelAnimationFrame(raf);
       document.removeEventListener('scroll', kick, { capture: true });
       document.removeEventListener(MOVE_EVENT, kick);
+      document.removeEventListener(CHANGE_EVENT, changed);
       window.removeEventListener('resize', onResize);
     };
   }, [frame, picture]);

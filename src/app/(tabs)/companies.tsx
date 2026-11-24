@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
-import { type ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { LOGOS } from '../../components/carrierLogos';
 import { PageHead, Screen } from '../../components/Chrome';
 import { ChevronRight } from '../../components/Icons';
+import { glideRows, measureRows, type RowTops } from '../../components/reorderGlide';
 import { glideNext, useReduceMotion } from '../../components/stepMotion';
+import { Swap } from '../../components/Swap';
 import { Fake, Gap, ListCard, ListRow, Pill, Seg, T } from '../../components/ui';
 import { headline, noStatsNote, otherStats, payLine, REAL_CARRIERS, showsStats, sortBoard } from '../../logic/companyInfo';
 import { durShort, rateShort } from '../../logic/format';
@@ -24,6 +26,14 @@ export default function Companies() {
   const { s, a } = useStore();
   const reduce = useReduceMotion();
   const board = sortBoard(SAMPLE_BOARD, s.sort);
+  // Where each row was before a re-sort, so it can glide to its new place (reorderGlide).
+  const list = useRef<unknown>(null);
+  const before = useRef<RowTops>(null);
+  useLayoutEffect(() => {
+    if (!before.current) return;
+    glideRows(list.current, before.current);
+    before.current = null;
+  }, [s.sort]);
   return (
     <Screen tabs header={<PageHead title="Companies" />}>
       <T v="bodySmall">What waiting looks like at each company</T>
@@ -70,17 +80,25 @@ export default function Companies() {
         onChange={(k) => {
           // The rows glide to their new order, so you can follow a company as the list re-sorts.
           glideNext(reduce);
+          if (!reduce) before.current = measureRows(list.current);
           a.setSort(k);
         }}
       />
       <Gap h={12} />
-      <ListCard>
-        {board.map((c) => {
+      <View ref={list as never}>
+        <ListCard>
+          {board.map((c) => {
           const stats = showsStats(c);
           const h = headline(c, s.sort);
           return (
             <Row
               key={c.name}
+              glide={c.name}
+              sort={s.sort}
+              figureFor={(k) => {
+                const f = headline(c, k);
+                return stats ? [f.value, f.label] : [`${c.reported}/${MIN_REPORTS}`, 'reports so far'];
+              }}
               label={stats ? `${c.name}, ${h.value} ${h.label}, ${payLine(c)}` : `${c.name}, not enough reports yet`}
               onPress={() => open(c.name)}
               lead={null}
@@ -89,7 +107,11 @@ export default function Companies() {
                   <T v="bodyStrong">{c.name}</T>
                   {c.name === s.company ? <Pill label="Yours" tone="signal" /> : null}
                   <T v="bodySmall" c={color.ink}>{payLine(c)}</T>
-                  <T v="bodyTiny">{stats ? otherStats(c, s.sort) : `Stats show at ${MIN_REPORTS} reports`}</T>
+                  {stats ? (
+                    <Swap k={s.sort} render={(k) => <T v="bodyTiny">{otherStats(c, k)}</T>} />
+                  ) : (
+                    <T v="bodyTiny">{`Stats show at ${MIN_REPORTS} reports`}</T>
+                  )}
                 </>
               }
               value={stats ? h.value : `${c.reported}/${MIN_REPORTS}`}
@@ -98,7 +120,8 @@ export default function Companies() {
             />
           );
         })}
-      </ListCard>
+        </ListCard>
+      </View>
       <Gap h={16} />
       <T v="bodyTiny">
         <Fake label="Sample data" /> Made-up companies and numbers until drivers report for real.
@@ -116,7 +139,15 @@ function Row({
   value,
   caption,
   muted,
+  glide,
+  sort,
+  figureFor,
 }: {
+  /** Names the row for reorderGlide, so it glides to its new place on a re-sort. */
+  glide?: string;
+  /** The board's sort: the figure swaps (Swap) when it changes, drawn by figureFor. */
+  sort?: CompanySort;
+  figureFor?: (k: CompanySort) => [string, string];
   label: string;
   onPress: () => void;
   lead: ReactNode;
@@ -125,16 +156,21 @@ function Row({
   caption: string;
   muted?: boolean;
 }) {
+  const figure = (v: string, cap: string) => (
+    <View style={styles.figure}>
+      <T v="numberS" c={muted ? color.sub : color.ink} numberOfLines={1}>{v}</T>
+      <T v="bodyTiny" style={styles.right}>{cap}</T>
+    </View>
+  );
   return (
-    <ListRow accessibilityLabel={label} onPress={onPress}>
-      {lead}
-      <View style={styles.body}>{body}</View>
-      <View style={styles.figure}>
-        <T v="numberS" c={muted ? color.sub : color.ink} numberOfLines={1}>{value}</T>
-        <T v="bodyTiny" style={styles.right}>{caption}</T>
-      </View>
-      <ChevronRight size={16} c={color.faint} />
-    </ListRow>
+    <View {...(glide ? ({ dataSet: { glide } } as object) : {})}>
+      <ListRow accessibilityLabel={label} onPress={onPress}>
+        {lead}
+        <View style={styles.body}>{body}</View>
+        {sort && figureFor ? <Swap k={sort} render={(k) => figure(...figureFor(k))} /> : figure(value, caption)}
+        <ChevronRight size={16} c={color.faint} />
+      </ListRow>
+    </View>
   );
 }
 

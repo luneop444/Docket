@@ -122,7 +122,9 @@ export function pictureOf(el: HTMLElement, skip?: Element | null, mode: PictureM
 
 /** Drop the picture of `el`, so the next pictureOf takes a new one (the content changed in place). */
 export function forget(el: HTMLElement) {
-  cache.delete(el);
+  // Marked out of date rather than dropped, so the next picture lets this one's canvases go.
+  const had = cache.get(el);
+  if (had) had.key = '';
 }
 
 /** Whether the picture of `el` is out of date (it changed size since). */
