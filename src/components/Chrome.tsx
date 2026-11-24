@@ -51,6 +51,9 @@ export function useInsets() {
   };
 }
 
+/** How far below the status strip content fades out as it scrolls under it. */
+const TOP_FADE = 24;
+
 /** Height of the floating tab pill. */
 export const TAB_PILL = 64;
 
@@ -362,12 +365,15 @@ export function Screen({
         {overlay}
         {footer ? <View style={[styles.footer, { paddingBottom: footerBottom }]}>{footer}</View> : null}
       </Push>
-      {/* Content passing under the status bar fades out instead of running into it. */}
+      {/* Content passing under the status bar fades out instead of running into it: hidden through
+          the whole status strip (time, island, battery), then a soft fade below it. The solid part
+          used to end at 0.6 of top + 14, above the island's bottom, so content showed beside the
+          clock (23 Nov). */}
       <LinearGradient
         pointerEvents="none"
         colors={[color.canvas, color.canvas, `${color.canvas}00`]}
-        locations={[0, 0.6, 1]}
-        style={[styles.topFade, { height: top + 14 }]}
+        locations={[0, top / (top + TOP_FADE), 1]}
+        style={[styles.topFade, { height: top + TOP_FADE }]}
       />
       {over ? (
         <HeaderUnder.Provider value={under && needsScroll}>
