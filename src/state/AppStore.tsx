@@ -13,9 +13,9 @@ import {
 import { ASK_AFTER_MIN, demoState, type DemoState } from '../logic/demo';
 import type { Rules } from '../logic/detention';
 import type { LatLon } from '../logic/geo';
-import { actTime, claimsOf, type ClaimEvent } from '../logic/claims';
+import { claimsOf, type ClaimEvent } from '../logic/claims';
 import { toLogged, upsert } from '../logic/history';
-import { COMPANIES, SIM_MINUTES_PER_SECOND, START_NOW } from '../logic/sampleData';
+import { SIM_MINUTES_PER_SECOND, START_NOW } from '../logic/sampleData';
 import { demoClaimLoad } from './demoClaim';
 import {
   parseState,
@@ -98,14 +98,12 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         setUi((u) => (u.sheet?.kind === 'message' ? { ...u, sheet: { ...u.sheet, text } } : u)),
 
       /* onboarding */
+      setName: (name: string) => setS((s) => ({ ...s, name: name.trim() || null })),
+      /** The company only: its rules are the driver's to enter, never filled in from made-up presets. */
       pickCompany: (name: string, custom: boolean) =>
-        setS((s) => {
-          const c = COMPANIES.find((c) => c.name === name);
-          return { ...s, company: name, customCompany: custom, rules: c ? { ...c.rules } : s.rules };
-        }),
-      /** From the Companies tab: drive for a company and start from the rules its drivers report. */
-      switchCompany: (name: string, rules: Rules) =>
-        setS((s) => ({ ...s, company: name, customCompany: false, rules: { ...rules }, rulesCheck: 'unsure' })),
+        setS((s) => ({ ...s, company: name, customCompany: custom, rulesConfirmed: s.company === name && s.rulesConfirmed })),
+      /** The driver set every rule: setup is done and pay can be worked out. */
+      confirmRules: () => setS((s) => ({ ...s, rulesConfirmed: true, onboarded: true })),
       setPay: (pay: AppState['pay']) => setS((s) => ({ ...s, pay })),
       setRulesCheck: (rulesCheck: AppState['rulesCheck']) => setS((s) => ({ ...s, rulesCheck })),
       /** Also switches an existing load between one-off and every-run. */
@@ -118,7 +116,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
         })),
       setRule: <K extends keyof Rules>(k: K, v: Rules[K]) => setS((s) => ({ ...s, rules: { ...s.rules, [k]: v } })),
       setLocation: (location: LocationMode) => setS((s) => ({ ...s, location })),
-      finishOnboarding: (location: LocationMode) => setS((s) => ({ ...s, location, onboarded: true })),
+
 
       /* loads */
       startWatching: (load: AppState['load']) => setS((s) => ({ ...s, load })),
@@ -279,7 +277,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
       markClaimPaid: (id: string) => {
         setS((s) => {
           const c = claimsOf(s.history, s.rules, s.claims, demoClaimLoad(s)).find((x) => x.id === id);
-          return { ...s, claims: { ...s.claims, [id]: [...(s.claims[id] ?? c?.events ?? []), { k: 'paid', at: actTime(c, Date.now()) }] } };
+          return { ...s, claims: { ...s.claims, [id]: [...(s.claims[id] ?? c?.events ?? []), { k: 'paid', at: Date.now() }] } };
         });
         done();
         toast('Marked paid.');
@@ -293,7 +291,7 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
           const claims = { ...s.claims };
           for (const id of ids) {
             const c = cs.find((x) => x.id === id);
-            claims[id] = [...(claims[id] ?? c?.events ?? []), { k: step, at: actTime(c, Date.now()) }];
+            claims[id] = [...(claims[id] ?? c?.events ?? []), { k: step, at: Date.now() }];
           }
           return { ...s, claims };
         });

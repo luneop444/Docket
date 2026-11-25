@@ -149,7 +149,7 @@ export function BackBar({ onPress, label = 'Back' }: { onPress: () => void; labe
   );
 }
 
-export const ONBOARDING_STEPS = 4;
+export const ONBOARDING_STEPS = 3;
 
 /** v2 header: chevron back on the left, onboarding step dashes on the right (if a step is given). */
 /**

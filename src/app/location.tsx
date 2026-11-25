@@ -1,7 +1,6 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { OnboardingBar, Screen } from '../components/Chrome';
-import { resetStepMotion } from '../components/stepMotion';
 import { EyeSlashIcon, HandTapIcon, IslandIcon, LocationIcon } from '../components/Icons';
 import { ActionCard, Fake, Gap, IconRow, T } from '../components/ui';
 import { keepLast } from '../logic/format';
@@ -18,15 +17,14 @@ import { color } from '../theme/tokens';
  */
 export default function LocationPermission() {
   const { a } = useStore();
+  // Asked when it first matters: right after the driver's first load starts watching, not in setup.
   function finish(mode: LocationMode) {
-    a.finishOnboarding(mode);
-    resetStepMotion();
+    a.setLocation(mode);
     router.replace('/today');
   }
   return (
     <Screen
-      step={4}
-      header={<OnboardingBar step={4} onBack={() => router.navigate('/loads')} />}
+      header={<OnboardingBar onBack={() => router.replace('/today')} />}
       footer={
         <>
           {/* A limit of the web prototype, so it wears the prototype's own tag, like every
