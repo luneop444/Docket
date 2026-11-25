@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { DEMO_STATES, type DemoState } from '../logic/demo';
+import { DEMO_STATES, demoLoad, type DemoState } from '../logic/demo';
 import { placeOf } from '../logic/state';
 import { useStore } from '../state/AppStore';
 import { color, glass, protoColor, radius } from '../theme/tokens';
@@ -62,9 +62,8 @@ export function DemoDrawer() {
   // Clear of the floating tab bar, which would otherwise cover the panel's last row.
   const { space } = useTabSpace();
   const phase = s.stop.phase;
-  // With no load there's no place name, so the buttons say what happens instead of "Your stop".
-  const named = !!s.load;
-  const place = placeOf(s.load).short;
+  // With no load yet, a demo stop runs on the sample load, so the buttons name its stop.
+  const place = placeOf(demoLoad(s)).short;
   const run = (fn: () => void) => () => {
     fn();
     setOpen(false);
@@ -90,8 +89,8 @@ export function DemoDrawer() {
         <View style={styles.list}>
           {phase === 'idle' ? (
             <>
-              <Button label={named ? `Park at ${place}, a new place` : 'Park at a new place'} variant="quiet" small onPress={run(() => a.pullIn(false))} />
-              <Button label={named ? `Pull into ${place}, a known stop` : 'Pull into a known stop'} variant="quiet" small onPress={run(() => a.pullIn(true))} />
+              <Button label={`Park at ${place}, a new place`} variant="quiet" small onPress={run(() => a.pullIn(false))} />
+              <Button label={`Pull into ${place}, a known stop`} variant="quiet" small onPress={run(() => a.pullIn(true))} />
             </>
           ) : null}
           {phase === 'dock' ? (

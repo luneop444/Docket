@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { ASK_AFTER_MIN, demoState, type DemoState } from '../logic/demo';
+import { ASK_AFTER_MIN, demoLoad, demoState, type DemoState } from '../logic/demo';
 import type { Rules } from '../logic/detention';
 import type { LatLon } from '../logic/geo';
 import { claimsOf, type ClaimEvent } from '../logic/claims';
@@ -125,14 +125,17 @@ function useActions(setS: (fn: (s: AppState) => AppState) => void, setUi: (fn: (
       /** Prototype control standing in for the geofence seeing you pull in. */
       pullIn: (asKnown?: boolean) => {
         const s = sRef.current;
-        const place = placeOf(s.load);
+        // Demo only: with no load yet, the stop runs on the sample load, so it has a place name.
+        const load = demoLoad(s);
+        const place = placeOf(load);
         const known = asKnown ?? s.knownPlaces.includes(place.name);
         // Somewhere new, Docket asks after 30 min parked; the clock still counts from pulling in.
         const arrive = known ? START_NOW + 1 : START_NOW + 1 - ASK_AFTER_MIN;
         setS((x) => ({
           ...x,
+          load,
           knownPlaces: known ? remember(x.knownPlaces, place.name) : x.knownPlaces.filter((n) => n !== place.name),
-          stop: { ...freshStop(), phase: known ? 'dock' : 'arriving', arrive, appt: loadAppt(s.load) },
+          stop: { ...freshStop(), phase: known ? 'dock' : 'arriving', arrive, appt: loadAppt(load) },
           now: START_NOW + 1,
           islandAlerted: false,
         }));

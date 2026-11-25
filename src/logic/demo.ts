@@ -17,10 +17,14 @@ export const ASK_AFTER_MIN = 30;
 /** Pulled in at 1:12 PM. */
 export const DEMO_ARRIVE = 13 * 60 + 12;
 
+/** The load a demo runs on: yours, or the sample load if you haven't added one, so the stop has a name. */
+export const demoLoad = (s: AppState): NonNullable<AppState['load']> =>
+  s.load ?? { number: SAMPLE_LOAD.number, source: 'manual' as const, recurring: false, stops: SAMPLE_LOAD.stops };
+
 export function demoState(s: AppState, state: DemoState): AppState {
   const company = s.company ?? COMPANIES[0].name;
   const rules = s.company ? s.rules : { ...(COMPANIES.find((c) => c.name === company)?.rules ?? s.rules) };
-  const load = s.load ?? { number: SAMPLE_LOAD.number, source: 'manual' as const, recurring: false, stops: SAMPLE_LOAD.stops };
+  const load = demoLoad(s);
   const base: AppState = { ...s, onboarded: true, company, rules, load, location: s.location ?? 'always', islandAlerted: true };
   if (state === 'driving') return { ...base, stop: freshStop(), now: START_NOW };
 
