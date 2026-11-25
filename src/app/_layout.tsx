@@ -43,6 +43,7 @@ const TITLES: Record<string, string> = {
   '/today': 'Today',
   '/paycheck': 'Claims',
   '/companies': 'Companies',
+  '/company-policy': 'Company',
   '/add-load': 'Add today’s load',
   '/bol': 'Bill of lading',
   '/summary': 'Stop summary',

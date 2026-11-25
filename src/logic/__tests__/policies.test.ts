@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { CARRIER_NAMES } from '../sampleData';
-import { POLICIES, paysBy2h, recommended, sortPolicies, staleYear } from '../policies';
+import { POLICIES, paysBy2h, recommended, splitPolicies, staleYear } from '../policies';
 
 describe('published policies', () => {
   it('covers every carrier in the picker, once', () => {
@@ -20,12 +20,15 @@ describe('published policies', () => {
     for (const p of POLICIES) expect(/Nothing (published )?on/.test(p.line) || p.kind !== 'none').toBe(true);
   });
 
-  it('puts recommended first and filters to paid within 2h', () => {
-    const best = sortPolicies(POLICIES, 'best');
-    const firstNot = best.findIndex((p) => !recommended(p));
-    expect(best.slice(firstNot).some(recommended)).toBe(false);
-    expect(sortPolicies(POLICIES, 'by2h').every(paysBy2h)).toBe(true);
-    const rated = sortPolicies(POLICIES, 'rate').filter((p) => p.rate !== undefined).map((p) => p.rate!);
+  it('moves the matches to the top and keeps everyone', () => {
+    for (const by of ['best', 'rate', 'by2h'] as const) {
+      const { top, rest } = splitPolicies(POLICIES, by);
+      expect(top.length + rest.length).toBe(POLICIES.length);
+    }
+    expect(splitPolicies(POLICIES, 'best').top.every(recommended)).toBe(true);
+    expect(splitPolicies(POLICIES, 'by2h').top.every(paysBy2h)).toBe(true);
+    expect(splitPolicies(POLICIES, 'by2h').rest.some(paysBy2h)).toBe(false);
+    const rated = splitPolicies(POLICIES, 'rate').top.map((p) => p.rate!);
     expect(rated).toEqual([...rated].sort((a, b) => b - a));
   });
 

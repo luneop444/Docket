@@ -9,7 +9,7 @@ import { Card, Gap, ListCard, ListRow, Pill, Seg, T } from '../../components/ui'
 import { calc, rulesLine } from '../../logic/detention';
 import { dur } from '../../logic/format';
 import type { LoggedStop } from '../../logic/history';
-import { NATIONAL, POLICIES, recommended, sortPolicies, staleYear, type CompanySort, type Policy, type Source } from '../../logic/policies';
+import { NATIONAL, POLICIES, splitPolicies, type CompanySort, type Policy, type Source } from '../../logic/policies';
 import { useStore } from '../../state/AppStore';
 import { color } from '../../theme/tokens';
 
@@ -53,57 +53,17 @@ function SourceLink({ src }: { src: Source }) {
   );
 }
 
-/**
- * One company, read top to bottom in order of what matters: the name, then the comparable fact
- * in a figure size (what you scan down the list for), then the detail, then where it's from.
- */
-function PolicyCard({ p }: { p: Policy }) {
-  const old = staleYear(p);
+/** One company in the list: the name, the fact to compare, and a way in to the rest. */
+function PolicyRow({ p }: { p: Policy }) {
+  const none = p.kind === 'none';
   return (
-    <Card>
-      <T v="bodyStrong">{p.company}</T>
-      <Gap h={4} />
-      <T v="numberS">{p.headline}</T>
-      <Gap h={8} />
-      <T v="bodySmall" c={color.sub}>{p.line}</T>
-      {old ? (
-        <>
-          <Gap h={4} />
-          <T v="bodyTiny" c={color.flag}>{`From ${old}. It may have changed.`}</T>
-        </>
-      ) : null}
-      <Gap h={12} />
-      <T v="bodyTiny" c={color.faint}>{p.scope ? `${p.segment} · ${p.scope}` : p.segment}</T>
-      {p.sources.map((src) => (
-        <SourceLink key={src.url} src={src} />
-      ))}
-    </Card>
-  );
-}
-
-/** Companies that publish nothing on waiting: names in one list, not a card each to skip past. */
-function NothingPublished({ list }: { list: Policy[] }) {
-  if (!list.length) return null;
-  return (
-    <>
-      <Gap h={24} />
-      <T v="bodyStrong">Nothing published on waiting</T>
-      <Gap h={10} />
-      <Card>
-        {list.map((p, i) => (
-          <View key={p.company}>
-            {i ? <View style={styles.rule} /> : null}
-            <View style={styles.plainRow}>
-              <T v="bodyStrong">{p.company}</T>
-              <T v="bodyTiny" c={color.faint}>{p.segment}</T>
-              {p.sources.map((src) => (
-                <SourceLink key={src.url} src={src} />
-              ))}
-            </View>
-          </View>
-        ))}
-      </Card>
-    </>
+    <ListRow accessibilityLabel={`${p.company}, ${p.headline}`} onPress={() => router.push({ pathname: '/company-policy', params: { name: p.company } })}>
+      <View style={styles.body}>
+        <T v="bodyStrong">{p.company}</T>
+        <T v="bodySmall" c={none ? color.faint : color.ink}>{p.headline}</T>
+      </View>
+      <ChevronRight size={16} c={color.faint} />
+    </ListRow>
   );
 }
 
@@ -120,11 +80,11 @@ function Group({ title, sub, list }: { title: string; sub?: string; list: Policy
         </>
       ) : null}
       <Gap h={10} />
-      <View style={styles.list}>
+      <ListCard>
         {list.map((p) => (
-          <PolicyCard key={p.company} p={p} />
+          <PolicyRow key={p.company} p={p} />
         ))}
-      </View>
+      </ListCard>
     </>
   );
 }
@@ -134,6 +94,13 @@ const SORTS: { key: CompanySort; label: string }[] = [
   { key: 'rate', label: 'Top rate' },
   { key: 'by2h', label: 'Paid by 2h' },
 ];
+
+/** The heading over the companies each sort brings to the top. */
+const TOP: Record<CompanySort, { title: string; sub: string }> = {
+  best: { title: 'Recommended', sub: 'Every hour on duty is paid, or detention is paid even when the customer doesn’t pay.' },
+  rate: { title: 'Highest rate first', sub: 'Companies that publish an hourly rate for waiting.' },
+  by2h: { title: 'Paid within 2 hours', sub: 'Hourly pay, or 2 hours or less of free time.' },
+};
 
 type PlaceSort = 'most' | 'shortest';
 
@@ -150,12 +117,10 @@ export default function Companies() {
   const all = placesFrom(s.history, s.rules);
   const places = placeSort === 'shortest' ? [...all].sort((a, b) => a.wait - b.wait || a.name.localeCompare(b.name)) : all;
   const logo = s.company ? LOGOS[s.company] : undefined;
-  const others = sortPolicies(
+  const { top, rest } = splitPolicies(
     POLICIES.filter((p) => p.company !== s.company),
     sort,
   );
-  const published = others.filter((p) => p.kind !== 'none');
-  const nothing = others.filter((p) => p.kind === 'none');
 
   return (
     <Screen tabs header={<PageHead title="Companies" />}>
@@ -179,21 +144,12 @@ export default function Companies() {
       <T v="bodyStrong">Other companies</T>
       <Gap h={4} />
       <T v="bodyTiny">
-        What each one publishes about paying you to wait, with the source. Your account can differ.
+        What each one publishes about paying you to wait. Tap one for the details and the source.
       </T>
       <Gap h={12} />
       <Seg options={SORTS} value={sort} onChange={setSort} label="Sort other companies" />
-      {sort === 'best' ? (
-        <>
-          <Group title="Recommended" sub="Every hour on duty is paid, or detention is paid even when the customer doesn’t pay." list={published.filter(recommended)} />
-          <Group title="The rest" list={published.filter((p) => !recommended(p))} />
-        </>
-      ) : sort === 'rate' ? (
-        <Group title="Highest rate first" list={published} />
-      ) : (
-        <Group title="Paid within 2 hours" sub="Hourly pay, or 2 hours or less of free time." list={published} />
-      )}
-      {sort === 'by2h' ? null : <NothingPublished list={nothing} />}
+      <Group title={TOP[sort].title} sub={TOP[sort].sub} list={top} />
+      <Group title="Everyone else" list={rest} />
       <Gap h={12} />
       <T v="bodyTiny">{`Across the country: ${NATIONAL.line}`}</T>
       <SourceLink src={NATIONAL.source} />
@@ -267,8 +223,5 @@ const styles = StyleSheet.create({
   figure: { alignItems: 'flex-end', maxWidth: 110 },
   right: { textAlign: 'right' },
   soonHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  list: { gap: 10 },
-  rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line },
-  plainRow: { paddingVertical: 12, gap: 2, alignItems: 'flex-start' },
   link: { color: color.sub, textDecorationLine: 'underline' },
 });

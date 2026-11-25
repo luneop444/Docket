@@ -308,11 +308,17 @@ export const recommended = (p: Policy) => p.kind === 'hourly' || !!p.guaranteed;
 
 export type CompanySort = 'best' | 'rate' | 'by2h';
 
-export function sortPolicies(list: Policy[], by: CompanySort): Policy[] {
-  const rest = [...list];
-  if (by === 'rate') return rest.sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1) || score(b) - score(a) || a.company.localeCompare(b.company));
-  const ranked = rest.sort((a, b) => score(b) - score(a) || a.company.localeCompare(b.company));
-  return by === 'by2h' ? ranked.filter(paysBy2h) : ranked;
+const byScore = (a: Policy, b: Policy) => score(b) - score(a) || a.company.localeCompare(b.company);
+
+/**
+ * The sort puts the companies that match it at the top, under their own heading, and keeps
+ * everyone else below in recommended order: nothing is hidden (Edward, 25 Nov).
+ */
+export function splitPolicies(list: Policy[], by: CompanySort): { top: Policy[]; rest: Policy[] } {
+  const match = by === 'best' ? recommended : by === 'rate' ? (p: Policy) => p.rate !== undefined : paysBy2h;
+  const top = list.filter(match).sort(by === 'rate' ? (a, b) => (b.rate ?? 0) - (a.rate ?? 0) || byScore(a, b) : byScore);
+  const rest = list.filter((p) => !match(p)).sort(byScore);
+  return { top, rest };
 }
 
 /** Oldest source year shown as a warning when a policy is old enough that it may have changed. */
