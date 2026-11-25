@@ -107,6 +107,9 @@ export const sortClaims = (cs: Claim[]) => [...cs].sort((a, b) => ORDER[a.stage]
 
 export const isOpen = (c: Claim) => c.stage !== 'paid';
 
+/** The driver has something to do: send it, or ask about a short pay. Waiting stages don't count. */
+export const needsYou = (c: Claim) => c.stage === 'unsent' || c.stage === 'short' || c.stage === 'askedShort';
+
 /** Open claims a settlement should be checked for: sent or not, still owed. */
 export const toCheck = (cs: Claim[]) => cs.filter(isOpen);
 
