@@ -307,25 +307,27 @@ export function score(p: Policy): number {
 export const recommended = (p: Policy) => p.kind === 'hourly' || !!p.guaranteed;
 
 /**
- * How a job-shopping driver ranks other companies (Edward, 25 Nov: drivers change jobs often,
- * so the choices are what they'd switch for): who pays most for waiting, who pays even when the
- * customer doesn't, and who starts paying soonest.
+ * How a job-shopping driver ranks other companies (Edward, 25 Nov: drivers change jobs often).
+ * Two things decide it, from the research: whether waiting is paid at all, since about half of
+ * drivers are paid detention only when the carrier collects it (Overdrive poll), and how much,
+ * since detention pay often falls short of what driving would have earned (ATRI 2024). When pay
+ * starts barely differs: 67% of carriers start detention at 2 hours (ATRI 2024), so "Pays
+ * soonest" was dropped. Free time still shows on each company's page.
  */
-export type CompanySort = 'rate' | 'guaranteed' | 'soon';
+export type CompanySort = 'rate' | 'guaranteed';
 
 // Ties go to the higher published rate, then the name, so Guaranteed doesn't list $33.79 last.
 const byScore = (a: Policy, b: Policy) =>
   score(b) - score(a) || (b.rate ?? -1) - (a.rate ?? -1) || a.company.localeCompare(b.company);
 const byRate = (a: Policy, b: Policy) => (b.rate ?? -1) - (a.rate ?? -1) || byScore(a, b);
-const bySoon = (a: Policy, b: Policy) => (a.freeMin ?? 999) - (b.freeMin ?? 999) || byRate(a, b);
 
 /**
  * The choice puts the companies that match it at the top, under their own heading, in its order;
  * everyone else follows in recommended order. Nothing is hidden.
  */
 export function splitPolicies(list: Policy[], by: CompanySort): { top: Policy[]; rest: Policy[] } {
-  const match = by === 'rate' ? (p: Policy) => p.rate !== undefined : by === 'guaranteed' ? recommended : paysBy2h;
-  const order = by === 'rate' ? byRate : by === 'guaranteed' ? byScore : bySoon;
+  const match = by === 'rate' ? (p: Policy) => p.rate !== undefined : recommended;
+  const order = by === 'rate' ? byRate : byScore;
   return { top: list.filter(match).sort(order), rest: list.filter((p) => !match(p)).sort(byScore) };
 }
 

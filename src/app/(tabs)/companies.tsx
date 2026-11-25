@@ -93,7 +93,6 @@ const LOGO_SLOT = 64;
 const SORTS: { key: CompanySort; label: string }[] = [
   { key: 'rate', label: 'Top rate' },
   { key: 'guaranteed', label: 'Guaranteed' },
-  { key: 'soon', label: 'Pays soonest' },
 ];
 
 /**
@@ -104,11 +103,10 @@ const SORTS: { key: CompanySort; label: string }[] = [
 const REST: Record<CompanySort, string> = {
   rate: 'Rate unknown',
   guaranteed: 'Not guaranteed or unknown',
-  soon: 'Later or unknown',
 };
 
 /**
- * One choice at a time, as chips under the search (Edward, 25 Nov, layout A): all three show at
+ * One choice at a time, as chips under the search (Edward, 25 Nov, layout A): both show at
  * once and the dark one says which is on. Chips, not the segmented bar, so they read as their
  * own control.
  */
