@@ -41,7 +41,10 @@ export function Scanner({
   stage = 'capture',
   progress,
   sheet,
+  pageLabel = 'Your settlement page',
 }: {
+  /** What the photo is, for screen readers. */
+  pageLabel?: string;
   /** Capture: the camera. Reading: the page stays up while it's read. Found: a sheet over it. */
   stage?: 'capture' | 'reading' | 'found';
   /** While reading: how far along, and what it's doing. */
@@ -236,7 +239,7 @@ export function Scanner({
             <SamplePhoto page={samplePage} x={gx + 10} y={gy + 10} w={gw - 20} h={gh - 20} found={locked && stage === 'capture'} onReady={onPaper} />
           </Animated.View>
         ) : stage !== 'capture' && last?.preview ? (
-          <Image source={{ uri: last.preview }} style={styles.still} resizeMode="cover" accessibilityLabel="Your settlement page" />
+          <Image source={{ uri: last.preview }} style={styles.still} resizeMode="cover" accessibilityLabel={pageLabel} />
         ) : stage !== 'capture' ? (
           <View style={styles.desk} />
         ) : (
