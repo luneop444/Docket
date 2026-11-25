@@ -83,6 +83,9 @@ function Group({ title, list }: { title: string; list: Policy[] }) {
   );
 }
 
+/** Width of the logo slot on your company's card, in points. */
+const LOGO_SLOT = 64;
+
 const SORTS: { key: CompanySort; label: string }[] = [
   { key: 'best', label: 'Guaranteed' },
   { key: 'rate', label: 'Top rate' },
@@ -127,10 +130,21 @@ export default function Companies() {
       <Gap h={10} />
       <Card onPress={() => router.push('/rules')}>
         <View style={styles.row}>
+          {/* Logo on the left, shrunk into one fixed slot so the name starts in the same place for
+              every carrier (Edward, 25 Nov). It's only for recognition: the written name beside it
+              carries the meaning and grows with text size, so the logo can be small. Carriers with
+              no logo get no slot. */}
+          {logo ? (
+            <View style={styles.logoSlot}>
+              <Image
+                source={logo.src}
+                style={{ width: LOGO_SLOT, height: LOGO_SLOT * (logo.h / logo.w) }}
+                resizeMode="contain"
+                accessibilityIgnoresInvertColors
+              />
+            </View>
+          ) : null}
           <View style={styles.body}>
-            {logo ? (
-              <Image source={logo.src} style={{ width: logo.w, height: logo.h }} resizeMode="contain" accessibilityIgnoresInvertColors />
-            ) : null}
             <T v="bodyStrong">{s.company ?? 'Your company'}</T>
             {/* Same form and weight as the other companies' rows, so yours compares at a glance.
                 No "The rules you entered" line: you entered them, and "Your company" says whose. */}
@@ -216,6 +230,7 @@ export default function Companies() {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logoSlot: { width: LOGO_SLOT, alignItems: 'center' },
   body: { flex: 1, minWidth: 0, gap: 2, alignItems: 'flex-start' },
   figure: { alignItems: 'flex-end', maxWidth: 110 },
   right: { textAlign: 'right' },
