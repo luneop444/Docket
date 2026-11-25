@@ -225,7 +225,10 @@ const styles = StyleSheet.create({
     height: 50,
     paddingHorizontal: 16,
     borderRadius: 25, borderCurve: 'continuous',
-    ...glass,
+    // A field like every other: fill and a 1px edge, no lift. Glass's drop shadow made it read
+    // as a floating card (24 Nov).
+    backgroundColor: color.glass,
+    boxShadow: `inset 0 0 0 1px ${color.track}`,
   },
   fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
   // One squircle per carrier: 16 padding, the logo then its name. The logos are transparent,

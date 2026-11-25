@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { color } from '../theme/tokens';
 
 /**
  * Browser line-breaking on top of T's non-breaking space:
@@ -10,6 +11,12 @@ import { useEffect } from 'react';
 const CSS = `
 [dir="auto"] { text-wrap: pretty; }
 [role="heading"][dir="auto"] { text-wrap: balance; }
+/* Autofill (a saved first name) keeps the field's own colours, not Chrome's blue fill. */
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
+  -webkit-text-fill-color: ${color.ink};
+  caret-color: ${color.ink};
+  transition: background-color 0s 600000s, color 0s 600000s;
+}
 `;
 
 export function TextWrap() {
