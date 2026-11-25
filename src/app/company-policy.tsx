@@ -46,7 +46,7 @@ export default function CompanyPolicy() {
       ) : null}
       <T v="h2">{p.company}</T>
       <Gap h={4} />
-      <T v="bodySmall">{recommended(p) ? 'Recommended' : p.segment}</T>
+      <T v="bodySmall">{recommended(p) ? 'Paid even when the customer doesn’t pay' : p.segment}</T>
       <Gap h={20} />
       {/* "Not published" in a figure size would say the line below it twice. */}
       {p.kind === 'none' ? null : (

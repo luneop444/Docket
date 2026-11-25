@@ -67,18 +67,12 @@ function PolicyRow({ p }: { p: Policy }) {
   );
 }
 
-function Group({ title, sub, list }: { title: string; sub?: string; list: Policy[] }) {
+function Group({ title, list }: { title: string; list: Policy[] }) {
   if (!list.length) return null;
   return (
     <>
       <Gap h={24} />
       <T v="bodyStrong">{title}</T>
-      {sub ? (
-        <>
-          <Gap h={4} />
-          <T v="bodyTiny">{sub}</T>
-        </>
-      ) : null}
       <Gap h={10} />
       <ListCard>
         {list.map((p) => (
@@ -90,18 +84,19 @@ function Group({ title, sub, list }: { title: string; sub?: string; list: Policy
 }
 
 const SORTS: { key: CompanySort; label: string }[] = [
-  { key: 'best', label: 'Recommended' },
+  { key: 'best', label: 'Guaranteed' },
   { key: 'rate', label: 'Top rate' },
   { key: 'by2h', label: 'Paid by 2h' },
 ];
 
 /**
- * The headings over the companies each sort brings to the top, and over the rest. Only
- * Recommended keeps a line under it: it's a judgment, so it says its rule. The others say what
- * they are in the heading.
+ * The headings over the companies each sort brings to the top, and over the rest. Each heading
+ * is the rule itself, so none needs a line under it (Edward, 25 Nov). What the top group shares
+ * is that waiting is paid even when the customer doesn't pay: hourly pay, or guaranteed
+ * detention. "Recommended" was a judgment that needed a sentence to explain it.
  */
-const TOP: Record<CompanySort, { title: string; sub?: string; rest: string }> = {
-  best: { title: 'Recommended', sub: 'Every hour on duty is paid, or detention is paid even when the customer doesn’t pay.', rest: 'Other companies' },
+const TOP: Record<CompanySort, { title: string; rest: string }> = {
+  best: { title: 'Paid even when the customer doesn’t pay', rest: 'Not guaranteed, or not published' },
   rate: { title: 'Highest rate first', rest: 'No rate published' },
   by2h: { title: 'Paid within 2 hours', rest: 'Later, or not published' },
 };
@@ -150,7 +145,7 @@ export default function Companies() {
       <T v="bodyStrong">How other companies pay for waiting</T>
       <Gap h={12} />
       <Seg options={SORTS} value={sort} onChange={setSort} label="Sort other companies" />
-      <Group title={TOP[sort].title} sub={TOP[sort].sub} list={top} />
+      <Group title={TOP[sort].title} list={top} />
       {/* The rest are named by what they lack under this sort, so the line between the groups says why. */}
       <Group title={TOP[sort].rest} list={rest} />
       <Gap h={12} />
