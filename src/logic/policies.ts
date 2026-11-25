@@ -67,11 +67,11 @@ export const POLICIES: Policy[] = [
     sources: [],
   },
   {
-    company: 'J.B. Hunt Transport', headline: '$7.25–$30/hr, by account',
+    company: 'J.B. Hunt Transport', headline: '$7.25–$30/hr, by customer',
     segment: 'Truckload',
     kind: 'detention',
     line: 'One dedicated ad pays $15 an hour, starting 2 hours after an on-time arrival.',
-    scope: 'Company drivers, by account',
+    scope: 'Company drivers, by customer',
     freeMin: 120,
     rate: 30,
     sources: [
@@ -231,11 +231,11 @@ export const POLICIES: Policy[] = [
     sources: [{ label: 'Penske job ad', url: 'https://www.careerbuilder.com/job-details/truck-driver-cdl-class-a-penske-logistics-denver-co--00e7ea8f-1cc4-4460-bbaf-4d962e56c4d5', when: 'Seen Nov 2026', year: 2026 }],
   },
   {
-    company: 'Ryder', headline: 'Depends on the account',
+    company: 'Ryder', headline: 'Depends on the customer',
     segment: 'Dedicated',
     kind: 'split',
     line: 'Many dedicated ads pay by the hour ($26 in East Moline, IL). Others pay by the mile and stop.',
-    scope: 'Dedicated drivers, by account',
+    scope: 'Dedicated drivers, by customer',
     sources: [
       { label: 'Ryder hourly job ad', url: 'https://illinoisjoblink.illinois.gov/jobs/11970246', when: '2024', year: 2024 },
       { label: 'Ryder mileage job ad', url: 'https://www.careerbuilder.com/job-details/truck-driver-cdl-a-no-weekends-wooster-oh--c4c212d3-9718-408e-8daf-dc97454de2d6', when: 'Seen Nov 2026', year: 2026 },

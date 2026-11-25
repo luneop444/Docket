@@ -101,9 +101,10 @@ export default function CompanyPolicy() {
         <T v="bodySmall">None. {p.company} hasn’t published anything on paying company drivers to wait that Docket could find.</T>
       )}
       <Gap h={16} />
-      {/* The sources above already say where it's from; the one thing they can't say is that a
-          driver's own account may pay differently (J.B. Hunt and Ryder vary by account). */}
-      <T v="bodyTiny">Your account can differ.</T>
+      {/* The sources above already say where it's from. What they can't say: pay can change
+          with the customer a driver hauls for (J.B. Hunt and Ryder do).
+          "Account" is the trade word, but read as an app account (Edward, 25 Nov), so it's plain. */}
+      <T v="bodyTiny">Pay can change with the customer you haul for, so yours may be different.</T>
     </Screen>
   );
 }
