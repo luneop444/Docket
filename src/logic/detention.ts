@@ -68,4 +68,16 @@ export function rulesLine(r: Rules): string {
   }, then ${money(r.rate)} an hour`;
 }
 
+/**
+ * The same rules in the short form the company list uses ("$20/hr after 1h"), so your company
+ * reads like the others on the Companies tab: $55/hr after 1h, from arrival.
+ */
+export function rulesShort(r: Rules): string {
+  const h = Math.floor(r.free / 60);
+  const m = r.free % 60;
+  const free = h && m ? `${h}h ${m}m` : h ? `${h}h` : `${m}m`;
+  const rate = Number.isInteger(r.rate) ? `$${r.rate}` : `$${r.rate.toFixed(2)}`;
+  return `${rate}/hr after ${free}, from ${r.start === 'appt' ? 'appointment' : 'arrival'}`;
+}
+
 export const defaultRules: Rules = { free: 120, start: 'appt', rate: 30, breaksCount: false };

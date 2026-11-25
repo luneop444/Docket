@@ -6,7 +6,7 @@ import { PageHead, Screen } from '../../components/Chrome';
 import { ChevronRight } from '../../components/Icons';
 import { Tappable } from '../../components/Tappable';
 import { Card, Gap, ListCard, ListRow, Pill, Seg, T } from '../../components/ui';
-import { calc, rulesLine } from '../../logic/detention';
+import { calc, rulesShort } from '../../logic/detention';
 import { dur } from '../../logic/format';
 import type { LoggedStop } from '../../logic/history';
 import { NATIONAL, POLICIES, splitPolicies, type CompanySort, type Policy, type Source } from '../../logic/policies';
@@ -132,8 +132,9 @@ export default function Companies() {
               <Image source={logo.src} style={{ width: logo.w, height: logo.h }} resizeMode="contain" accessibilityIgnoresInvertColors />
             ) : null}
             <T v="bodyStrong">{s.company ?? 'Your company'}</T>
-            <T v="bodySmall">{rulesLine(s.rules)}</T>
-            <T v="bodyTiny">The rules you entered</T>
+            {/* Same form and weight as the other companies' rows, so yours compares at a glance.
+                No "The rules you entered" line: you entered them, and "Your company" says whose. */}
+            <T v="bodySmall" c={color.ink}>{rulesShort(s.rules)}</T>
           </View>
           <ChevronRight size={16} c={color.faint} />
         </View>
