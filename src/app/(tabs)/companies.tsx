@@ -53,28 +53,79 @@ function SourceLink({ src }: { src: Source }) {
   );
 }
 
+/**
+ * One company, read top to bottom in order of what matters: the name, then the comparable fact
+ * in a figure size (what you scan down the list for), then the detail, then where it's from.
+ */
 function PolicyCard({ p }: { p: Policy }) {
   const old = staleYear(p);
   return (
     <Card>
-      <View style={styles.head}>
-        <T v="bodyStrong" style={styles.name}>{p.company}</T>
-        {recommended(p) ? <Pill label="Recommended" tone="signal" /> : null}
-      </View>
-      <T v="bodyTiny">{p.scope ? `${p.segment} · ${p.scope}` : p.segment}</T>
-      <Gap h={6} />
-      <T v="bodySmall">{p.line}</T>
+      <T v="bodyStrong">{p.company}</T>
+      <Gap h={4} />
+      <T v="numberS">{p.headline}</T>
+      <Gap h={8} />
+      <T v="bodySmall" c={color.sub}>{p.line}</T>
       {old ? (
         <>
           <Gap h={4} />
-          <T v="bodyTiny" style={{ color: color.flag }}>{`Last published ${old}. It may have changed.`}</T>
+          <T v="bodyTiny" c={color.flag}>{`From ${old}. It may have changed.`}</T>
         </>
       ) : null}
-      {p.sources.length ? <Gap h={8} /> : null}
+      <Gap h={12} />
+      <T v="bodyTiny" c={color.faint}>{p.scope ? `${p.segment} · ${p.scope}` : p.segment}</T>
       {p.sources.map((src) => (
         <SourceLink key={src.url} src={src} />
       ))}
     </Card>
+  );
+}
+
+/** Companies that publish nothing on waiting: names in one list, not a card each to skip past. */
+function NothingPublished({ list }: { list: Policy[] }) {
+  if (!list.length) return null;
+  return (
+    <>
+      <Gap h={24} />
+      <T v="bodyStrong">Nothing published on waiting</T>
+      <Gap h={10} />
+      <Card>
+        {list.map((p, i) => (
+          <View key={p.company}>
+            {i ? <View style={styles.rule} /> : null}
+            <View style={styles.plainRow}>
+              <T v="bodyStrong">{p.company}</T>
+              <T v="bodyTiny" c={color.faint}>{p.segment}</T>
+              {p.sources.map((src) => (
+                <SourceLink key={src.url} src={src} />
+              ))}
+            </View>
+          </View>
+        ))}
+      </Card>
+    </>
+  );
+}
+
+function Group({ title, sub, list }: { title: string; sub?: string; list: Policy[] }) {
+  if (!list.length) return null;
+  return (
+    <>
+      <Gap h={24} />
+      <T v="bodyStrong">{title}</T>
+      {sub ? (
+        <>
+          <Gap h={4} />
+          <T v="bodyTiny">{sub}</T>
+        </>
+      ) : null}
+      <Gap h={10} />
+      <View style={styles.list}>
+        {list.map((p) => (
+          <PolicyCard key={p.company} p={p} />
+        ))}
+      </View>
+    </>
   );
 }
 
@@ -103,6 +154,8 @@ export default function Companies() {
     POLICIES.filter((p) => p.company !== s.company),
     sort,
   );
+  const published = others.filter((p) => p.kind !== 'none');
+  const nothing = others.filter((p) => p.kind === 'none');
 
   return (
     <Screen tabs header={<PageHead title="Companies" />}>
@@ -126,24 +179,21 @@ export default function Companies() {
       <T v="bodyStrong">Other companies</T>
       <Gap h={4} />
       <T v="bodyTiny">
-        What each company has published about paying drivers for waiting, and where it’s from. Your account can differ.
+        What each one publishes about paying you to wait, with the source. Your account can differ.
       </T>
       <Gap h={12} />
       <Seg options={SORTS} value={sort} onChange={setSort} label="Sort other companies" />
-      <Gap h={8} />
-      <T v="bodyTiny">
-        {sort === 'best'
-          ? 'Recommended: every hour on duty is paid, or detention is paid whether or not the customer pays.'
-          : sort === 'rate'
-            ? 'Highest published hourly rate for waiting first. Companies with no rate come last.'
-            : 'Waiting is paid within 2 hours: hourly pay, or published free time of 2 hours or less.'}
-      </T>
-      <Gap h={12} />
-      <View style={styles.list}>
-        {others.map((p) => (
-          <PolicyCard key={p.company} p={p} />
-        ))}
-      </View>
+      {sort === 'best' ? (
+        <>
+          <Group title="Recommended" sub="Every hour on duty is paid, or detention is paid even when the customer doesn’t pay." list={published.filter(recommended)} />
+          <Group title="The rest" list={published.filter((p) => !recommended(p))} />
+        </>
+      ) : sort === 'rate' ? (
+        <Group title="Highest rate first" list={published} />
+      ) : (
+        <Group title="Paid within 2 hours" sub="Hourly pay, or 2 hours or less of free time." list={published} />
+      )}
+      {sort === 'by2h' ? null : <NothingPublished list={nothing} />}
       <Gap h={12} />
       <T v="bodyTiny">{`Across the country: ${NATIONAL.line}`}</T>
       <SourceLink src={NATIONAL.source} />
@@ -217,8 +267,8 @@ const styles = StyleSheet.create({
   figure: { alignItems: 'flex-end', maxWidth: 110 },
   right: { textAlign: 'right' },
   soonHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  name: { flexShrink: 1 },
   list: { gap: 10 },
+  rule: { height: StyleSheet.hairlineWidth, backgroundColor: color.line },
+  plainRow: { paddingVertical: 12, gap: 2, alignItems: 'flex-start' },
   link: { color: color.sub, textDecorationLine: 'underline' },
 });
