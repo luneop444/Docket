@@ -93,13 +93,14 @@ const SORTS: { key: CompanySort; label: string }[] = [
 ];
 
 /**
- * The heading over the companies each choice brings to the top, and over the rest. Each heading
- * is the rule itself, so none needs a line under it.
+ * The heading over the companies each choice brings to the top, and over the rest. Short, because
+ * the chip above already names the choice: the heading only adds where the line falls (Edward,
+ * 25 Nov). "Paid either way" means whether or not the customer pays the company.
  */
 const TOP: Record<CompanySort, { title: string; rest: string }> = {
-  rate: { title: 'Highest rate first', rest: 'No rate published' },
-  guaranteed: { title: 'Paid even when the customer doesn’t pay', rest: 'Not guaranteed, or not published' },
-  soon: { title: 'Paid within 2 hours, soonest first', rest: 'Later, or not published' },
+  rate: { title: 'Highest first', rest: 'Rate unknown' },
+  guaranteed: { title: 'Paid either way', rest: 'Not guaranteed or unknown' },
+  soon: { title: 'Within 2 hours', rest: 'Later or unknown' },
 };
 
 /**
