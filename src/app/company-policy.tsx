@@ -101,7 +101,9 @@ export default function CompanyPolicy() {
         <T v="bodySmall">None. {p.company} hasn’t published anything on paying company drivers to wait that Docket could find.</T>
       )}
       <Gap h={16} />
-      <T v="bodyTiny">From the company’s own job ads and careers pages, and trade press. Driver forums and reviews are left out. Your account can differ.</T>
+      {/* The sources above already say where it's from; the one thing they can't say is that a
+          driver's own account may pay differently (J.B. Hunt and Ryder vary by account). */}
+      <T v="bodyTiny">Your account can differ.</T>
     </Screen>
   );
 }
