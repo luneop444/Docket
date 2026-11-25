@@ -15,7 +15,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import { color, fontFamily, glass, glassRing, protoColor, radius, type, type TypeToken } from '../theme/tokens';
+import { color, fontFamily, glass, glassEdge, glassRim, glassRing, protoColor, radius, type, type TypeToken } from '../theme/tokens';
 import { noWidow } from '../logic/text';
 import { CheckIcon, ChevronRight, PlusIcon } from './Icons';
 import { tick } from '../logic/haptics';
@@ -738,7 +738,9 @@ const styles = StyleSheet.create({
   // that lifts off the page, and the picked pill slides inside it. As separate raised buttons
   // (23 Nov) the pill slid across the gap between them, a motion no surface explained. The
   // grey track the v1 had matched the canvas and vanished, hence glass.
-  seg: { flexDirection: 'row', padding: SEG_PAD, borderRadius: 22 + SEG_PAD, ...glass },
+  // The glass's edge and rims, without its lift: a control set into the page, not floating over
+  // it, so it casts no shadow (Edward, 25 Nov, as with the company search field on 24 Nov).
+  seg: { flexDirection: 'row', padding: SEG_PAD, borderRadius: 22 + SEG_PAD, backgroundColor: color.glass, boxShadow: `${glassEdge}, ${glassRim}` },
   segThumb: { position: 'absolute', left: 0, top: SEG_PAD, bottom: SEG_PAD, borderRadius: 22, overflow: 'hidden' },
   segInk: { position: 'absolute', left: 0, top: 0, bottom: 0, flexDirection: 'row', paddingHorizontal: SEG_PAD },
   segLabel: { flex: 1, alignItems: 'center', justifyContent: 'center' },

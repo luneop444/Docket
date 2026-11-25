@@ -130,7 +130,7 @@ function Group({ title, sub, list }: { title: string; sub?: string; list: Policy
 }
 
 const SORTS: { key: CompanySort; label: string }[] = [
-  { key: 'best', label: 'Best first' },
+  { key: 'best', label: 'Recommended' },
   { key: 'rate', label: 'Top rate' },
   { key: 'by2h', label: 'Paid by 2h' },
 ];
