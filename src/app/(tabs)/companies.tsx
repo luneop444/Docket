@@ -95,11 +95,15 @@ const SORTS: { key: CompanySort; label: string }[] = [
   { key: 'by2h', label: 'Paid by 2h' },
 ];
 
-/** The headings over the companies each sort brings to the top, and over the rest. */
-const TOP: Record<CompanySort, { title: string; sub: string; rest: string }> = {
+/**
+ * The headings over the companies each sort brings to the top, and over the rest. Only
+ * Recommended keeps a line under it: it's a judgment, so it says its rule. The others say what
+ * they are in the heading.
+ */
+const TOP: Record<CompanySort, { title: string; sub?: string; rest: string }> = {
   best: { title: 'Recommended', sub: 'Every hour on duty is paid, or detention is paid even when the customer doesn’t pay.', rest: 'Other companies' },
-  rate: { title: 'Highest rate first', sub: 'Companies that publish an hourly rate for waiting.', rest: 'No rate published' },
-  by2h: { title: 'Paid within 2 hours', sub: 'Hourly pay, or 2 hours or less of free time.', rest: 'Later, or not published' },
+  rate: { title: 'Highest rate first', rest: 'No rate published' },
+  by2h: { title: 'Paid within 2 hours', rest: 'Later, or not published' },
 };
 
 type PlaceSort = 'most' | 'shortest';
@@ -141,11 +145,9 @@ export default function Companies() {
       </Card>
 
       <Gap h={32} />
-      <T v="bodyStrong">Other companies</T>
-      <Gap h={4} />
-      <T v="bodyTiny">
-        What each one publishes about paying you to wait. Tap one for the details and the source.
-      </T>
+      {/* The heading says what the rows are (pay for waiting), so no line under it explaining
+          that; the chevrons already say a row opens (Edward, 25 Nov). */}
+      <T v="bodyStrong">How other companies pay for waiting</T>
       <Gap h={12} />
       <Seg options={SORTS} value={sort} onChange={setSort} label="Sort other companies" />
       <Group title={TOP[sort].title} sub={TOP[sort].sub} list={top} />
@@ -157,8 +159,6 @@ export default function Companies() {
 
       <Gap h={32} />
       <T v="bodyStrong">Places you’ve stopped</T>
-      <Gap h={4} />
-      <T v="bodyTiny">From the stops you timed.</T>
       <Gap h={10} />
       {all.length > 1 ? (
         <>
