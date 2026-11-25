@@ -1,12 +1,14 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Fragment, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
+import { DemoDrawer, DemoTab } from '../../components/DemoDrawer';
 import { FreeBar } from '../../components/FreeBar';
 import { RollText } from '../../components/RollText';
 import { Swap } from '../../components/Swap';
 import { Timeline } from '../../components/Timeline';
 import { ActionCard, Button, Gap, press, T } from '../../components/ui';
+import { isDemoState } from '../../logic/demo';
 import { heads } from '../../logic/haptics';
 import { clock, dur, money, rateShort } from '../../logic/format';
 import { placeOf, watchedStop } from '../../logic/state';
@@ -28,18 +30,28 @@ const TITLE = new Date().toLocaleDateString('en-US', { weekday: 'long', month: '
  * save/home-v1-black-card.
  */
 export default function Today() {
-  const { s } = useStore();
+  const { s, a } = useStore();
+  const { state } = useLocalSearchParams<{ state?: string }>();
+  const linked = isDemoState(state);
+
+  useEffect(() => {
+    if (linked) a.demo(state);
+    // Apply a linked state once, when the link opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
   return (
     <Screen
       tabs
       header={
         // At the dock the place leads, so the header is Figma 09's: the wordmark and a small date.
         s.stop.phase === 'dock' ? (
-          <TopBar trailing={<ProfileTrailing />} />
+          <TopBar trailing={<>{linked ? null : <DemoTab />}<ProfileTrailing /></>} />
         ) : (
-          <TopBar title={TITLE} trailing={<ProfileTrailing noDate />} />
+          <TopBar title={TITLE} trailing={<>{linked ? null : <DemoTab />}<ProfileTrailing noDate /></>} />
         )
       }
+      overlay={linked ? null : <DemoDrawer />}
     >
       <Gap h={16} />
       <Current />
@@ -63,7 +75,8 @@ function Current() {
 
 /**
  * Between stops. With a load, the next stop and "I'm here", the real way to start the clock
- * (location does it too when it's on); the prototype's demo controls are gone (Dan, 24 Nov).
+ * (location does it too when it's on). The demo controls stay in the top bar for showing the
+ * prototype (Edward, 25 Nov).
  * Without one, Add today's load below is how Docket learns where you're going.
  */
 function NoStop() {
