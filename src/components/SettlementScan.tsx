@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { Animated, type GestureResponderEvent, Image, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { gotFromSettlement, sampleScan, type Claim } from '../logic/claims';
+import { gotFromSettlement, type Claim } from '../logic/claims';
 import { sameLoad, type SettlementReading } from '../logic/documents';
 import { money } from '../logic/format';
 import { loadNo } from '../logic/sampleData';
@@ -14,14 +14,12 @@ import { useReduceMotion } from './stepMotion';
 import { BackBar, Screen, useInsets } from './Chrome';
 import { Chip } from './Chip';
 import { DocIcon } from './Icons';
-import { SampleSettlementPage } from './SampleSettlementPage';
 import { Scanner } from './Scanner';
 import { Button, Card, Gap, Row, T } from './ui';
 import { Tappable } from './Tappable';
 
 /** One page to read: the file sent, and what to show of it (a PDF has no picture here). */
 interface Page {
-  /** Null for the sample's drawn page, which has nothing to send. */
   file: DocFile | null;
   preview: string | null;
 }
@@ -29,9 +27,10 @@ interface Page {
 type Step = 'capture' | 'reading' | 'found' | 'review';
 
 /**
- * Scanning a settlement, in three steps like the BOL's: photograph each page (or pick the
- * PDF or screenshot from the company's app), watch it read, then check what it found before
- * it counts. The driver can fix any number the read got wrong.
+ * Scanning a settlement: take the photo (or pick the PDF or screenshot from the company's app)
+ * and it's read straight away, then check what it found before it counts. The driver can fix
+ * any number the read got wrong, or add another page. Always the real read: no drawn sample
+ * page (Dan, 24 Nov: "scan should work"; too many steps to take a photo).
  */
 export function SettlementScan({
   label,
@@ -46,13 +45,11 @@ export function SettlementScan({
   onConfirm: (got: Record<string, number>, unmatched: string[]) => void;
 }) {
   const { a } = useStore();
-  const sample = claims[0].sample;
   const [step, setStep] = useState<Step>('capture');
   const [pages, setPages] = useState<Page[]>([]);
   const [done, setDone] = useState(0); // reading steps finished
   const [got, setGot] = useState<Record<string, number>>({});
   const [unmatched, setUnmatched] = useState<string[]>([]);
-  const samplePaid = sampleScan(claims, label);
 
   async function takePhoto() {
     try {
@@ -62,12 +59,12 @@ export function SettlementScan({
         if (!cam.granted) {
           const lib = await ImagePicker.launchImageLibraryAsync(opts);
           if (lib.canceled) return;
-          return add({ file: await shrinkPhoto(lib.assets[0].uri), preview: lib.assets[0].uri });
+          return shoot({ file: await shrinkPhoto(lib.assets[0].uri), preview: lib.assets[0].uri });
         }
       }
       const r = await ImagePicker.launchCameraAsync(opts);
       if (r.canceled) return;
-      add({ file: await shrinkPhoto(r.assets[0].uri), preview: r.assets[0].uri });
+      shoot({ file: await shrinkPhoto(r.assets[0].uri), preview: r.assets[0].uri });
     } catch {
       a.toast('Couldn’t open the camera.');
     }
@@ -76,29 +73,23 @@ export function SettlementScan({
   async function chooseFile() {
     try {
       const f = await pickFile();
-      if (f) add({ file: f, preview: f.mediaType === 'image/jpeg' ? `data:image/jpeg;base64,${f.base64}` : null });
+      if (f) shoot({ file: f, preview: f.mediaType === 'image/jpeg' ? `data:image/jpeg;base64,${f.base64}` : null });
     } catch (e) {
       a.toast(e instanceof DocReadError ? e.message : 'Couldn’t open that file.');
     }
   }
 
-  const add = (p: Page) => setPages((ps) => [...ps, p]);
+  // A page in reads straight away, with every page so far: no Done to tap (most settlements are
+  // one page; a second one is added from the result).
+  const shoot = (p: Page) => {
+    const all = [...pages, p];
+    setPages(all);
+    void read(all);
+  };
 
-  async function read() {
+  async function read(pages: Page[]) {
     setStep('reading');
     setDone(0);
-    if (sample) {
-      // The sample has no real page to send: it reads the drawn one back, at a readable pace.
-      for (let i = 1; i <= 3; i++) {
-        await wait(650);
-        setDone(i);
-      }
-      setGot(samplePaid);
-      setUnmatched([]);
-      await wait(350);
-      setStep('found');
-      return;
-    }
     try {
       const lines: SettlementReading['loads'] = [];
       let found = false;
@@ -112,7 +103,9 @@ export function SettlementScan({
       }
       setDone(1);
       if (!found) {
-        a.toast(note || 'No loads found on that page. Type the detention total instead.');
+        a.toast(note || 'No loads found on that page. Try again, or type the detention total.');
+        // A page that read as nothing isn't kept for the next try.
+        setPages([]);
         setStep('capture');
         return;
       }
@@ -125,25 +118,21 @@ export function SettlementScan({
       setStep('found');
     } catch (e) {
       a.toast(e instanceof DocReadingOff || e instanceof DocReadError ? e.message : 'Couldn’t read the settlement. Try again, or type the total.');
+      setPages([]);
       setStep('capture');
     }
   }
 
   const shown = usePercent(step === 'reading' ? done : 3);
-  const pageArt = (highlight = false) =>
-    sample ? (
-      <SampleSettlementPage label={label} claims={claims} paid={samplePaid} highlight={highlight} />
-    ) : pages.length ? (
-      <PageView page={pages[pages.length - 1]} />
-    ) : null;
+  const pageArt = () => (pages.length ? <PageView page={pages[pages.length - 1]} /> : null);
 
   if (step === 'reading' || step === 'found') {
     return (
       <Scanner
         stage={step}
         title={`${label} settlement`}
-        sample={sample}
-        samplePage={<SampleSettlementPage label={label} claims={claims} paid={samplePaid} highlight={step === 'found'} />}
+        sample={false}
+        samplePage={null}
         pages={pages}
         progress={{ pct: shown, text: READING[Math.min(done, READING.length - 1)] }}
         sheet={
@@ -175,10 +164,10 @@ export function SettlementScan({
         claims={claims}
         got={got}
         unmatched={unmatched}
-        art={pageArt(true)}
-        sample={sample}
+        art={pageArt()}
         onFix={(id, v) => setGot((g) => ({ ...g, [id]: v }))}
         onBack={() => setStep('found')}
+        onMore={() => setStep('capture')}
         onAgain={() => {
           setPages([]);
           setStep('capture');
@@ -192,13 +181,13 @@ export function SettlementScan({
   return (
     <Scanner
       title={`${label} settlement`}
-      sample={sample}
-      samplePage={<SampleSettlementPage label={label} claims={claims} paid={samplePaid} />}
+      sample={false}
+      samplePage={null}
       pages={pages}
-      onShot={(shot) => add(shot === 'sample' ? { file: null, preview: null } : shot)}
+      onShot={(shot) => shot !== 'sample' && shoot(shot)}
       onFallback={takePhoto}
-      onFile={sample ? () => a.toast('The sample has no file to pick. Use the shutter.') : chooseFile}
-      onDone={read}
+      onFile={chooseFile}
+      onDone={() => void read(pages)}
       onClose={onCancel}
     />
   );
@@ -211,9 +200,9 @@ function Review({
   got,
   unmatched,
   art,
-  sample,
   onFix,
   onBack,
+  onMore,
   onAgain,
   onConfirm,
 }: {
@@ -222,9 +211,10 @@ function Review({
   got: Record<string, number>;
   unmatched: string[];
   art: React.ReactNode;
-  sample: boolean;
   onFix: (id: string, v: number) => void;
   onBack: () => void;
+  /** Another page of the same settlement: everything is read again with it. */
+  onMore: () => void;
   onAgain: () => void;
   onConfirm: () => void;
 }) {
@@ -246,7 +236,8 @@ function Review({
       footer={
         <>
           <Button label="Looks right" onPress={onConfirm} />
-          <Button label="Scan again" variant="text" onPress={onAgain} />
+          <Button label="Add another page" variant="white" onPress={onMore} />
+          <Button label="Start over" variant="text" onPress={onAgain} />
         </>
       }
     >
@@ -261,12 +252,6 @@ function Review({
       {art ? (
         <>
           <View style={[styles.frame, styles.portraitSmall]}>{art}</View>
-          {sample ? (
-            <>
-              <Gap h={6} />
-              <T v="bodyTiny">Highlighted: the detention lines it read.</T>
-            </>
-          ) : null}
           <Gap h={16} />
         </>
       ) : null}

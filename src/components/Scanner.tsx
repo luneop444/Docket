@@ -361,15 +361,15 @@ export function Scanner({
             ) : null}
           </GlassPill>
           <View style={[styles.side, styles.sideRight]}>
-            {/* As tall as the circles beside it (60), so the row stays balanced, and wide enough
-                to be a true capsule: a flat middle as wide as the label, the rounded ends either
-                side of it. Sized to the label alone, "Done" made it nearly round, all rim, so the
-                glass bent everything behind the label. */}
-            <GlassPill h={THUMB} minW={DONE_W} fixed>
-              <Pressable accessibilityRole="button" accessibilityLabel={pages.length ? `Done, read ${pages.length} page${pages.length === 1 ? '' : 's'}` : 'Done'} accessibilityState={{ disabled: !pages.length }} disabled={!pages.length} onPress={onDone} style={({ pressed }) => [styles.doneHit, pressed && styles.pressed]}>
-                <GlassInk fallback={color.ink}>{(c) => <Text style={[styles.doneText, { color: c }, !pages.length && styles.doneOff]}>Done</Text>}</GlassInk>
-              </Pressable>
-            </GlassPill>
+            {/* The shutter reads the page straight away, so there's no Done to tap (Dan, 24 Nov:
+                too many steps). A sample still needs one: its page is drawn, not shot. */}
+            {sample ? (
+              <GlassPill h={THUMB} minW={DONE_W} fixed>
+                <Pressable accessibilityRole="button" accessibilityLabel={pages.length ? `Done, read ${pages.length} page${pages.length === 1 ? '' : 's'}` : 'Done'} accessibilityState={{ disabled: !pages.length }} disabled={!pages.length} onPress={onDone} style={({ pressed }) => [styles.doneHit, pressed && styles.pressed]}>
+                  <GlassInk fallback={color.ink}>{(c) => <Text style={[styles.doneText, { color: c }, !pages.length && styles.doneOff]}>Done</Text>}</GlassInk>
+                </Pressable>
+              </GlassPill>
+            ) : null}
           </View>
         </View>
       </View>
