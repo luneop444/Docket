@@ -95,11 +95,11 @@ const SORTS: { key: CompanySort; label: string }[] = [
   { key: 'by2h', label: 'Paid by 2h' },
 ];
 
-/** The heading over the companies each sort brings to the top. */
-const TOP: Record<CompanySort, { title: string; sub: string }> = {
-  best: { title: 'Recommended', sub: 'Every hour on duty is paid, or detention is paid even when the customer doesn’t pay.' },
-  rate: { title: 'Highest rate first', sub: 'Companies that publish an hourly rate for waiting.' },
-  by2h: { title: 'Paid within 2 hours', sub: 'Hourly pay, or 2 hours or less of free time.' },
+/** The headings over the companies each sort brings to the top, and over the rest. */
+const TOP: Record<CompanySort, { title: string; sub: string; rest: string }> = {
+  best: { title: 'Recommended', sub: 'Every hour on duty is paid, or detention is paid even when the customer doesn’t pay.', rest: 'Other companies' },
+  rate: { title: 'Highest rate first', sub: 'Companies that publish an hourly rate for waiting.', rest: 'No rate published' },
+  by2h: { title: 'Paid within 2 hours', sub: 'Hourly pay, or 2 hours or less of free time.', rest: 'Later, or not published' },
 };
 
 type PlaceSort = 'most' | 'shortest';
@@ -149,7 +149,8 @@ export default function Companies() {
       <Gap h={12} />
       <Seg options={SORTS} value={sort} onChange={setSort} label="Sort other companies" />
       <Group title={TOP[sort].title} sub={TOP[sort].sub} list={top} />
-      <Group title="Everyone else" list={rest} />
+      {/* The rest are named by what they lack under this sort, so the line between the groups says why. */}
+      <Group title={TOP[sort].rest} list={rest} />
       <Gap h={12} />
       <T v="bodyTiny">{`Across the country: ${NATIONAL.line}`}</T>
       <SourceLink src={NATIONAL.source} />
