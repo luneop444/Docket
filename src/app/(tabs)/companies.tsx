@@ -67,13 +67,17 @@ function PolicyRow({ p }: { p: Policy }) {
   );
 }
 
-function Group({ title, list }: { title: string; list: Policy[] }) {
+function Group({ title, list }: { title?: string; list: Policy[] }) {
   if (!list.length) return null;
   return (
     <>
-      <Gap h={24} />
-      <T v="bodyStrong">{title}</T>
-      <Gap h={10} />
+      <Gap h={title ? 24 : 16} />
+      {title ? (
+        <>
+          <T v="bodyStrong">{title}</T>
+          <Gap h={10} />
+        </>
+      ) : null}
       <ListCard>
         {list.map((p) => (
           <PolicyRow key={p.company} p={p} />
@@ -93,14 +97,14 @@ const SORTS: { key: CompanySort; label: string }[] = [
 ];
 
 /**
- * The heading over the companies each choice brings to the top, and over the rest. Short, because
- * the chip above already names the choice: the heading only adds where the line falls (Edward,
- * 25 Nov). "Paid either way" means whether or not the customer pays the company.
+ * The heading over the companies that don't match the chosen chip. The matches get no heading:
+ * the dark chip right above them already says what they are (Edward, 25 Nov). This one marks
+ * where the order changes, so it says what those companies lack.
  */
-const TOP: Record<CompanySort, { title: string; rest: string }> = {
-  rate: { title: 'Highest first', rest: 'Rate unknown' },
-  guaranteed: { title: 'Paid either way', rest: 'Not guaranteed or unknown' },
-  soon: { title: 'Within 2 hours', rest: 'Later or unknown' },
+const REST: Record<CompanySort, string> = {
+  rate: 'Rate unknown',
+  guaranteed: 'Not guaranteed or unknown',
+  soon: 'Later or unknown',
 };
 
 /**
@@ -211,9 +215,8 @@ export default function Companies() {
           <T v="bodySmall">{`No company called “${query.trim()}” in Docket’s list yet.`}</T>
         </>
       )}
-      <Group title={TOP[sort].title} list={top} />
-      {/* The rest are named by what they lack under this sort, so the line between the groups says why. */}
-      <Group title={TOP[sort].rest} list={rest} />
+      <Group list={top} />
+      <Group title={REST[sort]} list={rest} />
       <Gap h={12} />
       <T v="bodyTiny">{`Across the country: ${NATIONAL.line}`}</T>
       <SourceLink src={NATIONAL.source} />

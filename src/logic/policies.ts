@@ -313,7 +313,9 @@ export const recommended = (p: Policy) => p.kind === 'hourly' || !!p.guaranteed;
  */
 export type CompanySort = 'rate' | 'guaranteed' | 'soon';
 
-const byScore = (a: Policy, b: Policy) => score(b) - score(a) || a.company.localeCompare(b.company);
+// Ties go to the higher published rate, then the name, so Guaranteed doesn't list $33.79 last.
+const byScore = (a: Policy, b: Policy) =>
+  score(b) - score(a) || (b.rate ?? -1) - (a.rate ?? -1) || a.company.localeCompare(b.company);
 const byRate = (a: Policy, b: Policy) => (b.rate ?? -1) - (a.rate ?? -1) || byScore(a, b);
 const bySoon = (a: Policy, b: Policy) => (a.freeMin ?? 999) - (b.freeMin ?? 999) || byRate(a, b);
 
