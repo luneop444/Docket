@@ -2,7 +2,7 @@
  * Stops the driver has logged with the real clock, grouped into pay weeks for
  * the Paycheck tab. Weeks run Monday to Sunday.
  */
-import { WEEK, WEEK_LABEL, type WeekLoad } from './sampleData';
+import type { WeekLoad } from './sampleData';
 import type { Stop } from './stop';
 
 export interface LoggedStop {
@@ -28,8 +28,6 @@ export interface PayWeek {
   key: string;
   label: string;
   loads: WeekLoad[];
-  /** The made-up week shown before the driver has logged anything. */
-  sample: boolean;
 }
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -98,16 +96,13 @@ export const toWeekLoad = (h: LoggedStop): WeekLoad => ({
   brk: h.brk,
 });
 
-export const SAMPLE_WEEK: PayWeek = { key: 'sample', label: WEEK_LABEL, loads: WEEK, sample: true };
-
-/** Pay weeks with logged stops, newest first; the sample week if there are none. */
+/** Pay weeks with logged stops, newest first (none before the first stop is logged). */
 export function payWeeks(history: LoggedStop[]): PayWeek[] {
   const byWeek = new Map<number, LoggedStop[]>();
   for (const h of history) {
     const k = weekStart(h.dayStart + h.arrive * 60000);
     byWeek.set(k, [...(byWeek.get(k) ?? []), h]);
   }
-  if (!byWeek.size) return [SAMPLE_WEEK];
   return [...byWeek.entries()]
     .sort(([a], [b]) => b - a)
     .map(([k, hs]) => ({
@@ -115,6 +110,5 @@ export function payWeeks(history: LoggedStop[]): PayWeek[] {
       label: weekLabel(k),
       // Oldest first inside a week, like a settlement.
       loads: [...hs].reverse().map(toWeekLoad),
-      sample: false,
     }));
 }

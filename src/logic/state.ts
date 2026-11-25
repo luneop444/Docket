@@ -2,7 +2,7 @@
  * The persisted app state (what v1 kept in localStorage under "docket-v1").
  */
 import { defaultRules, type Rules } from './detention';
-import { APPT, START_NOW, TODAY_STOP, type LoadStop, type Marks } from './sampleData';
+import { APPT, START_NOW, type LoadStop, type Marks } from './sampleData';
 import type { ClaimLogs } from './claims';
 import type { LatLon } from './geo';
 import type { LoggedStop } from './history';
@@ -51,14 +51,9 @@ export const shortName = (name: string): string =>
   name.replace(/\s+(DC|D\.C\.|Distribution Center|Warehouse|Whse)$/i, '').trim() || name;
 
 export function placeOf(load: ActiveLoad | null): Place {
-  const name = watchedStop(load)?.name.trim() || TODAY_STOP.name;
-  const sample = name === TODAY_STOP.name;
-  return {
-    name,
-    short: sample ? TODAY_STOP.short : shortName(name),
-    load: load?.number ?? TODAY_STOP.load,
-    typical: sample ? { label: TODAY_STOP.typicalWait, min: TODAY_STOP.typicalWaitMin } : null,
-  };
+  // No made-up facility to fall back on: without a load, the stop is just "Your stop".
+  const name = watchedStop(load)?.name.trim() || 'Your stop';
+  return { name, short: shortName(name), load: load?.number ?? '', typical: null };
 }
 
 /** Dedicated-route drivers set their stops once instead of adding a load each day (Figma A3 note). */
@@ -68,6 +63,13 @@ export type AnonAnswer = 'Paid' | 'Partly' | 'Not paid';
 
 export interface AppState {
   onboarded: boolean;
+  /** What Docket calls the driver: the first setup step (Dan, 24 Nov: account first). */
+  name: string | null;
+  /**
+   * The driver set every detention rule themselves. Until then nothing is worked out from them:
+   * a pay figure from rules nobody entered would be a guess (P1 reached Claims without setup, 24 Nov).
+   */
+  rulesConfirmed: boolean;
   company: string | null;
   customCompany: boolean;
   pay: PayType | null;
@@ -101,6 +103,8 @@ export const STORAGE_KEY = 'docket-v1';
 
 export const freshState = (): AppState => ({
   onboarded: false,
+  name: null,
+  rulesConfirmed: false,
   company: null,
   customCompany: false,
   pay: null,
@@ -121,6 +125,26 @@ export const freshState = (): AppState => ({
   placeCoords: {},
   claims: {},
 });
+
+/**
+ * Where setup picks up, or null once it's done. Setup can't be skipped: every screen outside it
+ * sends the driver here until the name, the company and the rules are all in.
+ */
+export type SetupRoute = '/welcome' | '/account' | '/company' | '/edit-rules';
+export function setupStep(s: AppState): SetupRoute | null {
+  if (!s.name?.trim()) return '/account';
+  if (!s.company) return '/company';
+  if (!s.rulesConfirmed) return '/edit-rules';
+  return null;
+}
+
+/** The setup screens a driver may be on, given how far they've got (no jumping ahead). */
+export function setupAllows(s: AppState, path: string): boolean {
+  const order: SetupRoute[] = ['/welcome', '/account', '/company', '/edit-rules'];
+  const at = setupStep(s);
+  const i = order.indexOf(path as SetupRoute);
+  return i >= 0 && (at == null || i <= order.indexOf(at));
+}
 
 /** Parse stored JSON, falling back to a fresh state if it's missing or broken. */
 export function parseState(raw: string | null): AppState {

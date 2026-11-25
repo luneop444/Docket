@@ -43,10 +43,8 @@ describe('toLogged', () => {
 });
 
 describe('payWeeks', () => {
-  it('shows the sample week until something is logged', () => {
-    const [w] = payWeeks([]);
-    expect(w.sample).toBe(true);
-    expect(w.loads).toHaveLength(4);
+  it('has no weeks until something is logged (no made-up week)', () => {
+    expect(payWeeks([])).toEqual([]);
   });
 
   it('groups logged stops into weeks, newest week first, oldest stop first', () => {
@@ -54,7 +52,6 @@ describe('payWeeks', () => {
     const weeks = payWeeks(h);
     expect(weeks.map((w) => w.label)).toEqual(['Week of Nov 9', 'Week of Nov 2']);
     expect(weeks[0].loads.map((l) => l.day)).toEqual(['Tue Nov 10', 'Thu Nov 12']);
-    expect(weeks[0].sample).toBe(false);
   });
 
   it('feeds the settlement check and the message', () => {

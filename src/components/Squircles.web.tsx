@@ -106,7 +106,11 @@ function apply(el: HTMLElement) {
   // Circles and pills (every corner at least half the short side) keep their round ends.
   const circle = w > 0 && r.every((v) => v >= Math.min(w, h) / 2 - 0.5);
   const outerShadow = cs.boxShadow !== 'none' && !cs.boxShadow.includes('inset');
-  if (!rounded || inline || circle || outerShadow || !w || !h) {
+  // Text fields keep their own rounded corners and inset ring: Chrome's autofill sets
+  // background-image to none (!important, from the browser), which wiped the redrawn ring and
+  // left the square ring under the clip, cut off at the corners (24 Nov).
+  const field = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA';
+  if (!rounded || inline || circle || outerShadow || field || !w || !h) {
     release(el);
     return;
   }

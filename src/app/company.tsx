@@ -11,7 +11,7 @@ import { COMPANIES, SUGGESTED } from '../logic/sampleData';
 import { useStore } from '../state/AppStore';
 import { color, glass, type } from '../theme/tokens';
 
-/** v1 02 Pick company (onboarding step 1; v2 starts from the company's reported rules) */
+/** Setup step 2: who the driver works for. Real carrier names only; no made-up stats beside them. */
 export default function PickCompany() {
   const { a } = useStore();
   const [query, setQuery] = useState('');
@@ -72,18 +72,19 @@ export default function PickCompany() {
       field.current?.blur();
       return;
     }
-    router.navigate('/welcome');
+    router.navigate('/account');
   }
 
   function pick(name: string, custom: boolean) {
     a.pickCompany(name, custom);
-    router.push(custom ? '/edit-rules' : '/company-rules');
+    // No preset rules: they'd be made up, so every driver enters their company's own.
+    router.push('/edit-rules');
   }
 
   return (
     <Screen
-      step={1}
-      header={<OnboardingBar step={1} onBack={back} />}
+      step={2}
+      header={<OnboardingBar step={2} onBack={back} />}
       scrollRef={scroll}
       onScrollY={onScrollY}
       overlay={<LetterIndex onLetter={jump} visible={showIndex && !q} />}
@@ -114,7 +115,7 @@ export default function PickCompany() {
       <Gap h={24} />
       {!q ? (
         <>
-          <T v="labelSmall">Popular with drivers</T>
+          <T v="labelSmall">Large fleets</T>
           <Gap h={10} />
           {/* Six visible before scrolling: Plaid found more visible choices meant fewer people had to search. */}
           <View style={styles.grid}>
@@ -122,7 +123,7 @@ export default function PickCompany() {
               <Tappable
                 key={c.name}
                 accessibilityRole="button"
-                accessibilityLabel={`${c.name}, ${c.drivers} drivers on Docket`}
+                accessibilityLabel={c.name}
                 onPress={() => pick(c.name, false)}
                 give={0.97}
                 style={styles.tile}
@@ -157,20 +158,20 @@ export default function PickCompany() {
               icon={(c) => <TruckOutlineIcon c={c} />}
               label="I’m an owner-operator"
               sub="You’ll enter your own rules"
-              onPress={() => pick('', true)}
+              onPress={() => pick('Owner-operator', true)}
             />
             <Option
               icon={(c) => <EyeSlashIcon c={c} size={20} />}
               label="I’d rather not say"
-              sub="Nothing is counted"
-              onPress={() => pick('', true)}
+              sub="You’ll enter your rules without naming the company"
+              onPress={() => pick('Not shared', true)}
             />
           </View>
         </>
       ) : null}
       <View style={{ gap: 8 }}>
         {hits.map((c) => (
-          <Option key={c.name} label={c.name} sub={`${c.drivers} drivers on Docket`} onPress={() => pick(c.name, false)} />
+          <Option key={c.name} label={c.name} onPress={() => pick(c.name, false)} />
         ))}
         {q && !exact ? (
           <Option label={`Add “${q}”`} sub="Not listed yet. You’ll enter your company’s rules." onPress={() => pick(q, true)} />
@@ -198,13 +199,12 @@ export default function PickCompany() {
                   <Tappable
                     key={c.name}
                     accessibilityRole="button"
-                    accessibilityLabel={`${c.name}, ${c.drivers} drivers on Docket`}
+                    accessibilityLabel={c.name}
                     onPress={() => pick(c.name, false)}
                     give={1}
                     style={styles.row}
                   >
                     <T v="body">{c.name}</T>
-                    <T v="bodyTiny" c={color.sub}>{c.drivers} drivers on Docket</T>
                   </Tappable>
                 ))}
               </View>
@@ -225,7 +225,10 @@ const styles = StyleSheet.create({
     height: 50,
     paddingHorizontal: 16,
     borderRadius: 25, borderCurve: 'continuous',
-    ...glass,
+    // A field like every other: fill and a 1px edge, no lift. Glass's drop shadow made it read
+    // as a floating card (24 Nov).
+    backgroundColor: color.glass,
+    boxShadow: `inset 0 0 0 1px ${color.track}`,
   },
   fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
   // One squircle per carrier: 16 padding, the logo then its name. The logos are transparent,

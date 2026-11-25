@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Chip } from '../components/Chip';
 import { BackBar, Screen } from '../components/Chrome';
-import { Button, Card, Fake, Gap, press, Row, T } from '../components/ui';
+import { Button, Card, Gap, press, Row, T } from '../components/ui';
 import { followUpText, shortDate, stageWords, type Claim, type ClaimEvent } from '../logic/claims';
 import { dur, money } from '../logic/format';
 import { loadNo } from '../logic/sampleData';
@@ -57,7 +57,7 @@ export default function ClaimDetail() {
             {no ? `Load ${no} · ` : ''}
             {c.load.day}
           </T>
-          {c.sample ? <Fake label="Sample data" /> : c.stage !== 'paid' && days > 1 ? <Chip text={`${days} days`} tone={w.tone === 'flag' ? 'flag' : 'plain'} /> : null}
+          {c.stage !== 'paid' && days > 1 ? <Chip text={`${days} days`} tone={w.tone === 'flag' ? 'flag' : 'plain'} /> : null}
         </Row>
         <Gap h={8} />
         <T v="numberL" c={c.stage === 'paid' ? color.onSignal : color.ink}>{money(c.stage === 'paid' ? c.owed : c.left)}</T>
@@ -102,7 +102,7 @@ export default function ClaimDetail() {
           </T>
         </>
       ) : null}
-      {!c.sample && !c.demo ? (
+      {!c.demo ? (
         <>
           <Gap h={24} />
           {removing ? (

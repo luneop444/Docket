@@ -3,7 +3,9 @@ import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import { tick } from '../logic/haptics';
 import { dur, money } from '../logic/format';
 import { useStore } from '../state/AppStore';
+import type { Rules } from '../logic/detention';
 import { color, protoColor, type } from '../theme/tokens';
+import { AmountField } from './AmountField';
 import { MinusIcon, PlusIcon } from './Icons';
 import { RollText } from './RollText';
 import { Tappable } from './Tappable';
@@ -83,29 +85,39 @@ export function RuleSection({ children, last }: { children: React.ReactNode; las
   return <View style={[styles.rule, last && styles.ruleLast]}>{children}</View>;
 }
 
-/** The four detention rules, editable (Figma v1 05 Edit rules / 19 Your rules). */
-export function RuleEditor() {
+/**
+ * The four detention rules, editable (Figma v1 05 Edit rules / 19 Your rules). In setup, `unset`
+ * names the rules the driver hasn't given yet: those show no answer, rather than a default that
+ * reads like their company's rule. `onSet` hears each one as it's given.
+ */
+export function RuleEditor({ unset, onSet }: { unset?: Set<keyof Rules>; onSet?: (k: keyof Rules) => void } = {}) {
   const { s, a } = useStore();
   const r = s.rules;
+  const blank = (k: keyof Rules) => !!unset?.has(k);
+  const set = <K extends keyof Rules>(k: K, v: Rules[K]) => {
+    a.setRule(k, v);
+    onSet?.(k);
+  };
+  const [rateText, setRateText] = useState('');
   return (
     <View>
       <RuleSection>
         <Row style={styles.ruleHead}>
           <T v="bodyStrong">Free time</T>
-          <T v="numberS">{dur(r.free)}</T>
+          {blank('free') ? null : <T v="numberS">{dur(r.free)}</T>}
         </Row>
         <Seg
           style={styles.chips}
           label="Free time"
-          options={[60, 120, 180].map((v) => ({ key: String(v), label: `${v / 60}h` }))}
-          value={String(r.free)}
-          onChange={(k) => a.setRule('free', Number(k))}
+          options={[60, 90, 120, 180].map((v) => ({ key: String(v), label: dur(v) }))}
+          value={blank('free') ? null : String(r.free)}
+          onChange={(k) => set('free', Number(k))}
         />
       </RuleSection>
       <RuleSection>
         <Row style={styles.ruleHead}>
           <T v="bodyStrong">Clock starts at</T>
-          <T v="bodySmall">{r.start === 'appt' ? 'Appointment time' : 'Arrival'}</T>
+          {blank('start') ? null : <T v="bodySmall">{r.start === 'appt' ? 'Appointment time' : 'Arrival'}</T>}
         </Row>
         <Seg
           style={styles.chips}
@@ -114,31 +126,64 @@ export function RuleEditor() {
             { key: 'arrival' as const, label: 'Arrival' },
             { key: 'appt' as const, label: 'Appt time' },
           ]}
-          value={r.start}
-          onChange={(k) => a.setRule('start', k)}
+          value={blank('start') ? null : r.start}
+          onChange={(k) => set('start', k)}
         />
       </RuleSection>
       <RuleSection>
         <Row style={styles.ruleHead}>
           <T v="bodyStrong">Pay after free time</T>
         </Row>
-        <Stepper
-          label="pay rate"
-          value={`${money(r.rate)}/hr`}
-          onMinus={() => a.setRule('rate', Math.max(0, r.rate - 1))}
-          onPlus={() => a.setRule('rate', r.rate + 1)}
-        />
+        {blank('rate') || rateText ? (
+          // Typed in during setup: there's no sensible rate to step from.
+          <View style={styles.chips}>
+            <AmountField
+              label="Pay per hour after free time"
+              value={rateText}
+              onChange={(v) => {
+                setRateText(v);
+                const n = Number(v);
+                if (v && Number.isFinite(n)) set('rate', n);
+              }}
+            />
+            <T v="bodyTiny">Dollars per hour, from your paperwork.</T>
+          </View>
+        ) : (
+          <Stepper
+            label="pay rate"
+            value={`${money(r.rate)}/hr`}
+            onMinus={() => a.setRule('rate', Math.max(0, r.rate - 1))}
+            onPlus={() => a.setRule('rate', r.rate + 1)}
+          />
+        )}
       </RuleSection>
       <RuleSection last>
         <Row style={styles.ruleHead}>
           <View style={{ flex: 1 }}>
             <T v="bodyStrong">Off-duty breaks still count</T>
-            <T v="bodyTiny">
-              {r.breaksCount ? 'Breaks at the dock are paid as detention.' : 'Your company subtracts breaks from detention.'}
-            </T>
+            {blank('breaksCount') ? null : (
+              <T v="bodyTiny">
+                {r.breaksCount ? 'Breaks at the dock are paid as detention.' : 'Your company subtracts breaks from detention.'}
+              </T>
+            )}
           </View>
-          <Switch label="Off-duty breaks still count" on={r.breaksCount} onChange={(v) => a.setRule('breaksCount', v)} />
+          {unset ? null : (
+            <Switch label="Off-duty breaks still count" on={r.breaksCount} onChange={(v) => a.setRule('breaksCount', v)} />
+          )}
         </Row>
+        {unset ? (
+          // In setup an answer is asked for, not assumed: a switch is always on or off.
+          <Seg
+            style={styles.chips}
+            label="Off-duty breaks still count"
+            options={[
+              { key: 'yes' as const, label: 'Yes, they count' },
+              { key: 'no' as const, label: 'No' },
+            ]}
+            value={blank('breaksCount') ? null : r.breaksCount ? 'yes' : 'no'}
+            onChange={(k) => set('breaksCount', k === 'yes')}
+          />
+        ) : null}
       </RuleSection>
     </View>
   );

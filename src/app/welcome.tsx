@@ -23,7 +23,7 @@ export default function Welcome() {
       header={<TopBar />}
       footer={
         <>
-          <Button label="Get started" onPress={() => router.push('/company')} />
+          <Button label="Get started" onPress={() => router.push('/account')} />
           {/* Audit #1: scans go to the AI reader, so "stays on your phone" can't cover everything. */}
           <T v="bodyTiny" c={color.sub} style={styles.privacy}>
             Your times and pay stay on your phone.{'\n'}Scans are read once by AI, never kept or shared.

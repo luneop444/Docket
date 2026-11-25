@@ -1,7 +1,9 @@
 import { router, usePathname } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createGlass, type Glass } from './glassGL';
-import { color, glassLift, type } from '../theme/tokens';
+import { needsYou } from '../logic/claims';
+import { useClaims } from '../state/useClaims';
+import { color, fontFamily, glassLift, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
 import { BAR_TINT_GL, GLASS_CHROMA, frostSlice, GLASS_RIM, GLASS_STANDIN, glassK, glassReach, lensMap, mapData, scrollerUnder } from './glassLook';
 import { CHANGE_EVENT, MOVE_EVENT } from './contentMove';
@@ -64,6 +66,8 @@ interface Current {
  */
 export function TabBar() {
   const path = usePathname();
+  // Claims that need the driver to do something: a count on the Claims tab, like an iOS badge.
+  const todo = useClaims().filter(needsYou).length;
   const { pillBottom } = useTabSpace();
   const barRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLDivElement>(null);
@@ -357,8 +361,18 @@ export function TabBar() {
             return (
               // Screens, not panels: buttons in the nav, the current one marked as the page (WCAG
               // 1.3.1: role="tab" outside a tablist read as a broken group).
-              <button key={href} type="button" aria-current={on ? 'page' : undefined} onClick={() => go(i, href)} style={S.tab}>
-                <Icon on={on} c={color.ink} />
+              <button
+                key={href}
+                type="button"
+                aria-current={on ? 'page' : undefined}
+                aria-label={href === '/paycheck' && todo ? `${label}, ${todo} need${todo === 1 ? 's' : ''} you` : undefined}
+                onClick={() => go(i, href)}
+                style={S.tab}
+              >
+                <span style={S.iconBox}>
+                  <Icon on={on} c={color.ink} />
+                  {href === '/paycheck' && todo ? <span style={S.badge}>{todo > 9 ? '9+' : todo}</span> : null}
+                </span>
                 <span style={S.label}>{label}</span>
               </button>
             );
@@ -421,4 +435,23 @@ const S: Record<string, CSSProperties> = {
   },
   // RN line heights are px; in CSS a bare number would be a multiplier.
   label: { ...(type.labelTab as CSSProperties), lineHeight: `${type.labelTab.lineHeight}px`, color: color.ink },
+  iconBox: { position: 'relative', display: 'flex' },
+  // iOS's tab badge: a count on the icon's top right, in the app's flag red (what needs you).
+  badge: {
+    position: 'absolute',
+    top: -5,
+    left: 14,
+    minWidth: 18,
+    height: 18,
+    padding: '0 5px',
+    boxSizing: 'border-box',
+    borderRadius: 9,
+    background: color.flag,
+    color: '#fff',
+    fontFamily: fontFamily.semibold,
+    fontSize: 12,
+    lineHeight: '18px',
+    textAlign: 'center',
+    fontVariantNumeric: 'tabular-nums',
+  },
 };

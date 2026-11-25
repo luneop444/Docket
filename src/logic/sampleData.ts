@@ -99,6 +99,9 @@ const CARRIERS: [string, number, number, 'appt' | 'arrival', number, boolean, st
 ];
 
 
+/** The carrier names in the picker's main list. */
+export const CARRIER_NAMES = CARRIERS.map((c) => c[0]);
+
 /**
  * More real fleets from Transport Topics' 2026 Top 100 For-Hire Carriers and
  * Top 100 Private Carriers lists (ttnews.com). Brands drivers say (Swift,

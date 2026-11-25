@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { checkEvents, claimsOf, gotFromSettlement, settlementDue, stageOf, totalEvents, type ClaimEvent } from '../claims';
 import { defaultRules } from '../detention';
+import type { LoggedStop } from '../history';
 
 const rules = { ...defaultRules, free: 120, rate: 18, start: 'arrival' as const };
 const at = 1;
@@ -30,34 +31,55 @@ describe('stageOf', () => {
   });
 });
 
-describe('the sample claims', () => {
-  const cs = claimsOf([], rules, {});
-  it('are the sample week’s loads owed detention, already sent from the dock', () => {
+/** Three logged stops, a week ago: owed $41.40, $27.00 and $67.50 at $18/hr after 2h from arrival. */
+const DAY = new Date(2026, 9, 26).getTime();
+const stop = (id: string, place: string, load: string, paidMin: number, d = 0): LoggedStop => ({
+  id,
+  place,
+  load,
+  dayStart: DAY + d * 864e5,
+  arrive: 13 * 60,
+  appt: 13 * 60,
+  leave: 13 * 60 + 120 + paidMin,
+  brk: 0,
+  bol: false,
+});
+const HISTORY = [
+  stop('a', 'Harbor Foods DC', '48213', 138),
+  stop('b', 'Keystone Cold Storage', '48227', 90, 1),
+  stop('c', 'Lehigh Grocery DC', '48240', 225, 2),
+];
+const NOW = DAY + 9 * 864e5;
+
+describe('claims from logged stops', () => {
+  it('there are none before the driver logs a stop (no made-up week)', () => {
+    expect(claimsOf([], rules, {})).toEqual([]);
+    expect(settlementDue([], NOW)).toBeNull();
+  });
+  const cs = claimsOf(HISTORY, rules, {});
+  it('are the stops owed detention, not yet sent', () => {
     expect(cs.map((c) => [c.load.name, c.owed])).toEqual([
       ['Harbor Foods DC', 41.4],
       ['Keystone Cold Storage', 27],
       ['Lehigh Grocery DC', 67.5],
     ]);
-    expect(cs.every((c) => c.stage === 'waiting')).toBe(true);
+    expect(cs.every((c) => c.stage === 'unsent')).toBe(true);
   });
-  it('are due on the Oct 30 settlement, then Nov 6 for whatever carries over', () => {
-    const due = settlementDue(cs, Date.now())!;
-    expect(due.label).toBe('Oct 30');
-    const evs = checkEvents(due.claims, 'Oct 30', at, { '48213': 41.4, '48240': 25 });
+  it('are due on a settlement, and whatever is short carries over', () => {
+    const due = settlementDue(cs, NOW)!;
+    expect(due.claims).toHaveLength(3);
+    const evs = checkEvents(due.claims, due.label, NOW, { a: 41.4, c: 25 });
     const logs = Object.fromEntries(cs.map((c) => [c.id, [...c.events, evs[c.id]]]));
-    const after = claimsOf([], rules, logs);
+    const after = claimsOf(HISTORY, rules, logs);
     expect(after.filter((c) => c.stage !== 'paid').map((c) => [c.load.name, c.left])).toEqual([
       ['Keystone Cold Storage', 27],
       ['Lehigh Grocery DC', 42.5],
     ]);
-    const next = settlementDue(after, Date.now())!;
-    expect(next.label).toBe('Nov 6');
-    expect(next.claims).toHaveLength(2);
   });
 });
 
 describe('checking by the detention total', () => {
-  const cs = claimsOf([], rules, {});
+  const cs = claimsOf(HISTORY, rules, {});
   it('enough for every claim: all paid', () => {
     const evs = totalEvents(cs, 'Oct 30', at, 135.9);
     expect(Object.values(evs).every((e) => e.k === 'check' && !e.whole && e.got > 0)).toBe(true);
@@ -74,10 +96,10 @@ describe('checking by the detention total', () => {
 
 describe('matching a read settlement', () => {
   it('adds up each load’s detention lines by load number, and 0 when it’s not on it', () => {
-    const cs = claimsOf([], rules, {});
+    const cs = claimsOf(HISTORY, rules, {});
     const same = (a: string, b: string) => a.replace(/\D/g, '') === b.replace(/\D/g, '');
     const r = gotFromSettlement(cs, [{ number: '#48213', detention: 20 }, { number: '48213', detention: 21.4 }, { number: '48240', detention: null }], same);
-    expect(r.got).toEqual({ '48213': 41.4, '48227': 0, '48240': 0 });
+    expect(r.got).toEqual({ a: 41.4, b: 0, c: 0 });
     expect(r.unmatched).toEqual([]);
   });
 });

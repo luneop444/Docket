@@ -101,12 +101,16 @@ export function StopsEditor({
   );
 }
 
-function Field({
+/** A labelled text field (stop names, the driver's name). */
+export function Field({
   label,
   value,
   onChangeText,
   placeholder,
   onBg,
+  autoFocus,
+  onSubmit,
+  name,
 }: {
   label: string;
   value: string;
@@ -114,6 +118,10 @@ function Field({
   placeholder: string;
   /** On a grey card, so the field is white. */
   onBg?: boolean;
+  autoFocus?: boolean;
+  onSubmit?: () => void;
+  /** A person's name: autofill offers it and it isn't autocorrected. */
+  name?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   return (
@@ -127,6 +135,10 @@ function Field({
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         autoCorrect={false}
+        autoFocus={autoFocus}
+        onSubmitEditing={onSubmit}
+        returnKeyType={onSubmit ? 'next' : undefined}
+        {...(name ? { autoComplete: 'given-name' as const, textContentType: 'givenName' as const, autoCapitalize: 'words' as const } : {})}
         accessibilityLabel={label}
         style={[styles.input, onBg && styles.inputOnBg, focused && styles.inputFocus]}
       />

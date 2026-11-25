@@ -1,183 +1,224 @@
 import { router } from 'expo-router';
-import { useLayoutEffect, useRef, type ReactNode } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Linking, StyleSheet, View } from 'react-native';
 import { LOGOS } from '../../components/carrierLogos';
 import { PageHead, Screen } from '../../components/Chrome';
 import { ChevronRight } from '../../components/Icons';
-import { glideRows, measureRows, type RowTops } from '../../components/reorderGlide';
-import { glideNext, useReduceMotion } from '../../components/stepMotion';
-import { Swap } from '../../components/Swap';
-import { Fake, Gap, ListCard, ListRow, Pill, Seg, T } from '../../components/ui';
-import { headline, noStatsNote, otherStats, payLine, REAL_CARRIERS, showsStats, sortBoard } from '../../logic/companyInfo';
-import { durShort, rateShort } from '../../logic/format';
-import { MIN_REPORTS, SAMPLE_BOARD } from '../../logic/sampleData';
-import type { CompanySort } from '../../logic/state';
+import { Tappable } from '../../components/Tappable';
+import { Card, Gap, ListCard, ListRow, Pill, Seg, T } from '../../components/ui';
+import { calc, rulesLine } from '../../logic/detention';
+import { dur } from '../../logic/format';
+import type { LoggedStop } from '../../logic/history';
+import { NATIONAL, POLICIES, recommended, sortPolicies, staleYear, type CompanySort, type Policy, type Source } from '../../logic/policies';
 import { useStore } from '../../state/AppStore';
 import { color } from '../../theme/tokens';
 
-const open = (name: string) => router.push({ pathname: '/company-info', params: { name } });
+/** Each place the driver has stopped, from their own logged stops: visits, typical wait, times past free. */
+interface Place {
+  name: string;
+  visits: number;
+  /** Median wait, minutes. */
+  wait: number;
+  pastFree: number;
+}
+
+function placesFrom(history: LoggedStop[], rules: Parameters<typeof calc>[4]): Place[] {
+  const by = new Map<string, LoggedStop[]>();
+  for (const h of history) by.set(h.place, [...(by.get(h.place) ?? []), h]);
+  return [...by.entries()]
+    .map(([name, hs]) => {
+      const waits = hs.map((h) => h.leave - h.arrive).sort((a, b) => a - b);
+      return {
+        name,
+        visits: hs.length,
+        wait: waits[Math.floor(waits.length / 2)],
+        pastFree: hs.filter((h) => calc(h.arrive, h.appt, h.leave, h.brk, rules).owed > 0).length,
+      };
+    })
+    .sort((a, b) => b.visits - a.visits || a.name.localeCompare(b.name));
+}
+
+/** A source as a small link: the label and when it's from, opening the page. */
+function SourceLink({ src }: { src: Source }) {
+  return (
+    <Tappable
+      accessibilityRole="link"
+      accessibilityLabel={`${src.label}, ${src.when}. Opens the page.`}
+      onPress={() => Linking.openURL(src.url)}
+      highlight="fade"
+      hitSlop={6}
+    >
+      <T v="bodyTiny" style={styles.link}>{`${src.label} · ${src.when}`}</T>
+    </Tappable>
+  );
+}
+
+function PolicyCard({ p }: { p: Policy }) {
+  const old = staleYear(p);
+  return (
+    <Card>
+      <View style={styles.head}>
+        <T v="bodyStrong" style={styles.name}>{p.company}</T>
+        {recommended(p) ? <Pill label="Recommended" tone="signal" /> : null}
+      </View>
+      <T v="bodyTiny">{p.scope ? `${p.segment} · ${p.scope}` : p.segment}</T>
+      <Gap h={6} />
+      <T v="bodySmall">{p.line}</T>
+      {old ? (
+        <>
+          <Gap h={4} />
+          <T v="bodyTiny" style={{ color: color.flag }}>{`Last published ${old}. It may have changed.`}</T>
+        </>
+      ) : null}
+      {p.sources.length ? <Gap h={8} /> : null}
+      {p.sources.map((src) => (
+        <SourceLink key={src.url} src={src} />
+      ))}
+    </Card>
+  );
+}
+
+const SORTS: { key: CompanySort; label: string }[] = [
+  { key: 'best', label: 'Best first' },
+  { key: 'rate', label: 'Top rate' },
+  { key: 'by2h', label: 'Paid by 2h' },
+];
+
+type PlaceSort = 'most' | 'shortest';
 
 /**
- * v1 18: Companies, as two lists. Each row leads with its key figure on the right (pay for
- * the real carriers; the wait or % paid, following the sort, for what drivers report), so
- * the numbers read at a glance and nothing inside a row looks like its own button.
+ * Companies: only what's real (Dan, 24 Nov: no sample data). The driver's own company and the
+ * rules they entered; then every other company's published waiting policy, each with its source
+ * (researched 24 Nov, see logic/policies.ts), recommended first; then the places they've stopped,
+ * from their own timed stops. Other drivers' reports need drivers reporting, so that part waits.
  */
 export default function Companies() {
-  const { s, a } = useStore();
-  const reduce = useReduceMotion();
-  const board = sortBoard(SAMPLE_BOARD, s.sort);
-  // Where each row was before a re-sort, so it can glide to its new place (reorderGlide).
-  const list = useRef<unknown>(null);
-  const before = useRef<RowTops>(null);
-  useLayoutEffect(() => {
-    if (!before.current) return;
-    glideRows(list.current, before.current);
-    before.current = null;
-  }, [s.sort]);
+  const { s } = useStore();
+  const [sort, setSort] = useState<CompanySort>('best');
+  const [placeSort, setPlaceSort] = useState<PlaceSort>('most');
+  const all = placesFrom(s.history, s.rules);
+  const places = placeSort === 'shortest' ? [...all].sort((a, b) => a.wait - b.wait || a.name.localeCompare(b.name)) : all;
+  const logo = s.company ? LOGOS[s.company] : undefined;
+  const others = sortPolicies(
+    POLICIES.filter((p) => p.company !== s.company),
+    sort,
+  );
+
   return (
     <Screen tabs header={<PageHead title="Companies" />}>
-      <T v="bodySmall">What waiting looks like at each company</T>
-
-      <Gap h={24} />
-      <T v="bodyStrong">Popular carriers</T>
+      <T v="bodyStrong">Your company</T>
       <Gap h={10} />
-      {/* A ListCard: each row spans the card, so a pressed row lights up to its edges and dividers. */}
-      <ListCard>
-        {REAL_CARRIERS.map((c) => (
-          <Row
-            key={c.name}
-            label={`${c.name}, ${payLine(c)}`}
-            onPress={() => open(c.name)}
-            lead={
-              <View style={styles.logoBox}>
-                <Image
-                  source={LOGOS[c.name].src}
-                  style={{ width: LOGOS[c.name].w, height: LOGOS[c.name].h }}
-                  resizeMode="contain"
-                  accessibilityIgnoresInvertColors
-                />
-              </View>
-            }
-            body={c.name === s.company ? <Pill label="Yours" tone="signal" /> : null}
-            value={rateShort(c.rules.rate)}
-            caption={`after ${durShort(c.rules.free)} free`}
-          />
-        ))}
-      </ListCard>
-      <Gap h={8} />
-      <T v="bodyTiny">{noStatsNote(REAL_CARRIERS[0])}</T>
+      <Card onPress={() => router.push('/rules')}>
+        <View style={styles.row}>
+          <View style={styles.body}>
+            {logo ? (
+              <Image source={logo.src} style={{ width: logo.w, height: logo.h }} resizeMode="contain" accessibilityIgnoresInvertColors />
+            ) : null}
+            <T v="bodyStrong">{s.company ?? 'Your company'}</T>
+            <T v="bodySmall">{rulesLine(s.rules)}</T>
+            <T v="bodyTiny">The rules you entered</T>
+          </View>
+          <ChevronRight size={16} c={color.faint} />
+        </View>
+      </Card>
 
       <Gap h={32} />
-      <T v="bodyStrong">What drivers report</T>
-      <Gap h={10} />
-      <Seg<CompanySort>
-        label="Sort companies by"
-        options={[
-          { key: 'wait', label: 'Shortest waits' },
-          { key: 'paid', label: 'Most often paid' },
-        ]}
-        value={s.sort}
-        onChange={(k) => {
-          // The rows glide to their new order, so you can follow a company as the list re-sorts.
-          glideNext(reduce);
-          if (!reduce) before.current = measureRows(list.current);
-          a.setSort(k);
-        }}
-      />
-      <Gap h={12} />
-      <View ref={list as never}>
-        <ListCard>
-          {board.map((c) => {
-          const stats = showsStats(c);
-          const h = headline(c, s.sort);
-          return (
-            <Row
-              key={c.name}
-              glide={c.name}
-              sort={s.sort}
-              figureFor={(k) => {
-                const f = headline(c, k);
-                return stats ? [f.value, f.label] : [`${c.reported}/${MIN_REPORTS}`, 'reports so far'];
-              }}
-              label={stats ? `${c.name}, ${h.value} ${h.label}, ${payLine(c)}` : `${c.name}, not enough reports yet`}
-              onPress={() => open(c.name)}
-              lead={null}
-              body={
-                <>
-                  <T v="bodyStrong">{c.name}</T>
-                  {c.name === s.company ? <Pill label="Yours" tone="signal" /> : null}
-                  <T v="bodySmall" c={color.ink}>{payLine(c)}</T>
-                  {stats ? (
-                    <Swap k={s.sort} render={(k) => <T v="bodyTiny">{otherStats(c, k)}</T>} />
-                  ) : (
-                    <T v="bodyTiny">{`Stats show at ${MIN_REPORTS} reports`}</T>
-                  )}
-                </>
-              }
-              value={stats ? h.value : `${c.reported}/${MIN_REPORTS}`}
-              caption={stats ? h.label : 'reports so far'}
-              muted={!stats}
-            />
-          );
-        })}
-        </ListCard>
-      </View>
-      <Gap h={16} />
+      <T v="bodyStrong">Other companies</T>
+      <Gap h={4} />
       <T v="bodyTiny">
-        <Fake label="Sample data" /> Made-up companies and numbers until drivers report for real.
+        What each company has published about paying drivers for waiting, and where it’s from. Your account can differ.
+      </T>
+      <Gap h={12} />
+      <Seg options={SORTS} value={sort} onChange={setSort} label="Sort other companies" />
+      <Gap h={8} />
+      <T v="bodyTiny">
+        {sort === 'best'
+          ? 'Recommended: every hour on duty is paid, or detention is paid whether or not the customer pays.'
+          : sort === 'rate'
+            ? 'Highest published hourly rate for waiting first. Companies with no rate come last.'
+            : 'Waiting is paid within 2 hours: hourly pay, or published free time of 2 hours or less.'}
+      </T>
+      <Gap h={12} />
+      <View style={styles.list}>
+        {others.map((p) => (
+          <PolicyCard key={p.company} p={p} />
+        ))}
+      </View>
+      <Gap h={12} />
+      <T v="bodyTiny">{`Across the country: ${NATIONAL.line}`}</T>
+      <SourceLink src={NATIONAL.source} />
+
+      <Gap h={32} />
+      <T v="bodyStrong">Places you’ve stopped</T>
+      <Gap h={4} />
+      <T v="bodyTiny">From the stops you timed.</T>
+      <Gap h={10} />
+      {all.length > 1 ? (
+        <>
+          <Seg
+            options={[
+              { key: 'most', label: 'Most stops' },
+              { key: 'shortest', label: 'Shortest wait' },
+            ]}
+            value={placeSort}
+            onChange={setPlaceSort}
+            label="Sort places"
+          />
+          <Gap h={10} />
+        </>
+      ) : null}
+      {places.length ? (
+        <ListCard>
+          {places.map((p) => (
+            <ListRow
+              key={p.name}
+              accessibilityLabel={`${p.name}, ${p.visits} stop${p.visits > 1 ? 's' : ''}, usually ${dur(p.wait)}`}
+              onPress={() => router.push('/history')}
+            >
+              <View style={styles.body}>
+                <T v="bodyStrong">{p.name}</T>
+                <T v="bodyTiny">
+                  {`${p.visits} stop${p.visits > 1 ? 's' : ''}`}
+                  {p.pastFree ? ` · ${p.pastFree} past free time` : ''}
+                </T>
+              </View>
+              <View style={styles.figure}>
+                <T v="numberS">{dur(p.wait)}</T>
+                <T v="bodyTiny" style={styles.right}>{p.visits > 1 ? 'usual wait' : 'wait'}</T>
+              </View>
+              <ChevronRight size={16} c={color.faint} />
+            </ListRow>
+          ))}
+        </ListCard>
+      ) : (
+        <Card>
+          <T v="bodySmall">
+            Nothing yet. Each shipper and receiver you time a stop at shows up here, with how long you usually wait.
+          </T>
+        </Card>
+      )}
+
+      <Gap h={32} />
+      <View style={styles.soonHead}>
+        <T v="bodyStrong">Other drivers’ reports</T>
+        <Pill label="Not yet" />
+      </View>
+      <Gap h={4} />
+      <T v="bodyTiny">
+        How long drivers wait at each company, and how often detention gets paid, shows here once enough drivers share their stops.
       </T>
     </Screen>
   );
 }
 
-/** One list row: who on the left, the key figure on the right, a quiet chevron. */
-function Row({
-  label,
-  onPress,
-  lead,
-  body,
-  value,
-  caption,
-  muted,
-  glide,
-  sort,
-  figureFor,
-}: {
-  /** Names the row for reorderGlide, so it glides to its new place on a re-sort. */
-  glide?: string;
-  /** The board's sort: the figure swaps (Swap) when it changes, drawn by figureFor. */
-  sort?: CompanySort;
-  figureFor?: (k: CompanySort) => [string, string];
-  label: string;
-  onPress: () => void;
-  lead: ReactNode;
-  body: ReactNode;
-  value: string;
-  caption: string;
-  muted?: boolean;
-}) {
-  const figure = (v: string, cap: string) => (
-    <View style={styles.figure}>
-      <T v="numberS" c={muted ? color.sub : color.ink} numberOfLines={1}>{v}</T>
-      <T v="bodyTiny" style={styles.right}>{cap}</T>
-    </View>
-  );
-  return (
-    <View {...(glide ? ({ dataSet: { glide } } as object) : {})}>
-      <ListRow accessibilityLabel={label} onPress={onPress}>
-        {lead}
-        <View style={styles.body}>{body}</View>
-        {sort && figureFor ? <Swap k={sort} render={(k) => figure(...figureFor(k))} /> : figure(value, caption)}
-        <ChevronRight size={16} c={color.faint} />
-      </ListRow>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   body: { flex: 1, minWidth: 0, gap: 2, alignItems: 'flex-start' },
-  figure: { alignItems: 'flex-end', maxWidth: 96 },
+  figure: { alignItems: 'flex-end', maxWidth: 110 },
   right: { textAlign: 'right' },
-  // The widest Figma logo is 108; one box keeps the rows lined up.
-  logoBox: { width: 108, height: 36, justifyContent: 'center' },
+  soonHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  name: { flexShrink: 1 },
+  list: { gap: 10 },
+  link: { color: color.sub, textDecorationLine: 'underline' },
 });

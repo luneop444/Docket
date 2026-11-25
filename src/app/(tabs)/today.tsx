@@ -73,14 +73,44 @@ function Current() {
   return <AtStop />;
 }
 
+/**
+ * Between stops. With a load, the next stop and "I'm here", the real way to start the clock
+ * (location does it too when it's on). The demo controls stay in the top bar for showing the
+ * prototype (Edward, 25 Nov).
+ * Without one, Add today's load below is how Docket learns where you're going.
+ */
 function NoStop() {
+  const { s, a } = useStore();
+  const next = watchedStop(s.load);
+  if (!next) {
+    return (
+      <View>
+        <T v="bodyStrong">No stop right now</T>
+        <Gap h={4} />
+        <T v="bodySmall" c={color.sub}>
+          Add today’s load and Docket times your stop from when you pull in.
+        </T>
+      </View>
+    );
+  }
   return (
     <View>
-      <T v="bodyStrong">No stop right now</T>
+      <T v="bodyTiny" c={color.sub}>Next stop</T>
+      <Gap h={4} />
+      <T v="h2">{next.name}</T>
       <Gap h={4} />
       <T v="bodySmall" c={color.sub}>
-        At a shipper or receiver, Docket times from when you pull in. Somewhere new, it asks after 30 min
+        {`${next.kind}, appointment ${clock(next.at)}`}
+        {s.location === 'always' ? '. Docket starts the clock when you pull in.' : ''}
       </T>
+      <Gap h={16} />
+      <Button label="I’m here" onPress={() => a.arriveNow()} />
+      {s.location == null ? (
+        <>
+          <Gap h={12} />
+          <Link label="Let Docket notice your stops" onPress={() => router.push('/location')} />
+        </>
+      ) : null}
     </View>
   );
 }
@@ -347,7 +377,7 @@ function Stops() {
       <ActionCard
         create
         label="Add today’s load"
-        sub="Optional. With appointment times, Docket knows your stops before you arrive"
+        sub="Where you’re going and when, so Docket can time your stop"
         onPress={() => router.push('/add-load')}
       />
     );

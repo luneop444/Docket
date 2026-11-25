@@ -1,7 +1,9 @@
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { router, usePathname } from 'expo-router';
 import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { color, type } from '../theme/tokens';
+import { needsYou } from '../logic/claims';
+import { useClaims } from '../state/useClaims';
+import { color, fontFamily, type } from '../theme/tokens';
 import { TAB_PILL, useTabSpace } from './Chrome';
 import { TabCompaniesIcon, TabPaycheckIcon, TabTodayIcon } from './Icons';
 
@@ -22,6 +24,7 @@ export function TabBar() {
   const { pillBottom } = useTabSpace();
   const native = Platform.OS === 'ios' && isLiquidGlassAvailable();
   const Shell = native ? GlassView : View;
+  const todo = useClaims().filter(needsYou).length;
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: pillBottom }]}>
       <Shell style={[styles.pill, native ? null : FROSTED]} {...(native ? { glassEffectStyle: 'regular' as const, isInteractive: true } : {})}>
@@ -32,11 +35,19 @@ export function TabBar() {
               key={href}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
+              accessibilityLabel={href === '/paycheck' && todo ? `${label}, ${todo} need${todo === 1 ? 's' : ''} you` : label}
               onPress={() => router.navigate(href)}
               style={[styles.tab, on && styles.tabOn]}
             >
               {/* As the web bar: black, filled when selected and outlined otherwise. */}
-              <Icon on={on} c={color.ink} />
+              <View>
+                <Icon on={on} c={color.ink} />
+                {href === '/paycheck' && todo ? (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{todo > 9 ? '9+' : todo}</Text>
+                  </View>
+                ) : null}
+              </View>
               <Text style={[type.labelTab, { color: color.ink }]}>{label}</Text>
             </Pressable>
           );
@@ -57,6 +68,9 @@ const FROSTED = {
 
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 20, right: 20 },
+  // iOS's tab badge: a count on the icon's top right, in the app's flag red (what needs you).
+  badge: { position: 'absolute', top: -5, left: 14, minWidth: 18, height: 18, paddingHorizontal: 5, borderRadius: 9, backgroundColor: color.flag, alignItems: 'center', justifyContent: 'center' },
+  badgeText: { fontFamily: fontFamily.semibold, fontSize: 12, color: '#fff', fontVariant: ['tabular-nums'] },
   pill: {
     height: TAB_PILL,
     borderRadius: TAB_PILL / 2,

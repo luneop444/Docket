@@ -62,6 +62,8 @@ export function DemoDrawer() {
   // Clear of the floating tab bar, which would otherwise cover the panel's last row.
   const { space } = useTabSpace();
   const phase = s.stop.phase;
+  // With no load there's no place name, so the buttons say what happens instead of "Your stop".
+  const named = !!s.load;
   const place = placeOf(s.load).short;
   const run = (fn: () => void) => () => {
     fn();
@@ -88,8 +90,8 @@ export function DemoDrawer() {
         <View style={styles.list}>
           {phase === 'idle' ? (
             <>
-              <Button label={`Park at ${place}, a new place`} variant="quiet" small onPress={run(() => a.pullIn(false))} />
-              <Button label={`Pull into ${place}, a known stop`} variant="quiet" small onPress={run(() => a.pullIn(true))} />
+              <Button label={named ? `Park at ${place}, a new place` : 'Park at a new place'} variant="quiet" small onPress={run(() => a.pullIn(false))} />
+              <Button label={named ? `Pull into ${place}, a known stop` : 'Pull into a known stop'} variant="quiet" small onPress={run(() => a.pullIn(true))} />
             </>
           ) : null}
           {phase === 'dock' ? (

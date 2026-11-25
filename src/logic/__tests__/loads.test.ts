@@ -35,9 +35,9 @@ describe('placeOf', () => {
     expect(placeOf(load('Lehigh Grocery DC')).short).toBe('Lehigh Grocery');
   });
 
-  it('keeps sample wait data only for the sample facility', () => {
-    expect(placeOf(load('Harbor Foods DC')).typical?.min).toBe(200);
-    expect(placeOf(null).name).toBe('Harbor Foods DC');
+  it('has no made-up wait data, and no made-up facility without a load', () => {
+    expect(placeOf(load('Harbor Foods DC')).typical).toBeNull();
+    expect(placeOf(null).name).toBe('Your stop');
   });
 
   it('shortens names', () => {

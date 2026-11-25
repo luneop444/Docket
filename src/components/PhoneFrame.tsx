@@ -80,49 +80,37 @@ function Aside() {
   const { a } = useStore();
   return (
     <View style={styles.aside}>
-      <Text style={styles.asideH2}>Docket · Prototype v2</Text>
+      <Text style={styles.asideH2}>Docket · Beta</Text>
       <Text style={styles.asideText}>
         Open on a phone for the real experience. On a computer, use it inside this frame.
       </Text>
       <Text style={styles.asideH3}>Try this</Text>
       <Bullets
         items={[
-          'Set up your company’s rules',
-          'Add today’s load and start watching',
-          'Pull into Harbor Foods, start the clock, and watch free time run out',
-          'Leave, snap a BOL, check the stop',
-          'Start the stop again: Docket now starts on its own, with Undo',
-          'Mark last week’s settlement and message your fleet manager',
+          'Set up: your name, your company and its detention rules',
+          'Add today’s load from a rate con screenshot or PDF, or type it in',
+          'At the stop, tap “I’m here”, then “I left”',
+          'Send the claim, then scan your settlement when it comes',
         ]}
       />
-      <View style={styles.h3Row}>
-        <Text style={[styles.asideH3, { marginTop: 0 }]}>Faked for now</Text>
-        <Text style={styles.mark}> LABELED IN APP </Text>
-      </View>
+      <Text style={styles.asideH3}>Works differently on the web</Text>
       <Bullets
         items={[
-          'Background location on the web (the iPhone build watches with the app closed)',
-          'Time runs 60× faster (prototype controls only)',
-          'Sharing a rate con into Docket and forwarding it by email (choose the file instead)',
-          'Company list, wait data and the first claims week (made-up)',
-          'The Dynamic Island / lock screen Live Activity is drawn by the page, not iOS',
-          'Siri check-in (a button stands in for the voice command)',
+          'Location only while Docket is open (the iPhone app watches with it closed)',
+          'The Dynamic Island and lock screen are drawn by the page (the iPhone app uses a real Live Activity)',
         ]}
       />
-      <Text style={styles.asideH3}>Real</Text>
+      <Text style={styles.asideH3}>Everything else is real</Text>
       <Bullets
         items={[
-          'Rules you enter drive every number',
-          '“I’m here” and “I left” time a stop with your phone’s real clock',
-          'Loads you type in, and the claims built from the stops you timed',
+          'No sample data: every number comes from your rules and the stops you time',
+          'Claude reads your rate con, your BOL times and your settlement. Files aren’t kept',
           'Your stops: a record you can copy as text or download as a CSV',
-          'Location while the app is open: starts the clock at stops you’ve been to, asks when you leave',
-          'Claude reads your BOL times, the stops on your rate con, and the detention on your settlement (on the deployed site)',
-          'The message opens your own text app with the claim filled in',
+          'The claim message opens your own text app, filled in',
         ]}
       />
       <Pressable accessibilityRole="button" onPress={a.resetAll} style={{ marginTop: 14 }}>
-        <Text style={[styles.asideText, styles.reset]}>Reset prototype</Text>
+        <Text style={[styles.asideText, styles.reset]}>Start over (clears everything on this device)</Text>
       </Pressable>
     </View>
   );
