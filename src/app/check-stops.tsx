@@ -5,10 +5,10 @@ import { OnboardingBar, Screen } from '../components/Chrome';
 import { SheetShell } from '../components/Overlays';
 import { Switch } from '../components/RuleEditor';
 import { blankStop, StopsEditor, stopsReady } from '../components/StopsEditor';
-import { Button, Card, Fake, Gap, Hr, Row, T } from '../components/ui';
+import { Button, Card, Gap, Hr, Row, T } from '../components/ui';
 import type { LoadDraft } from '../logic/documents';
 import { clock } from '../logic/format';
-import { SAMPLE_LOAD, WATCH_LEAD_MIN, type LoadStop } from '../logic/sampleData';
+import { WATCH_LEAD_MIN, type LoadStop } from '../logic/sampleData';
 import { setsStopsOnce } from '../logic/state';
 import { useStore } from '../state/AppStore';
 import { color } from '../theme/tokens';
@@ -20,7 +20,7 @@ import { color } from '../theme/tokens';
 export default function CheckStops() {
   const { s, a } = useStore();
   const { source, read } = useLocalSearchParams<{ source?: string; read?: string }>();
-  const manual = source === 'manual';
+
   // What Claude read off the driver's rate con, if they chose one. Otherwise the sample load.
   const [draft] = useState<LoadDraft | null>(() => {
     try {
@@ -29,8 +29,11 @@ export default function CheckStops() {
       return null;
     }
   });
-  const base = draft ?? { number: SAMPLE_LOAD.number, stops: SAMPLE_LOAD.stops, noTime: [] as number[] };
-  const mix = s.loadStyle === 'mix';
+  // Nothing read (typed in, or opened without a rate con): the driver types it in. No sample load.
+  const manual = source === 'manual' || !draft;
+  const base = draft ?? { number: '', stops: [] as LoadStop[], noTime: [] as number[] };
+  // Not asked in setup any more: until the driver says, each load offers "Same stops every week".
+  const mix = s.loadStyle === 'mix' || !s.loadStyle;
   // Mixed drivers choose per load whether these are their weekly stops.
   const [saveWeekly, setSaveWeekly] = useState(() => mix && !!s.load?.recurring);
   const weekly = setsStopsOnce(s.loadStyle) || (mix && saveWeekly);
@@ -62,11 +65,13 @@ export default function CheckStops() {
   function start() {
     a.startWatching({
       number: number.trim(),
-      source: manual ? 'manual' : source === 'email' ? 'email' : 'share',
+      source: manual ? 'manual' : 'share',
       recurring: weekly,
       stops: stops.map((st) => ({ ...st, name: st.name.trim() })),
     });
-    router.navigate('/today');
+    // The first load is when location starts to matter, so that's when it's asked.
+    if (!s.location) router.replace('/location');
+    else router.navigate('/today');
   }
 
   const startLabel = weekly ? 'Use every run' : 'Start watching';
@@ -153,12 +158,7 @@ export default function CheckStops() {
             {noTime.length ? ' Tap Fix a stop to add the missing appointment time.' : ''}
             {fixed ? ' You changed it.' : ''}
           </T>
-        ) : (
-          <T v="bodyTiny">
-            <Fake label="Sample data" /> These stops come from a sample load, not your rate con.
-            {fixed ? ' You changed it.' : ''}
-          </T>
-        )}
+        ) : null}
       </Screen>
       {fixing ? (
         <SheetShell scroll onClose={() => setFixing(false)}>

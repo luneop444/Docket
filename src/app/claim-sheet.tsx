@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Image, StyleSheet, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
-import { Button, Card, Fake, Gap, Row, T } from '../components/ui';
+import { Button, Card, Gap, Row, T } from '../components/ui';
 import { claimSheetText, shortDate } from '../logic/claims';
 import { clock, dur, money } from '../logic/format';
 import { loadNo } from '../logic/sampleData';
@@ -49,7 +49,6 @@ export default function ClaimSheet() {
     >
       <Row base>
         <T v="h2" style={styles.flex}>Claim sheet</T>
-        {c.sample ? <Fake label="Sample data" /> : null}
       </Row>
       <Gap h={4} />
       <T v="bodySmall">

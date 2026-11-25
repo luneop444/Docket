@@ -4,12 +4,12 @@ import { StyleSheet, View } from 'react-native';
 import { BackBar, Screen } from '../components/Chrome';
 import { Chip } from '../components/Chip';
 import { SettlementScan } from '../components/SettlementScan';
-import { Button, Card, Fake, Gap, Row, T } from '../components/ui';
+import { Button, Card, Gap, Row, T } from '../components/ui';
 import {
   checkEvents,
-  checkTime,
   followUpText,
   settlementDue,
+  shortDate,
   totalEvents,
   type Claim,
   type ClaimEvent,
@@ -46,7 +46,9 @@ export default function Settlement() {
   const [amt, setAmt] = useState('');
   const [result, setResult] = useState<Result | null>(null);
   const now = useNow();
-  const due = settlementDue(claims, now);
+  // Today asks once a settlement is due; opened from Claims, any open claim can be checked.
+  const open = claims.filter((c) => c.stage !== 'paid' && !c.demo);
+  const due = settlementDue(claims, now) ?? (open.length ? { label: shortDate(now), claims: open } : null);
   const back = () => (router.canGoBack() ? router.back() : router.navigate('/today'));
 
   function record(r: Result) {
@@ -59,7 +61,7 @@ export default function Settlement() {
   const scan = () => due && setScanFor(due);
   function scanned(got: Record<string, number>, unmatched: string[]) {
     if (!scanFor) return;
-    const at = checkTime(scanFor.claims, scanFor.label, Date.now());
+    const at = Date.now();
     const matched = scanFor.claims.filter((c) => !unmatched.includes(c.id));
     record({ label: scanFor.label, before: scanFor.claims, evs: asChecks(checkEvents(matched, scanFor.label, at, got)), unmatched, total: null });
     setScanFor(null);
@@ -69,7 +71,7 @@ export default function Settlement() {
     if (!due) return;
     const total = parseFloat(amt);
     if (!Number.isFinite(total)) return;
-    const at = checkTime(due.claims, due.label, Date.now());
+    const at = Date.now();
     record({ label: due.label, before: due.claims, evs: asChecks(totalEvents(due.claims, due.label, at, total)), unmatched: [], total });
   }
 
@@ -100,12 +102,11 @@ export default function Settlement() {
   return (
     <Screen header={<BackBar label="Back" onPress={back} />}>
       <Row base>
-        <T v="h2" style={styles.flex}>{due.claims[0].sample ? `Check your ${due.label} settlement` : 'Check your settlement'}</T>
+        <T v="h2" style={styles.flex}>Check your settlement</T>
       </Row>
       <Gap h={8} />
       <T v="bodySmall">
         Looking for {money(owed)} of detention on {due.claims.length} load{due.claims.length > 1 ? 's' : ''}.
-        {due.claims[0].sample ? <Fake label="Sample data" /> : null}
       </T>
       <Gap h={16} />
       <Card>

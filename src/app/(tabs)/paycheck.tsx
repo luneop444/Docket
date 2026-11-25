@@ -3,8 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { Chip } from '../../components/Chip';
 import { PageHead, Screen } from '../../components/Chrome';
 import { ChevronRight } from '../../components/Icons';
-import { Button, Card, Fake, Gap, press, Row, T } from '../../components/ui';
-import { isOpen, settlementDue, stageWords, type Claim } from '../../logic/claims';
+import { Button, Card, Gap, press, Row, T } from '../../components/ui';
+import { isOpen, stageWords, type Claim } from '../../logic/claims';
 import { rulesLine } from '../../logic/detention';
 import { money } from '../../logic/format';
 import { loadNo } from '../../logic/sampleData';
@@ -27,11 +27,24 @@ export default function Claims() {
   const paid = claims.filter((c) => !isOpen(c));
   const owed = open.reduce((t, c) => t + c.left, 0);
   const oldest = open.length ? Math.max(...open.map((c) => Math.floor((now - c.day) / 864e5))) : 0;
-  const due = settlementDue(claims, now);
-  const sample = claims[0]?.sample;
 
   return (
     <Screen tabs header={<PageHead title="Claims" right={open.length ? `${open.length} open` : undefined} />}>
+      {!claims.length ? (
+        // First run: nothing owed yet, so no big $0.00 standing in for a figure.
+        <Card>
+          <T v="bodyStrong">No claims yet</T>
+          <Gap h={4} />
+          <T v="bodySmall">When a stop runs past free time, its claim shows up here, ready to send to dispatch.</T>
+          <Gap h={12} />
+          <View style={styles.rules}>
+            <T v="bodyTiny" style={styles.flex}>Figured with {rulesLine(s.rules)}.</T>
+            <Tappable highlight="fade" accessibilityRole="button" accessibilityLabel="Change rules" onPress={() => router.push('/rules')} hitSlop={10} give={1} style={press.hit}>
+              <T v="bodyTiny" c={color.ink} style={styles.link}>Change</T>
+            </Tappable>
+          </View>
+        </Card>
+      ) : (
       <Card>
         <T v="bodyTiny">Still owed to you</T>
         <Gap h={8} />
@@ -39,11 +52,10 @@ export default function Claims() {
         <Gap h={8} />
         <T v="bodySmall">
           {open.length
-            ? `Across ${open.length} claim${open.length > 1 ? 's' : ''}${!sample && oldest > 1 ? `, oldest ${oldest} days` : ''}.`
+            ? `Across ${open.length} claim${open.length > 1 ? 's' : ''}${oldest > 1 ? `, oldest ${oldest} days` : ''}.`
             : claims.length
               ? 'Every claim is paid.'
               : 'Nothing yet. A stop past free time becomes a claim here.'}
-          {sample ? <Fake label="Sample data" /> : null}
         </T>
         <Gap h={12} />
         <View style={styles.rules}>
@@ -52,13 +64,14 @@ export default function Claims() {
             <T v="bodyTiny" c={color.ink} style={styles.link}>Change</T>
           </Tappable>
         </View>
-        {due ? (
+        {open.length ? (
           <>
             <Gap h={16} />
             <Button label="Check a settlement" variant="white" onPress={() => router.push('/settlement')} />
           </>
         ) : null}
       </Card>
+      )}
       {open.length ? (
         <>
           <Gap h={24} />

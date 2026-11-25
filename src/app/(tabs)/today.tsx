@@ -1,14 +1,12 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { Fragment, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ProfileTrailing, Screen, TopBar } from '../../components/Chrome';
-import { DemoDrawer, DemoTab } from '../../components/DemoDrawer';
 import { FreeBar } from '../../components/FreeBar';
 import { RollText } from '../../components/RollText';
 import { Swap } from '../../components/Swap';
 import { Timeline } from '../../components/Timeline';
 import { ActionCard, Button, Gap, press, T } from '../../components/ui';
-import { isDemoState } from '../../logic/demo';
 import { heads } from '../../logic/haptics';
 import { clock, dur, money, rateShort } from '../../logic/format';
 import { placeOf, watchedStop } from '../../logic/state';
@@ -30,28 +28,18 @@ const TITLE = new Date().toLocaleDateString('en-US', { weekday: 'long', month: '
  * save/home-v1-black-card.
  */
 export default function Today() {
-  const { s, a } = useStore();
-  const { state } = useLocalSearchParams<{ state?: string }>();
-  const linked = isDemoState(state);
-
-  useEffect(() => {
-    if (linked) a.demo(state);
-    // Apply a linked state once, when the link opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state]);
-
+  const { s } = useStore();
   return (
     <Screen
       tabs
       header={
         // At the dock the place leads, so the header is Figma 09's: the wordmark and a small date.
         s.stop.phase === 'dock' ? (
-          <TopBar trailing={<>{linked ? null : <DemoTab />}<ProfileTrailing /></>} />
+          <TopBar trailing={<ProfileTrailing />} />
         ) : (
-          <TopBar title={TITLE} trailing={<>{linked ? null : <DemoTab />}<ProfileTrailing noDate /></>} />
+          <TopBar title={TITLE} trailing={<ProfileTrailing noDate />} />
         )
       }
-      overlay={linked ? null : <DemoDrawer />}
     >
       <Gap h={16} />
       <Current />
@@ -73,14 +61,43 @@ function Current() {
   return <AtStop />;
 }
 
+/**
+ * Between stops. With a load, the next stop and "I'm here", the real way to start the clock
+ * (location does it too when it's on); the prototype's demo controls are gone (Dan, 24 Nov).
+ * Without one, Add today's load below is how Docket learns where you're going.
+ */
 function NoStop() {
+  const { s, a } = useStore();
+  const next = watchedStop(s.load);
+  if (!next) {
+    return (
+      <View>
+        <T v="bodyStrong">No stop right now</T>
+        <Gap h={4} />
+        <T v="bodySmall" c={color.sub}>
+          Add today’s load and Docket times your stop from when you pull in.
+        </T>
+      </View>
+    );
+  }
   return (
     <View>
-      <T v="bodyStrong">No stop right now</T>
+      <T v="bodyTiny" c={color.sub}>Next stop</T>
+      <Gap h={4} />
+      <T v="h2">{next.name}</T>
       <Gap h={4} />
       <T v="bodySmall" c={color.sub}>
-        At a shipper or receiver, Docket times from when you pull in. Somewhere new, it asks after 30 min
+        {`${next.kind}, appointment ${clock(next.at)}`}
+        {s.location === 'always' ? '. Docket starts the clock when you pull in.' : ''}
       </T>
+      <Gap h={16} />
+      <Button label="I’m here" onPress={() => a.arriveNow()} />
+      {s.location == null ? (
+        <>
+          <Gap h={12} />
+          <Link label="Let Docket notice your stops" onPress={() => router.push('/location')} />
+        </>
+      ) : null}
     </View>
   );
 }
@@ -347,7 +364,7 @@ function Stops() {
       <ActionCard
         create
         label="Add today’s load"
-        sub="Optional. With appointment times, Docket knows your stops before you arrive"
+        sub="Where you’re going and when, so Docket can time your stop"
         onPress={() => router.push('/add-load')}
       />
     );

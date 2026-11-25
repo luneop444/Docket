@@ -6,7 +6,7 @@ import { useStore } from '../state/AppStore';
 import { useClaims } from '../state/useClaims';
 import { useNow } from '../state/useNow';
 import { color } from '../theme/tokens';
-import { Button, Card, Fake, Gap, T } from './ui';
+import { Button, Card, Gap, T } from './ui';
 
 /**
  * Settlement day on Today: one check, not a tab. It says what to do (check the settlement)
@@ -23,7 +23,6 @@ export function PaydayCard() {
   const n = due.claims.length;
   const owed = due.claims.reduce((t, c) => t + c.left, 0);
   const carried = due.claims.filter((c) => c.missed > 0).length;
-  const sample = due.claims[0].sample;
   const go = (how: 'scan' | 'type') => router.push(`/settlement?go=${how}`);
 
   return (
@@ -34,13 +33,12 @@ export function PaydayCard() {
           <T v="labelSmall" c={color.bg}>Settlement day</T>
         </View>
         <Gap h={12} />
-        <T v="numberS">{sample ? `Check your ${due.label} settlement` : 'Check your latest settlement'}</T>
+        <T v="numberS">Check your latest settlement</T>
         <Gap h={6} />
         <T v="bodySmall">
           {carried
             ? `${money(owed)} of detention still owed on ${n} load${n > 1 ? 's' : ''}, ${carried} carried over from the last one.`
             : `You claimed ${money(owed)} of detention for ${n} load${n > 1 ? 's' : ''}.`}
-          {sample ? <Fake label="Sample data" /> : null}
         </T>
         <Gap h={16} />
         <Button label="Scan the settlement" onPress={() => go('scan')} />

@@ -8,7 +8,7 @@
  */
 import { calc, rulesLine, type DetentionResult, type Rules } from './detention';
 import { clock, dur, money } from './format';
-import { SAMPLE_WEEK, type LoggedStop, toWeekLoad } from './history';
+import { type LoggedStop, toWeekLoad } from './history';
 import { loadNo, type WeekLoad } from './sampleData';
 
 export type ClaimEvent =
@@ -44,26 +44,11 @@ export interface Claim {
   stage: Stage;
   /** Settlements checked with this load still short. */
   missed: number;
-  /** From the made-up sample week. */
-  sample: boolean;
-  /** Today's simulated stop: not on the sample week's settlements. */
+  /** A stop that isn't in the history (ExtraLoad): never on a settlement yet. */
   demo: boolean;
 }
 
 const round = (n: number) => Math.round(n * 100) / 100;
-
-/** The sample week's days (Oct 26–29, 2026), so the made-up claims have real dates. */
-const SAMPLE_DAYS: Record<string, number> = {
-  '48213': new Date(2026, 9, 26).getTime(),
-  '48227': new Date(2026, 9, 27).getTime(),
-  '48240': new Date(2026, 9, 28).getTime(),
-  '48251': new Date(2026, 9, 29).getTime(),
-};
-
-/** The made-up claims were sent from the dock, an hour after leaving, like a real one would be. */
-function sampleSent(l: WeekLoad, day: number): ClaimEvent[] {
-  return [{ k: 'sent', at: day + (l.leave + 60) * 60000 }];
-}
 
 export function stageOf(events: ClaimEvent[], owed: number): { stage: Stage; paid: number; missed: number } {
   let paid = 0, missed = 0, sent = false, asked = false, payroll = false, shortSinceAsk = false, short = false;
@@ -97,23 +82,21 @@ export interface ExtraLoad {
 }
 
 /**
- * Every load owed detention, as a claim: logged stops, or the sample week before any.
- * `extra`: today's simulated stop once it's done, so a claim sent from it shows up too.
+ * Every load owed detention, as a claim: the driver's logged stops only (no made-up week before
+ * the first one; Dan, 24 Nov). `extra`: a finished stop not yet in the history, so a claim sent
+ * from it shows up too.
  */
 export function claimsOf(history: LoggedStop[], rules: Rules, logs: ClaimLogs, extra?: ExtraLoad | null): Claim[] {
-  const sample = !history.length;
-  const loads = sample
-    ? SAMPLE_WEEK.loads.map((l) => ({ l, day: SAMPLE_DAYS[l.id] ?? 0, demo: false }))
-    : history.map((h) => ({ l: toWeekLoad(h), day: h.dayStart, demo: false }));
+  const loads = history.map((h) => ({ l: toWeekLoad(h), day: h.dayStart, demo: false }));
   if (extra && !loads.some((x) => x.l.id === extra.l.id)) loads.push({ ...extra, demo: true });
   const out: Claim[] = [];
   for (const { l, day, demo } of loads) {
     const c = calc(l.arrive, l.appt, l.leave, l.brk, rules);
     if (c.owed <= 0) continue;
     const owed = round(c.owed);
-    const events = logs[l.id] ?? (sample && !demo ? sampleSent(l, day) : []);
+    const events = logs[l.id] ?? [];
     const { stage, paid, missed } = stageOf(events, owed);
-    out.push({ id: l.id, load: l, c, owed, paid, left: round(owed - paid), day, events, stage, missed, sample, demo });
+    out.push({ id: l.id, load: l, c, owed, paid, left: round(owed - paid), day, events, stage, missed, demo });
   }
   return out;
 }
@@ -130,19 +113,12 @@ export const toCheck = (cs: Claim[]) => cs.filter(isOpen);
 const lastCheck = (c: Claim) => c.events.filter((e) => e.k === 'check').at(-1)?.at ?? 0;
 
 /**
- * The settlement Today asks about. Real claims: due once there's an open one that no
- * settlement has been checked for in 5 days (settlements come weekly). The sample: every
- * open claim is due, and the made-up settlements run Friday Oct 30, Nov 6, Nov 13…
+ * The settlement Today asks about: due once there's an open claim that no settlement has been
+ * checked for in 5 days (settlements come weekly).
  */
 export function settlementDue(cs: Claim[], now: number): { label: string; claims: Claim[] } | null {
   const open = toCheck(cs).filter((c) => !c.demo);
   if (!open.length) return null;
-  if (open[0].sample) {
-    // Each made-up settlement is a week after the last one checked.
-    const done = new Set(cs.flatMap((c) => c.events.filter((e) => e.k === 'check').map((e) => (e as { label: string }).label)));
-    const d = new Date(2026, 9, 30 + 7 * done.size);
-    return { label: `${MONTHS[d.getMonth()]} ${d.getDate()}`, claims: open };
-  }
   const due = open.filter((c) => now - Math.max(lastCheck(c), c.day) > 5 * 864e5 || !lastCheck(c));
   if (!due.length) return null;
   // A stop from today can't be on today's settlement.
@@ -158,20 +134,6 @@ export const shortDate = (ms: number) => {
   const d = new Date(ms);
   return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 };
-
-/** When a sample settlement is checked: on its own made-up date, not today's. */
-export function checkTime(cs: Claim[], label: string, now: number): number {
-  if (!cs[0]?.sample || cs[0].demo) return now;
-  const [m, d] = label.split(' ');
-  return new Date(2026, MONTHS.indexOf(m), Number(d), 12).getTime();
-}
-
-/** When the driver acts on a sample claim: a little after its last step, in the sample's dates. */
-export function actTime(c: Claim | undefined, now: number): number {
-  if (!c?.sample || c.demo) return now;
-  const last = c.events.at(-1)?.at ?? c.day;
-  return last + 3 * 3600000;
-}
 
 /** What a settlement showed for each claim checked. `got` per claim id; missing ids = not on it. */
 export function checkEvents(cs: Claim[], label: string, at: number, got: Record<string, number>): Record<string, ClaimEvent> {
@@ -294,19 +256,4 @@ export function gotFromSettlement(
     got[c.id] = round(lines.filter((x) => same(x.number, no)).reduce((t, x) => t + (x.detention ?? 0), 0));
   }
   return { got, unmatched };
-}
-
-/**
- * What the made-up settlements pay, so the sample can be walked from claim to payroll:
- * 'all' is what's still owed (whatever the rules make it), a number is dollars.
- */
-const SAMPLE_SCANS: Record<string, Record<string, number | 'all'>> = {
-  'Oct 30': { '48213': 'all', '48240': 25 },
-  'Nov 6': {},
-  'Nov 13': { '48227': 'all' },
-};
-
-export function sampleScan(cs: Claim[], label: string): Record<string, number> {
-  const pay = SAMPLE_SCANS[label] ?? {};
-  return Object.fromEntries(cs.map((c) => [c.id, pay[c.id] === 'all' ? c.left : Math.min(c.left, (pay[c.id] as number | undefined) ?? 0)]));
 }

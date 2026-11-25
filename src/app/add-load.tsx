@@ -2,27 +2,27 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Platform, View } from 'react-native';
 import { OnboardingBar, Screen } from '../components/Chrome';
-import { KeyboardIcon, MailIcon, ShareIcon } from '../components/Icons';
-import { Button, ChoiceTile, Fake, Gap, T } from '../components/ui';
+import { KeyboardIcon, ShareIcon } from '../components/Icons';
+import { Button, ChoiceTile, Gap, T } from '../components/ui';
 import { loadFromRateCon, type RateConReading } from '../logic/documents';
-import { RECENT_STOPS } from '../logic/sampleData';
 import { setsStopsOnce } from '../logic/state';
 import { useStore } from '../state/AppStore';
 import { DocReadError, DocReadingOff, pickFile, pickScreenshot, postDoc, type DocFile } from '../state/readDoc';
 import { color } from '../theme/tokens';
 
-type Source = 'share' | 'email' | 'manual';
+type Source = 'share' | 'manual';
 
 /**
- * Figma B1 Add a load: share it the way it came in, no typing addresses.
- * Dedicated-route drivers see the same screen once, to set up their weekly stops.
+ * Figma B1 Add a load: the rate con as it came in (a screenshot or PDF, read by Claude), or typed
+ * in. Only what really works: no sample load, and no forwarding address that isn't there yet
+ * (Dan, 24 Nov). Dedicated-route drivers see the same screen once, to set up their weekly stops.
  */
 export default function AddLoad() {
   const { s, a } = useStore();
   const weekly = setsStopsOnce(s.loadStyle);
   const [source, setSource] = useState<Source>('share');
   const [reading, setReading] = useState(false);
-  const sample = () => router.push({ pathname: '/check-stops', params: { source: 'share' } });
+  const typeIt = () => router.push({ pathname: '/check-stops', params: { source: 'manual' } });
 
   /** Claude reads the stops off the rate con; Check your stops opens with them. */
   async function read(pick: () => Promise<DocFile | null>) {
@@ -44,9 +44,9 @@ export default function AddLoad() {
       router.push({ pathname: '/check-stops', params: { source: 'share', read: JSON.stringify(loadFromRateCon(r)) } });
     } catch (e) {
       if (e instanceof DocReadingOff) {
-        // No API key on this site (or the local dev server): show the labeled sample load instead.
-        a.toast('Reading is off here, so this is a sample load.');
-        sample();
+        // No API key on this site (or the local dev server): typing it in still works.
+        a.toast('Reading rate cons is off here. Type the load in instead.');
+        typeIt();
       } else {
         a.toast(e instanceof DocReadError ? e.message : 'Couldn’t read the rate con. Try again.');
       }
@@ -60,17 +60,15 @@ export default function AddLoad() {
       Platform.OS === 'web' ? (
         <>
           <Button label={reading ? 'Reading your rate con…' : 'Choose a screenshot or PDF'} disabled={reading} onPress={() => read(pickFile)} />
-          <Button label="Use a sample load" variant="text" disabled={reading} onPress={sample} />
         </>
       ) : (
         <>
           <Button label={reading ? 'Reading your rate con…' : 'Choose a screenshot'} disabled={reading} onPress={() => read(pickScreenshot)} />
           <Button label="Choose a PDF" variant="quiet" disabled={reading} onPress={() => read(pickFile)} />
-          <Button label="Use a sample load" variant="text" disabled={reading} onPress={sample} />
         </>
       )
     ) : (
-      <Button label="Continue" onPress={() => router.push({ pathname: '/check-stops', params: { source } })} />
+      <Button label="Continue" onPress={typeIt} />
     );
 
   return (
@@ -83,23 +81,16 @@ export default function AddLoad() {
       <T v="body" c={color.sub}>
         {weekly
           ? 'Share one rate con from your route. Docket keeps the stops and watches them on every run, so you won’t add loads again.'
-          : 'Share it the way dispatch sent it. Docket reads the stops for you.'}
+          : 'Use the rate con dispatch sent. Docket reads the stops for you.'}
       </T>
       <Gap h={24} />
       <View style={{ gap: 10 }} accessibilityRole="radiogroup" accessibilityLabel="How to add the load">
         <ChoiceTile
           icon={(c) => <ShareIcon c={c} />}
-          label="Share from your dispatch app or a text"
-          sub="Tap Share, then Docket. Screenshots work too."
+          label="A screenshot or PDF of the rate con"
+          sub="From your dispatch app, a text or an email. Claude reads the stops; the file isn’t kept."
           selected={source === 'share'}
           onPress={() => setSource('share')}
-        />
-        <ChoiceTile
-          icon={(c) => <MailIcon c={c} />}
-          label="Forward the rate con email"
-          sub="Send it to loads@docket.app"
-          selected={source === 'email'}
-          onPress={() => setSource('email')}
         />
         <ChoiceTile
           icon={(c) => <KeyboardIcon c={c} />}
@@ -109,19 +100,6 @@ export default function AddLoad() {
           onPress={() => setSource('manual')}
         />
       </View>
-      <Gap h={16} />
-      {weekly ? null : <T v="bodyTiny">Been here before? Pick a recent stop: {RECENT_STOPS.join(', ')}.</T>}
-      <Gap h={20} />
-      {source === 'share' ? (
-        <T v="bodyTiny">
-          <Fake /> The prototype can’t receive a share yet, so choose the screenshot or PDF instead. Claude reads the
-          stops off it. The file isn’t saved.
-        </T>
-      ) : source === 'email' ? (
-        <T v="bodyTiny">
-          <Fake /> Continue stands in for receiving a forwarded rate con. Docket fills in a sample load.
-        </T>
-      ) : null}
     </Screen>
   );
 }
