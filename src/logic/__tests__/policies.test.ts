@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { CARRIER_NAMES } from '../sampleData';
-import { POLICIES, paysBy2h, recommended, splitPolicies, staleYear } from '../policies';
+import { POLICIES, paysBy2h, recommended, searchPolicies, splitPolicies, staleYear } from '../policies';
 
 describe('published policies', () => {
   it('covers every carrier in the picker, once', () => {
@@ -21,15 +21,23 @@ describe('published policies', () => {
   });
 
   it('moves the matches to the top and keeps everyone', () => {
-    for (const by of ['best', 'rate', 'by2h'] as const) {
+    for (const by of ['rate', 'guaranteed', 'soon'] as const) {
       const { top, rest } = splitPolicies(POLICIES, by);
       expect(top.length + rest.length).toBe(POLICIES.length);
     }
-    expect(splitPolicies(POLICIES, 'best').top.every(recommended)).toBe(true);
-    expect(splitPolicies(POLICIES, 'by2h').top.every(paysBy2h)).toBe(true);
-    expect(splitPolicies(POLICIES, 'by2h').rest.some(paysBy2h)).toBe(false);
+    expect(splitPolicies(POLICIES, 'guaranteed').top.every(recommended)).toBe(true);
+    const soon = splitPolicies(POLICIES, 'soon');
+    expect(soon.top.every(paysBy2h)).toBe(true);
+    expect(soon.rest.some(paysBy2h)).toBe(false);
+    const free = soon.top.map((p) => p.freeMin ?? 999);
+    expect(free).toEqual([...free].sort((a, b) => a - b));
     const rated = splitPolicies(POLICIES, 'rate').top.map((p) => p.rate!);
     expect(rated).toEqual([...rated].sort((a, b) => b - a));
+  });
+
+  it('finds a company by name, loosely', () => {
+    expect(searchPolicies(POLICIES, 'jb hunt').map((p) => p.company)).toEqual(['J.B. Hunt Transport']);
+    expect(searchPolicies(POLICIES, '  ')).toHaveLength(POLICIES.length);
   });
 
   it('flags an old policy', () => {

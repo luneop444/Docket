@@ -1,17 +1,17 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, Linking, StyleSheet, View } from 'react-native';
+import { Image, Linking, StyleSheet, TextInput, View } from 'react-native';
 import { LOGOS } from '../../components/carrierLogos';
 import { PageHead, Screen } from '../../components/Chrome';
-import { ChevronRight } from '../../components/Icons';
+import { ChevronRight, SearchIcon } from '../../components/Icons';
 import { Tappable } from '../../components/Tappable';
-import { Card, Gap, ListCard, ListRow, Pill, Seg, T } from '../../components/ui';
+import { Card, Gap, ListCard, ListRow, noFocusRing, Pill, Seg, T } from '../../components/ui';
 import { calc, rulesShort } from '../../logic/detention';
 import { dur } from '../../logic/format';
 import type { LoggedStop } from '../../logic/history';
-import { NATIONAL, POLICIES, splitPolicies, type CompanySort, type Policy, type Source } from '../../logic/policies';
+import { NATIONAL, POLICIES, searchPolicies, splitPolicies, type CompanySort, type Policy, type Source } from '../../logic/policies';
 import { useStore } from '../../state/AppStore';
-import { color } from '../../theme/tokens';
+import { color, type } from '../../theme/tokens';
 
 /** Each place the driver has stopped, from their own logged stops: visits, typical wait, times past free. */
 interface Place {
@@ -87,22 +87,46 @@ function Group({ title, list }: { title: string; list: Policy[] }) {
 const LOGO_SLOT = 64;
 
 const SORTS: { key: CompanySort; label: string }[] = [
-  { key: 'best', label: 'Guaranteed' },
   { key: 'rate', label: 'Top rate' },
-  { key: 'by2h', label: 'Paid by 2h' },
+  { key: 'guaranteed', label: 'Guaranteed' },
+  { key: 'soon', label: 'Pays soonest' },
 ];
 
 /**
- * The headings over the companies each sort brings to the top, and over the rest. Each heading
- * is the rule itself, so none needs a line under it (Edward, 25 Nov). What the top group shares
- * is that waiting is paid even when the customer doesn't pay: hourly pay, or guaranteed
- * detention. "Recommended" was a judgment that needed a sentence to explain it.
+ * The heading over the companies each choice brings to the top, and over the rest. Each heading
+ * is the rule itself, so none needs a line under it.
  */
 const TOP: Record<CompanySort, { title: string; rest: string }> = {
-  best: { title: 'Paid even when the customer doesn’t pay', rest: 'Not guaranteed, or not published' },
   rate: { title: 'Highest rate first', rest: 'No rate published' },
-  by2h: { title: 'Paid within 2 hours', rest: 'Later, or not published' },
+  guaranteed: { title: 'Paid even when the customer doesn’t pay', rest: 'Not guaranteed, or not published' },
+  soon: { title: 'Paid within 2 hours, soonest first', rest: 'Later, or not published' },
 };
+
+/**
+ * One choice at a time, as chips under the search (Edward, 25 Nov, layout A): all three show at
+ * once and the dark one says which is on. Chips, not the segmented bar, so they read as their
+ * own control.
+ */
+function Chips({ value, onChange }: { value: CompanySort; onChange: (k: CompanySort) => void }) {
+  return (
+    <View style={styles.chips} accessibilityRole="radiogroup" accessibilityLabel="Order other companies">
+      {SORTS.map((o) => {
+        const on = o.key === value;
+        return (
+          <Tappable
+            key={o.key}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: on }}
+            onPress={() => onChange(o.key)}
+            style={[styles.chip, on && styles.chipOn]}
+          >
+            <T v="bodyStrong" c={on ? color.bg : color.ink} style={styles.chipText}>{o.label}</T>
+          </Tappable>
+        );
+      })}
+    </View>
+  );
+}
 
 type PlaceSort = 'most' | 'shortest';
 
@@ -114,15 +138,18 @@ type PlaceSort = 'most' | 'shortest';
  */
 export default function Companies() {
   const { s } = useStore();
-  const [sort, setSort] = useState<CompanySort>('best');
+  const [sort, setSort] = useState<CompanySort>('rate');
+  const [query, setQuery] = useState('');
+  const [focused, setFocused] = useState(false);
   const [placeSort, setPlaceSort] = useState<PlaceSort>('most');
   const all = placesFrom(s.history, s.rules);
   const places = placeSort === 'shortest' ? [...all].sort((a, b) => a.wait - b.wait || a.name.localeCompare(b.name)) : all;
   const logo = s.company ? LOGOS[s.company] : undefined;
-  const { top, rest } = splitPolicies(
+  const found = searchPolicies(
     POLICIES.filter((p) => p.company !== s.company),
-    sort,
+    query,
   );
+  const { top, rest } = splitPolicies(found, sort);
 
   return (
     <Screen tabs header={<PageHead title="Companies" />}>
@@ -159,7 +186,30 @@ export default function Companies() {
           that; the chevrons already say a row opens (Edward, 25 Nov). */}
       <T v="bodyStrong">How other companies pay for waiting</T>
       <Gap h={12} />
-      <Seg options={SORTS} value={sort} onChange={setSort} label="Sort other companies" />
+      <View style={[styles.field, focused && styles.fieldFocus]}>
+        <SearchIcon c={color.faint} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder="Search companies"
+          placeholderTextColor={color.sub}
+          autoCorrect={false}
+          autoComplete="off"
+          returnKeyType="search"
+          style={styles.input}
+          accessibilityLabel="Search other companies"
+        />
+      </View>
+      <Gap h={10} />
+      <Chips value={sort} onChange={setSort} />
+      {found.length ? null : (
+        <>
+          <Gap h={24} />
+          <T v="bodySmall">{`No company called “${query.trim()}” in Docket’s list yet.`}</T>
+        </>
+      )}
       <Group title={TOP[sort].title} list={top} />
       {/* The rest are named by what they lack under this sort, so the line between the groups says why. */}
       <Group title={TOP[sort].rest} list={rest} />
@@ -231,6 +281,32 @@ export default function Companies() {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   logoSlot: { width: LOGO_SLOT, alignItems: 'center' },
+  // The same field as the company picker's search: fill and a 1px edge, no lift.
+  field: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: 50,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+    borderCurve: 'continuous',
+    backgroundColor: color.glass,
+    boxShadow: `inset 0 0 0 1px ${color.track}`,
+  },
+  fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
+  input: { ...type.body, fontSize: 17, flex: 1, minWidth: 0, color: color.ink, ...noFocusRing },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderCurve: 'continuous',
+    justifyContent: 'center',
+    backgroundColor: color.glass,
+    boxShadow: `inset 0 0 0 1px ${color.track}`,
+  },
+  chipOn: { backgroundColor: color.ink, boxShadow: 'none' },
+  chipText: { fontSize: 15, lineHeight: 20 },
   body: { flex: 1, minWidth: 0, gap: 2, alignItems: 'flex-start' },
   figure: { alignItems: 'flex-end', maxWidth: 110 },
   right: { textAlign: 'right' },

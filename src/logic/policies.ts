@@ -306,19 +306,32 @@ export function score(p: Policy): number {
 /** Recommended: every on-duty hour paid, or detention paid whether or not the customer pays. */
 export const recommended = (p: Policy) => p.kind === 'hourly' || !!p.guaranteed;
 
-export type CompanySort = 'best' | 'rate' | 'by2h';
+/**
+ * How a job-shopping driver ranks other companies (Edward, 25 Nov: drivers change jobs often,
+ * so the choices are what they'd switch for): who pays most for waiting, who pays even when the
+ * customer doesn't, and who starts paying soonest.
+ */
+export type CompanySort = 'rate' | 'guaranteed' | 'soon';
 
 const byScore = (a: Policy, b: Policy) => score(b) - score(a) || a.company.localeCompare(b.company);
+const byRate = (a: Policy, b: Policy) => (b.rate ?? -1) - (a.rate ?? -1) || byScore(a, b);
+const bySoon = (a: Policy, b: Policy) => (a.freeMin ?? 999) - (b.freeMin ?? 999) || byRate(a, b);
 
 /**
- * The sort puts the companies that match it at the top, under their own heading, and keeps
- * everyone else below in recommended order: nothing is hidden (Edward, 25 Nov).
+ * The choice puts the companies that match it at the top, under their own heading, in its order;
+ * everyone else follows in recommended order. Nothing is hidden.
  */
 export function splitPolicies(list: Policy[], by: CompanySort): { top: Policy[]; rest: Policy[] } {
-  const match = by === 'best' ? recommended : by === 'rate' ? (p: Policy) => p.rate !== undefined : paysBy2h;
-  const top = list.filter(match).sort(by === 'rate' ? (a, b) => (b.rate ?? 0) - (a.rate ?? 0) || byScore(a, b) : byScore);
-  const rest = list.filter((p) => !match(p)).sort(byScore);
-  return { top, rest };
+  const match = by === 'rate' ? (p: Policy) => p.rate !== undefined : by === 'guaranteed' ? recommended : paysBy2h;
+  const order = by === 'rate' ? byRate : by === 'guaranteed' ? byScore : bySoon;
+  return { top: list.filter(match).sort(order), rest: list.filter((p) => !match(p)).sort(byScore) };
+}
+
+/** Companies whose name contains the search, ignoring case, spaces and punctuation ("jb hunt"). */
+export function searchPolicies(list: Policy[], q: string): Policy[] {
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const n = norm(q);
+  return n ? list.filter((p) => norm(p.company).includes(n)) : list;
 }
 
 /** Oldest source year shown as a warning when a policy is old enough that it may have changed. */
