@@ -46,7 +46,7 @@ export default function CompanyPolicy() {
       ) : null}
       <T v="h2">{p.company}</T>
       <Gap h={4} />
-      <T v="bodySmall">{recommended(p) ? 'Recommended' : p.segment}</T>
+      <T v="bodySmall">{recommended(p) ? 'Paid even when the customer doesn’t pay' : p.segment}</T>
       <Gap h={20} />
       {/* "Not published" in a figure size would say the line below it twice. */}
       {p.kind === 'none' ? null : (
@@ -101,7 +101,10 @@ export default function CompanyPolicy() {
         <T v="bodySmall">None. {p.company} hasn’t published anything on paying company drivers to wait that Docket could find.</T>
       )}
       <Gap h={16} />
-      <T v="bodyTiny">From the company’s own job ads and careers pages, and trade press. Driver forums and reviews are left out. Your account can differ.</T>
+      {/* The sources above already say where it's from. What they can't say: pay can change
+          with the customer a driver hauls for (J.B. Hunt and Ryder do).
+          "Account" is the trade word, but read as an app account (Edward, 25 Nov), so it's plain. */}
+      <T v="bodyTiny">Pay can change with the customer you haul for, so yours may be different.</T>
     </Screen>
   );
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { CARRIER_NAMES } from '../sampleData';
-import { POLICIES, paysBy2h, recommended, splitPolicies, staleYear } from '../policies';
+import { POLICIES, recommended, searchPolicies, splitPolicies, staleYear } from '../policies';
 
 describe('published policies', () => {
   it('covers every carrier in the picker, once', () => {
@@ -21,15 +21,18 @@ describe('published policies', () => {
   });
 
   it('moves the matches to the top and keeps everyone', () => {
-    for (const by of ['best', 'rate', 'by2h'] as const) {
+    for (const by of ['rate', 'guaranteed'] as const) {
       const { top, rest } = splitPolicies(POLICIES, by);
       expect(top.length + rest.length).toBe(POLICIES.length);
     }
-    expect(splitPolicies(POLICIES, 'best').top.every(recommended)).toBe(true);
-    expect(splitPolicies(POLICIES, 'by2h').top.every(paysBy2h)).toBe(true);
-    expect(splitPolicies(POLICIES, 'by2h').rest.some(paysBy2h)).toBe(false);
+    expect(splitPolicies(POLICIES, 'guaranteed').top.every(recommended)).toBe(true);
     const rated = splitPolicies(POLICIES, 'rate').top.map((p) => p.rate!);
     expect(rated).toEqual([...rated].sort((a, b) => b - a));
+  });
+
+  it('finds a company by name, loosely', () => {
+    expect(searchPolicies(POLICIES, 'jb hunt').map((p) => p.company)).toEqual(['J.B. Hunt Transport']);
+    expect(searchPolicies(POLICIES, '  ')).toHaveLength(POLICIES.length);
   });
 
   it('flags an old policy', () => {

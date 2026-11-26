@@ -67,11 +67,11 @@ export const POLICIES: Policy[] = [
     sources: [],
   },
   {
-    company: 'J.B. Hunt Transport', headline: '$7.25–$30/hr, by account',
+    company: 'J.B. Hunt Transport', headline: '$7.25–$30/hr, by customer',
     segment: 'Truckload',
     kind: 'detention',
     line: 'One dedicated ad pays $15 an hour, starting 2 hours after an on-time arrival.',
-    scope: 'Company drivers, by account',
+    scope: 'Company drivers, by customer',
     freeMin: 120,
     rate: 30,
     sources: [
@@ -231,11 +231,11 @@ export const POLICIES: Policy[] = [
     sources: [{ label: 'Penske job ad', url: 'https://www.careerbuilder.com/job-details/truck-driver-cdl-class-a-penske-logistics-denver-co--00e7ea8f-1cc4-4460-bbaf-4d962e56c4d5', when: 'Seen Nov 2026', year: 2026 }],
   },
   {
-    company: 'Ryder', headline: 'Depends on the account',
+    company: 'Ryder', headline: 'Depends on the customer',
     segment: 'Dedicated',
     kind: 'split',
     line: 'Many dedicated ads pay by the hour ($26 in East Moline, IL). Others pay by the mile and stop.',
-    scope: 'Dedicated drivers, by account',
+    scope: 'Dedicated drivers, by customer',
     sources: [
       { label: 'Ryder hourly job ad', url: 'https://illinoisjoblink.illinois.gov/jobs/11970246', when: '2024', year: 2024 },
       { label: 'Ryder mileage job ad', url: 'https://www.careerbuilder.com/job-details/truck-driver-cdl-a-no-weekends-wooster-oh--c4c212d3-9718-408e-8daf-dc97454de2d6', when: 'Seen Nov 2026', year: 2026 },
@@ -306,19 +306,36 @@ export function score(p: Policy): number {
 /** Recommended: every on-duty hour paid, or detention paid whether or not the customer pays. */
 export const recommended = (p: Policy) => p.kind === 'hourly' || !!p.guaranteed;
 
-export type CompanySort = 'best' | 'rate' | 'by2h';
+/**
+ * How a job-shopping driver ranks other companies (Edward, 25 Nov: drivers change jobs often).
+ * Two things decide it, from the research: whether waiting is paid at all, since about half of
+ * drivers are paid detention only when the carrier collects it (Overdrive poll), and how much,
+ * since detention pay often falls short of what driving would have earned (ATRI 2024). When pay
+ * starts barely differs: 67% of carriers start detention at 2 hours (ATRI 2024), so "Pays
+ * soonest" was dropped. Free time still shows on each company's page.
+ */
+export type CompanySort = 'rate' | 'guaranteed';
 
-const byScore = (a: Policy, b: Policy) => score(b) - score(a) || a.company.localeCompare(b.company);
+// Ties go to the higher published rate, then the name, so Guaranteed doesn't list $33.79 last.
+const byScore = (a: Policy, b: Policy) =>
+  score(b) - score(a) || (b.rate ?? -1) - (a.rate ?? -1) || a.company.localeCompare(b.company);
+const byRate = (a: Policy, b: Policy) => (b.rate ?? -1) - (a.rate ?? -1) || byScore(a, b);
 
 /**
- * The sort puts the companies that match it at the top, under their own heading, and keeps
- * everyone else below in recommended order: nothing is hidden (Edward, 25 Nov).
+ * The choice puts the companies that match it at the top, under their own heading, in its order;
+ * everyone else follows in recommended order. Nothing is hidden.
  */
 export function splitPolicies(list: Policy[], by: CompanySort): { top: Policy[]; rest: Policy[] } {
-  const match = by === 'best' ? recommended : by === 'rate' ? (p: Policy) => p.rate !== undefined : paysBy2h;
-  const top = list.filter(match).sort(by === 'rate' ? (a, b) => (b.rate ?? 0) - (a.rate ?? 0) || byScore(a, b) : byScore);
-  const rest = list.filter((p) => !match(p)).sort(byScore);
-  return { top, rest };
+  const match = by === 'rate' ? (p: Policy) => p.rate !== undefined : recommended;
+  const order = by === 'rate' ? byRate : byScore;
+  return { top: list.filter(match).sort(order), rest: list.filter((p) => !match(p)).sort(byScore) };
+}
+
+/** Companies whose name contains the search, ignoring case, spaces and punctuation ("jb hunt"). */
+export function searchPolicies(list: Policy[], q: string): Policy[] {
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const n = norm(q);
+  return n ? list.filter((p) => norm(p.company).includes(n)) : list;
 }
 
 /** Oldest source year shown as a warning when a policy is old enough that it may have changed. */

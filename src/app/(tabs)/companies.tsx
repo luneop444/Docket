@@ -1,17 +1,17 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, Linking, StyleSheet, View } from 'react-native';
+import { Image, Linking, StyleSheet, TextInput, View } from 'react-native';
 import { LOGOS } from '../../components/carrierLogos';
 import { PageHead, Screen } from '../../components/Chrome';
-import { ChevronRight } from '../../components/Icons';
+import { ChevronRight, SearchIcon } from '../../components/Icons';
 import { Tappable } from '../../components/Tappable';
-import { Card, Gap, ListCard, ListRow, Pill, Seg, T } from '../../components/ui';
-import { calc, rulesLine } from '../../logic/detention';
+import { Card, Gap, ListCard, ListRow, noFocusRing, Pill, Seg, T } from '../../components/ui';
+import { calc, rulesShort } from '../../logic/detention';
 import { dur } from '../../logic/format';
 import type { LoggedStop } from '../../logic/history';
-import { NATIONAL, POLICIES, splitPolicies, type CompanySort, type Policy, type Source } from '../../logic/policies';
+import { NATIONAL, POLICIES, searchPolicies, splitPolicies, type CompanySort, type Policy, type Source } from '../../logic/policies';
 import { useStore } from '../../state/AppStore';
-import { color } from '../../theme/tokens';
+import { color, type } from '../../theme/tokens';
 
 /** Each place the driver has stopped, from their own logged stops: visits, typical wait, times past free. */
 interface Place {
@@ -67,19 +67,17 @@ function PolicyRow({ p }: { p: Policy }) {
   );
 }
 
-function Group({ title, sub, list }: { title: string; sub?: string; list: Policy[] }) {
+function Group({ title, list }: { title?: string; list: Policy[] }) {
   if (!list.length) return null;
   return (
     <>
-      <Gap h={24} />
-      <T v="bodyStrong">{title}</T>
-      {sub ? (
+      <Gap h={title ? 24 : 16} />
+      {title ? (
         <>
-          <Gap h={4} />
-          <T v="bodyTiny">{sub}</T>
+          <T v="bodyStrong">{title}</T>
+          <Gap h={10} />
         </>
       ) : null}
-      <Gap h={10} />
       <ListCard>
         {list.map((p) => (
           <PolicyRow key={p.company} p={p} />
@@ -89,18 +87,49 @@ function Group({ title, sub, list }: { title: string; sub?: string; list: Policy
   );
 }
 
+/** Width of the logo slot on your company's card, in points. */
+const LOGO_SLOT = 64;
+
 const SORTS: { key: CompanySort; label: string }[] = [
-  { key: 'best', label: 'Recommended' },
   { key: 'rate', label: 'Top rate' },
-  { key: 'by2h', label: 'Paid by 2h' },
+  { key: 'guaranteed', label: 'Guaranteed' },
 ];
 
-/** The heading over the companies each sort brings to the top. */
-const TOP: Record<CompanySort, { title: string; sub: string }> = {
-  best: { title: 'Recommended', sub: 'Every hour on duty is paid, or detention is paid even when the customer doesn’t pay.' },
-  rate: { title: 'Highest rate first', sub: 'Companies that publish an hourly rate for waiting.' },
-  by2h: { title: 'Paid within 2 hours', sub: 'Hourly pay, or 2 hours or less of free time.' },
+/**
+ * The heading over the companies that don't match the chosen chip. The matches get no heading:
+ * the dark chip right above them already says what they are (Edward, 25 Nov). This one marks
+ * where the order changes, so it says what those companies lack.
+ */
+const REST: Record<CompanySort, string> = {
+  rate: 'Rate unknown',
+  guaranteed: 'Not guaranteed or unknown',
 };
+
+/**
+ * One choice at a time, as chips under the search (Edward, 25 Nov, layout A): both show at
+ * once and the dark one says which is on. Chips, not the segmented bar, so they read as their
+ * own control.
+ */
+function Chips({ value, onChange }: { value: CompanySort; onChange: (k: CompanySort) => void }) {
+  return (
+    <View style={styles.chips} accessibilityRole="radiogroup" accessibilityLabel="Order other companies">
+      {SORTS.map((o) => {
+        const on = o.key === value;
+        return (
+          <Tappable
+            key={o.key}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: on }}
+            onPress={() => onChange(o.key)}
+            style={[styles.chip, on && styles.chipOn]}
+          >
+            <T v="bodyStrong" c={on ? color.bg : color.ink} style={styles.chipText}>{o.label}</T>
+          </Tappable>
+        );
+      })}
+    </View>
+  );
+}
 
 type PlaceSort = 'most' | 'shortest';
 
@@ -112,15 +141,18 @@ type PlaceSort = 'most' | 'shortest';
  */
 export default function Companies() {
   const { s } = useStore();
-  const [sort, setSort] = useState<CompanySort>('best');
+  const [sort, setSort] = useState<CompanySort>('rate');
+  const [query, setQuery] = useState('');
+  const [focused, setFocused] = useState(false);
   const [placeSort, setPlaceSort] = useState<PlaceSort>('most');
   const all = placesFrom(s.history, s.rules);
   const places = placeSort === 'shortest' ? [...all].sort((a, b) => a.wait - b.wait || a.name.localeCompare(b.name)) : all;
   const logo = s.company ? LOGOS[s.company] : undefined;
-  const { top, rest } = splitPolicies(
+  const found = searchPolicies(
     POLICIES.filter((p) => p.company !== s.company),
-    sort,
+    query,
   );
+  const { top, rest } = splitPolicies(found, sort);
 
   return (
     <Screen tabs header={<PageHead title="Companies" />}>
@@ -128,36 +160,67 @@ export default function Companies() {
       <Gap h={10} />
       <Card onPress={() => router.push('/rules')}>
         <View style={styles.row}>
+          {/* Logo on the left, shrunk into one fixed slot so the name starts in the same place for
+              every carrier (Edward, 25 Nov). It's only for recognition: the written name beside it
+              carries the meaning and grows with text size, so the logo can be small. Carriers with
+              no logo get no slot. */}
+          {logo ? (
+            <View style={styles.logoSlot}>
+              <Image
+                source={logo.src}
+                style={{ width: LOGO_SLOT, height: LOGO_SLOT * (logo.h / logo.w) }}
+                resizeMode="contain"
+                accessibilityIgnoresInvertColors
+              />
+            </View>
+          ) : null}
           <View style={styles.body}>
-            {logo ? (
-              <Image source={logo.src} style={{ width: logo.w, height: logo.h }} resizeMode="contain" accessibilityIgnoresInvertColors />
-            ) : null}
             <T v="bodyStrong">{s.company ?? 'Your company'}</T>
-            <T v="bodySmall">{rulesLine(s.rules)}</T>
-            <T v="bodyTiny">The rules you entered</T>
+            {/* Same form and weight as the other companies' rows, so yours compares at a glance.
+                No "The rules you entered" line: you entered them, and "Your company" says whose. */}
+            <T v="bodySmall" c={color.ink}>{rulesShort(s.rules)}</T>
           </View>
           <ChevronRight size={16} c={color.faint} />
         </View>
       </Card>
 
       <Gap h={32} />
-      <T v="bodyStrong">Other companies</T>
-      <Gap h={4} />
-      <T v="bodyTiny">
-        What each one publishes about paying you to wait. Tap one for the details and the source.
-      </T>
+      {/* The heading says what the rows are (pay for waiting), so no line under it explaining
+          that; the chevrons already say a row opens (Edward, 25 Nov). */}
+      <T v="bodyStrong">How other companies pay for waiting</T>
       <Gap h={12} />
-      <Seg options={SORTS} value={sort} onChange={setSort} label="Sort other companies" />
-      <Group title={TOP[sort].title} sub={TOP[sort].sub} list={top} />
-      <Group title="Everyone else" list={rest} />
+      <View style={[styles.field, focused && styles.fieldFocus]}>
+        <SearchIcon c={color.faint} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder="Search companies"
+          placeholderTextColor={color.sub}
+          autoCorrect={false}
+          autoComplete="off"
+          returnKeyType="search"
+          style={styles.input}
+          accessibilityLabel="Search other companies"
+        />
+      </View>
+      <Gap h={10} />
+      <Chips value={sort} onChange={setSort} />
+      {found.length ? null : (
+        <>
+          <Gap h={24} />
+          <T v="bodySmall">{`No company called “${query.trim()}” in Docket’s list yet.`}</T>
+        </>
+      )}
+      <Group list={top} />
+      <Group title={REST[sort]} list={rest} />
       <Gap h={12} />
       <T v="bodyTiny">{`Across the country: ${NATIONAL.line}`}</T>
       <SourceLink src={NATIONAL.source} />
 
       <Gap h={32} />
       <T v="bodyStrong">Places you’ve stopped</T>
-      <Gap h={4} />
-      <T v="bodyTiny">From the stops you timed.</T>
       <Gap h={10} />
       {all.length > 1 ? (
         <>
@@ -219,6 +282,33 @@ export default function Companies() {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logoSlot: { width: LOGO_SLOT, alignItems: 'center' },
+  // The same field as the company picker's search: fill and a 1px edge, no lift.
+  field: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: 50,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+    borderCurve: 'continuous',
+    backgroundColor: color.glass,
+    boxShadow: `inset 0 0 0 1px ${color.track}`,
+  },
+  fieldFocus: { backgroundColor: color.bg, boxShadow: `inset 0 0 0 2px ${color.ink}` },
+  input: { ...type.body, fontSize: 17, flex: 1, minWidth: 0, color: color.ink, ...noFocusRing },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderCurve: 'continuous',
+    justifyContent: 'center',
+    backgroundColor: color.glass,
+    boxShadow: `inset 0 0 0 1px ${color.track}`,
+  },
+  chipOn: { backgroundColor: color.ink, boxShadow: 'none' },
+  chipText: { fontSize: 15, lineHeight: 20 },
   body: { flex: 1, minWidth: 0, gap: 2, alignItems: 'flex-start' },
   figure: { alignItems: 'flex-end', maxWidth: 110 },
   right: { textAlign: 'right' },
